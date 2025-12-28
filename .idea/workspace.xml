@@ -4,7 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4993b73e-7e36-4adc-940b-47920e30c334" name="Changes" comment="" />
+    <list default="true" id="4993b73e-7e36-4adc-940b-47920e30c334" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/src/Wingman/core/input_receiver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/Wingman/core/input_receiver.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />

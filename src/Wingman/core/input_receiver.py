@@ -42,8 +42,5 @@ class InputReceiver:
         return self.last_received
 
 
-    def get_last_received(self):
-        return self.last_received
-
 if __name__ == "__main__":
     input_receiver_instance = InputReceiver()

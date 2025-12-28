@@ -19,9 +19,9 @@ Because this tool sniffs network packets to read game data, you need two things 
     cd Wingman
     ```
 
-2.  **Install Python dependencies:**
+2.  **Run the app:**
     ```bash
-    pip install -r requirements.txt
+    python run.py
     ```
 
 ## Configuration
