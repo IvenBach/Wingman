@@ -1,0 +1,9 @@
+## [Unreleased 1.1]
+### Added
+- Group status display
+
+### Removed
+- XP Events log
+
+### Updated
+- Changed from "XPTracker" to "Wingman"
