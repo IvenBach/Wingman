@@ -29,17 +29,13 @@ def parse_group_status(text_block: str) -> List[Dict[str, Any]]:
     # 3. Capture Name
     # 4. Capture HP, Fat, Power (e.g. "227/ 394") ignoring the percentages
 
-    # OLD Regex:
-    # r"\s+(?P<status>[A-Za-z]*)"
-
-    # NEW Regex:
-    # We want to capture non-whitespace characters in that column if they exist.
-    # The previous regex might have been matching the empty space and stopping.
     pattern = re.compile(
         r"\[\s*(?P<cls>[A-Za-z]+)\s+(?P<lvl>\d+)\s*\]"  # [Class Lvl]
-        r"\s+(?P<status>.*?)"  # <--- CHANGED: Capture EVERYTHING until the name
-        r"\s+(?P<name>\w+)"  # Name
-        r"\s+(?P<hp>\d+/\s*\d+)"  # HP
+        r"\s+"  # Space after bracket
+        r"(?P<status>(?:[BPDS]\s)*)"  # Status: Only B, P, D, or S followed by a space (optional, repeated)
+        r"(?P<name>.+?)"  # Name: Capture anything (including spaces) non-greedily...
+        r"\s+"  # ...until the space before the HP
+        r"(?P<hp>\d+/\s*\d+)"  # HP (This anchors the end of the name)
         r".*?"  # Skip percent
         r"\s+(?P<fat>\d+/\s*\d+)"  # Fat
         r".*?"  # Skip percent

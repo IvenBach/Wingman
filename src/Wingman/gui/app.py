@@ -11,7 +11,7 @@ class XPTrackerApp:
         self.last_stat_update = 0
 
         self.root = tk.Tk()
-        self.root.title("Wingman - 0.2.3")
+        self.root.title("Wingman - 0.2.4")
         self.root.geometry("500x350")  # Widened slightly for the columns
         self.root.attributes("-topmost", True)
 

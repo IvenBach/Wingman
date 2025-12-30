@@ -1,3 +1,7 @@
+## [Unreleased 0.2.4]
+### Updated
+- Fixed group regex to handle pets
+
 ## [Unreleased 0.2.3]
 ### Added
 - Status column in group data display
