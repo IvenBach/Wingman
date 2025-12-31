@@ -87,18 +87,6 @@ class TestGroupParser:
         results = parse_group_status(line)
         assert len(results) == 0
 
-    def test_parse_multi_status_flags(self):
-        """
-        Case: Status column contains multiple flags (e.g., 'BP' for Bleeding + Poisoned).
-        """
-        line = "[Kenku          58]  B P      Quacamole            360/ 510 ( 70%)     479/ 510 ( 93%)      37/  69 ( 53%)"
-
-        results = parse_group_status(line)
-
-        assert len(results) == 1
-        assert results[0]['status'] == "B P"
-        assert results[0]['name'] == "Quacamole"
-
     @pytest.mark.parametrize("input,expected", argvalues=[
                                         ("[Sin         74] B P     Beautiful        500/500 (100%)  500/500 (100%)  418/731 ( 57%)", 'B P'),
                                         ("[Sin         74] B D     Beautiful        500/500 (100%)  500/500 (100%)  418/731 ( 57%)", 'B D'),
