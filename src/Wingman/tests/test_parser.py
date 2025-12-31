@@ -1,5 +1,4 @@
 import pytest
-from itertools import combinations
 from Wingman.core.parser import parse_xp_message, parse_group_status
 
 
