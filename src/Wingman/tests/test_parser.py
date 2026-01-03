@@ -222,3 +222,10 @@ class TestLeavingGroupParser:
 
         assert len(leavers) == 1
         assert nameOfLeaver == 'An angel of death'
+
+    def test_ShapeshiftedMemberLeaves_IsCorrectlyParsed(self):
+        leavers = parse_leaveGroup('A vapor-shrouded mistwolf disbands from your group.')
+        nameOfLeaver = leavers[0]
+
+        assert len(leavers) == 1
+        assert nameOfLeaver == 'A vapor-shrouded mistwolf'

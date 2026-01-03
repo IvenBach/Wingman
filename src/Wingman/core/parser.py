@@ -83,7 +83,7 @@ def parse_leaveGroup(text: str) -> List[str]:
     :param text: The text to check for a leaving group member.
 
     :returns: The name of the member(s) who is/are leaving the group."""
-    pattern = re.compile(r"(?P<leavingMember>([A-Za-z ]+)) disbands from (your|the) group", re.IGNORECASE)
+    pattern = re.compile(r"(?P<leavingMember>([A-Za-z -]+)) disbands from (your|the) group", re.IGNORECASE)
     
     members = []
     leavingMembers = pattern.findall(text)
