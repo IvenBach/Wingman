@@ -38,10 +38,8 @@ def parse_group_status(text_block: str, includePets: bool = False) -> List[Dict[
                         + fatigue + skipPercentIndicators \
                         + power
 
-    newFollowersName = r"(?P<NewGroupMember>.+)"
-    followsYou = r"\s{1}follows you"
-    newFollower = f"{newFollowersName}{followsYou}"
-
+    newFollowersName = r"(?P<NewGroupMember>[A-Za-z -]+)"
+    newFollower = f"{newFollowersName} follows you"
 
     groupParserString = f"({currentPartyMember}|{newFollower})"
 
