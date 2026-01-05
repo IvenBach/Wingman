@@ -3,6 +3,7 @@ import time
 import ctypes
 from tkinter import ttk
 from Wingman.core.session import GameSession
+from Wingman.core.parser import Group, Character
 
 class XPTrackerApp:
     def __init__(self, session: GameSession):
@@ -167,7 +168,7 @@ class XPTrackerApp:
         self.root.after(100, self.update_gui)
         if self.paused: return
         self.session.process_queue()
-        group_data = self.session.get_latest_group_data()
+        group_data = self.session.Group
         if group_data or self.session.shouldRefreshGroupDisplay:
             self._refresh_tree(group_data)
         current_xp = self.session.total_xp
@@ -180,23 +181,27 @@ class XPTrackerApp:
             self.last_stat_update = now
 
 
-    def _refresh_tree(self, members):
-        def isCurrentPartyMember(m):
-            return m['cls'] is not None
+    def _refresh_tree(self, group: Group):
+        def isCurrentPartyMember(m: Character):
+            return m.ClassProfession != ""
 
-        def isNewlyJoinedPartyMember(m):
-            return m['cls'] is None and m['NewGroupMember'] is not None
+        def isNewlyJoinedPartyMember(m: Character):
+            return m.ClassProfession == "" and m.IsNewGroupFollower
 
         for item in self.tree.get_children():
             self.tree.delete(item)
-        for m in members:
+        for m in group.Members:
             if isCurrentPartyMember(m):
-                values = (m['cls'], m['lvl'], m['status'], m['name'], m['hp'], m['fat'], m['pwr'])
-                item_id = self.tree.insert('', tk.END, iid=m['name'], values=values)
+                values = (m.ClassProfession, m.Level, str(m.Status), m.Name, str(m.Hp), str(m.Fat), str(m.Pow))
+                item_id = self.tree.insert('', tk.END, iid=m.Name, values=values)
                 self.tree.see(item_id)
             elif isNewlyJoinedPartyMember(m):
-                values = ('__', "__", "__", m['NewGroupMember'], '__', '__', '__')
-                item_id = self.tree.insert('', tk.END, iid=m['NewGroupMember'], values=values)
+                suffixToMakeUnique = ''
+                while self.tree.exists(m.Name + suffixToMakeUnique):
+                    suffixToMakeUnique += '+'
+
+                values = ('__', "__", "__", m.Name, '__', '__', '__')
+                item_id = self.tree.insert('', tk.END, iid=m.Name + suffixToMakeUnique, values=values)
                 self.tree.see(item_id)
         
         self.session.shouldRefreshGroupDisplay = False

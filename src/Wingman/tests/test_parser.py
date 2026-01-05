@@ -1,5 +1,6 @@
 import pytest
 from Wingman.core.parser import parse_xp_message, parse_group_status, parse_leaveGroup
+from Wingman.core.parser import Character, StatusIndicator, Group, ResourceBar
 
 class TestXPParser:
     def test_parse_compound_xp(self):
@@ -37,16 +38,16 @@ class TestGroupParser:
 
         # Check first member details
         p1 = results[0]
-        assert p1['cls'] == "Orc"
-        assert p1['lvl'] == "40"
-        assert results[0]['status'] == "B"
-        assert p1['name'] == "Earthquack"
-        assert p1['hp'] == "227/ 394"
+        assert p1.ClassProfession == "Orc"
+        assert p1.Level == 40
+        assert p1.Status == "B"
+        assert p1.Name == "Earthquack"
+        assert p1.Hp == "227/ 394"
 
         # Check second member details
         p2 = results[1]
-        assert p2['cls'] == "Kenku"
-        assert p2['name'] == "Big"
+        assert p2.ClassProfession == "Kenku"
+        assert p2.Name == "Big"
 
     def test_parse_single_line_update(self):
         """
@@ -56,8 +57,8 @@ class TestGroupParser:
         results = parse_group_status(line)
 
         assert len(results) == 1
-        assert results[0]['status'] == "B"
-        assert results[0]['name'] == "Quacamole"
+        assert results[0].Status == "B"
+        assert results[0].Name == "Quacamole"
     
     @pytest.mark.parametrize("input,expected", argvalues= [
                                         ("[Sin         74] B       Beautiful        500/500 (100%)  500/500 (100%)  418/731 ( 57%)", "B"),
@@ -73,7 +74,7 @@ class TestGroupParser:
     )
     def test_individual_status_flags(self, input, expected):
         results = parse_group_status(input)
-        actual = results[0]['status']
+        actual = results[0].Status
 
         assert actual == expected
 
@@ -86,17 +87,17 @@ class TestGroupParser:
         assert len(results) == 0
 
     @pytest.mark.parametrize("input,expected", argvalues=[
-                                        ("[Sin         74] B P     Beautiful        500/500 (100%)  500/500 (100%)  418/731 ( 57%)", 'B P'),
-                                        ("[Sin         74] B D     Beautiful        500/500 (100%)  500/500 (100%)  418/731 ( 57%)", 'B D'),
-                                        ("[Sin         74] B S     Beautiful        500/500 (100%)  500/500 (100%)  418/731 ( 57%)", 'B S'),
-                                        ("[Sin         74] P D     Beautiful        500/500 (100%)  500/500 (100%)  418/731 ( 57%)", 'P D'),
-                                        ("[Sin         74] P S     Beautiful        500/500 (100%)  500/500 (100%)  418/731 ( 57%)", 'P S'),
-                                        ("[Sin         74] D S     Beautiful        500/500 (100%)  500/500 (100%)  418/731 ( 57%)", 'D S'),
-                                        ("[Sin         74] B P D   Beautiful        500/500 (100%)  500/500 (100%)  418/731 ( 57%)", 'B P D'),
-                                        ("[Sin         74] B P S   Beautiful        500/500 (100%)  500/500 (100%)  418/731 ( 57%)", 'B P S'),
-                                        ("[Sin         74] B D S   Beautiful        500/500 (100%)  500/500 (100%)  418/731 ( 57%)", 'B D S'),
-                                        ("[Sin         74] P D S   Beautiful        500/500 (100%)  500/500 (100%)  418/731 ( 57%)", 'P D S'),
-                                        ("[Sin         74] B P D S Beautiful        500/500 (100%)  500/500 (100%)  418/731 ( 57%)", 'B P D S')
+                                        ("[Sin         74] B P     Beautiful        500/500 (100%)  500/500 (100%)  418/731 ( 57%)", StatusIndicator.BLEED | StatusIndicator.POISON),
+                                        ("[Sin         74] B D     Beautiful        500/500 (100%)  500/500 (100%)  418/731 ( 57%)", StatusIndicator.BLEED | StatusIndicator.DISEASE),
+                                        ("[Sin         74] B S     Beautiful        500/500 (100%)  500/500 (100%)  418/731 ( 57%)", StatusIndicator.BLEED | StatusIndicator.STUN),
+                                        ("[Sin         74] P D     Beautiful        500/500 (100%)  500/500 (100%)  418/731 ( 57%)", StatusIndicator.POISON | StatusIndicator.DISEASE),
+                                        ("[Sin         74] P S     Beautiful        500/500 (100%)  500/500 (100%)  418/731 ( 57%)", StatusIndicator.POISON | StatusIndicator.STUN),
+                                        ("[Sin         74] D S     Beautiful        500/500 (100%)  500/500 (100%)  418/731 ( 57%)", StatusIndicator.DISEASE | StatusIndicator.STUN),
+                                        ("[Sin         74] B P D   Beautiful        500/500 (100%)  500/500 (100%)  418/731 ( 57%)", StatusIndicator.BLEED | StatusIndicator.POISON | StatusIndicator.DISEASE),
+                                        ("[Sin         74] B P S   Beautiful        500/500 (100%)  500/500 (100%)  418/731 ( 57%)", StatusIndicator.BLEED | StatusIndicator.POISON | StatusIndicator.STUN),
+                                        ("[Sin         74] B D S   Beautiful        500/500 (100%)  500/500 (100%)  418/731 ( 57%)", StatusIndicator.BLEED | StatusIndicator.DISEASE | StatusIndicator.STUN),
+                                        ("[Sin         74] P D S   Beautiful        500/500 (100%)  500/500 (100%)  418/731 ( 57%)", StatusIndicator.POISON | StatusIndicator.DISEASE | StatusIndicator.STUN),
+                                        ("[Sin         74] B P D S Beautiful        500/500 (100%)  500/500 (100%)  418/731 ( 57%)", StatusIndicator.BLEED | StatusIndicator.POISON | StatusIndicator.DISEASE | StatusIndicator.STUN)
                                         ], ids=[
                                             "Bleed + Poison",
                                             "Bleed + Disease",
@@ -111,8 +112,8 @@ class TestGroupParser:
                                             "Bleed + Poison + Disease + Stun"
                                         ]
                                     )
-    def test_multiple_status_flags(self, input, expected):        
-        actual = parse_group_status(input)[0]['status']
+    def test_multiple_status_flags(self, input, expected: StatusIndicator):        
+        actual = parse_group_status(input)[0].Status
 
         assert actual == expected
 
@@ -130,7 +131,7 @@ class TestGroupParser:
         results = parse_group_status(input)
 
         assert len(results) == 1
-        assert results[0]['NewGroupMember'] == expected
+        assert results[0].Name == expected
 
     
     def test_existingGroupFollowedByNewMember_IndicatesNewMemberWithoutUpdatesToExpected(self):
@@ -167,7 +168,7 @@ A vapor-shrouded mistwolf follows you"""
         matches = parse_group_status(raw_input)
 
         assert len(matches) == 1
-        assert matches[0]['NewGroupMember'] == 'AnonymizedName'
+        assert matches[0].Name == 'AnonymizedName'
 
 class TestLeavingGroupParser:
     @pytest.mark.parametrize('input,expected', [
@@ -229,3 +230,243 @@ class TestLeavingGroupParser:
 
         assert len(leavers) == 1
         assert nameOfLeaver == 'A vapor-shrouded mistwolf'
+
+
+class TestStatusIndicator:
+    @pytest.mark.parametrize("statusIndicator,stringRepresentation", argvalues=[
+                                                                    (StatusIndicator.BLEED, "B"),
+                                                                    (StatusIndicator.POISON, "P"),
+                                                                    (StatusIndicator.DISEASE, "D"),
+                                                                    (StatusIndicator.STUN, "S"),
+                                                                    (StatusIndicator.BLEED | StatusIndicator.POISON, "BP"),
+                                                                    (StatusIndicator.BLEED | StatusIndicator.DISEASE, "BD"),
+                                                                    (StatusIndicator.BLEED | StatusIndicator.STUN, "BS"),
+                                                                    (StatusIndicator.POISON | StatusIndicator.DISEASE, "PD"),
+                                                                    (StatusIndicator.POISON | StatusIndicator.STUN, "PS"),
+                                                                    (StatusIndicator.DISEASE | StatusIndicator.STUN, "DS"),
+                                                                    (StatusIndicator.BLEED | StatusIndicator.POISON | StatusIndicator.DISEASE, "BPD"),
+                                                                    (StatusIndicator.BLEED | StatusIndicator.POISON | StatusIndicator.STUN, "BPS"),
+                                                                    (StatusIndicator.BLEED | StatusIndicator.DISEASE | StatusIndicator.STUN, "BDS"),
+                                                                    (StatusIndicator.POISON | StatusIndicator.DISEASE | StatusIndicator.STUN, "PDS"),
+                                                                    (StatusIndicator.BLEED | StatusIndicator.POISON | StatusIndicator.DISEASE | StatusIndicator.STUN, "BPDS")
+                                                                    ]
+    )
+    def test_CompareStatusIndicators_AgainstTheirStringRepresentation(self, statusIndicator, stringRepresentation):
+        assert statusIndicator == stringRepresentation
+    
+    def test_Against_None_NotEqualPasses(self):
+        statusIndicator = StatusIndicator.BLEED
+        assert statusIndicator != None
+    
+    def test_Against_None_EqualPasses(self):
+        statusIndicator = StatusIndicator.BLEED
+        assert not statusIndicator == None
+    
+    def test_NoStatusAilment(self):
+        assert '' == StatusIndicator(0)
+    
+    @pytest.mark.parametrize("stringRepresentation,expectedStatusIndicator", argvalues=[
+                                                                            ("B", StatusIndicator.BLEED),
+                                                                            ("P", StatusIndicator.POISON),
+                                                                            ("D", StatusIndicator.DISEASE),
+                                                                            ("S", StatusIndicator.STUN),
+                                                                            ("BP", StatusIndicator.BLEED | StatusIndicator.POISON),
+                                                                            ("BD", StatusIndicator.BLEED | StatusIndicator.DISEASE),
+                                                                            ("BS", StatusIndicator.BLEED | StatusIndicator.STUN),
+                                                                            ("PD", StatusIndicator.POISON | StatusIndicator.DISEASE),
+                                                                            ("PS", StatusIndicator.POISON | StatusIndicator.STUN),
+                                                                            ("DS", StatusIndicator.DISEASE | StatusIndicator.STUN),
+                                                                            ("BPD", StatusIndicator.BLEED | StatusIndicator.POISON | StatusIndicator.DISEASE),
+                                                                            ("BPS", StatusIndicator.BLEED | StatusIndicator.POISON | StatusIndicator.STUN),
+                                                                            ("BDS", StatusIndicator.BLEED | StatusIndicator.DISEASE | StatusIndicator.STUN),
+                                                                            ("PDS", StatusIndicator.POISON | StatusIndicator.DISEASE | StatusIndicator.STUN),
+                                                                            ("BPDS", StatusIndicator.BLEED | StatusIndicator.POISON | StatusIndicator.DISEASE | StatusIndicator.STUN)
+                                                                            ]
+    )
+    def test_CreateStatusIndicatorFromString(self, stringRepresentation, expectedStatusIndicator: StatusIndicator):
+        statusIndicator: StatusIndicator = StatusIndicator.FromString(stringRepresentation)
+
+        assert statusIndicator == expectedStatusIndicator
+
+class TestCharacter:
+    def test_CharacterInitialization(self):
+        c = Character(classProfession="Sin", 
+                         level=1, 
+                         status=StatusIndicator(0), 
+                         name="Beautiful", 
+                         hp=ResourceBar(2, 3), 
+                         fat=ResourceBar(4, 5), 
+                         pow=ResourceBar(6, 7))
+
+        assert c.ClassProfession == "Sin"
+        assert c.Level == 1
+        assert c.Status == StatusIndicator(0)
+        assert c.Name == "Beautiful"
+        assert c.Hp == '2/3'
+        assert c.Fat == '4/5'
+        assert c.Pow == '6/7'
+
+    @pytest.mark.parametrize("statusAilments,expected", argvalues=[
+                                                                (StatusIndicator.BLEED | StatusIndicator.POISON, StatusIndicator.BLEED | StatusIndicator.POISON),
+                                                                (StatusIndicator.BLEED | StatusIndicator.DISEASE, StatusIndicator.BLEED | StatusIndicator.DISEASE),
+                                                                (StatusIndicator.BLEED | StatusIndicator.STUN, StatusIndicator.BLEED | StatusIndicator.STUN),
+                                                                (StatusIndicator.POISON | StatusIndicator.DISEASE, StatusIndicator.POISON | StatusIndicator.DISEASE),
+                                                                (StatusIndicator.POISON | StatusIndicator.STUN, StatusIndicator.POISON | StatusIndicator.STUN),
+                                                                (StatusIndicator.DISEASE | StatusIndicator.STUN, StatusIndicator.DISEASE | StatusIndicator.STUN),
+                                                                (StatusIndicator.BLEED | StatusIndicator.POISON | StatusIndicator.DISEASE, StatusIndicator.BLEED | StatusIndicator.POISON | StatusIndicator.DISEASE),
+                                                                (StatusIndicator.BLEED | StatusIndicator.POISON | StatusIndicator.STUN, StatusIndicator.BLEED | StatusIndicator.POISON | StatusIndicator.STUN),
+                                                                (StatusIndicator.BLEED | StatusIndicator.DISEASE | StatusIndicator.STUN, StatusIndicator.BLEED | StatusIndicator.DISEASE | StatusIndicator.STUN),
+                                                                (StatusIndicator.POISON | StatusIndicator.DISEASE | StatusIndicator.STUN, StatusIndicator.POISON | StatusIndicator.DISEASE | StatusIndicator.STUN),
+                                                                (StatusIndicator.BLEED | StatusIndicator.POISON | StatusIndicator.DISEASE | StatusIndicator.STUN, StatusIndicator.BLEED | StatusIndicator.POISON | StatusIndicator.DISEASE | StatusIndicator.STUN)
+                                                                ],
+                                                                ids=[
+                                                                    "BP",
+                                                                    "BD",
+                                                                    "BS",
+                                                                    "PD",
+                                                                    "PS",
+                                                                    "DS",
+                                                                    "BPD",
+                                                                    "BPS",
+                                                                    "BDS",
+                                                                    "PDS",
+                                                                    "BPDS"
+                                                                ]
+    )
+    def test_MultipleStatusAilments(self, statusAilments: StatusIndicator, expected: StatusIndicator):
+        char = Character("Foo", 
+                         "Skeleton", 
+                         1, 
+                         statusAilments, 
+                         ResourceBar(2, 3), 
+                         ResourceBar(4, 5), 
+                         ResourceBar(6, 7))
+
+        assert char.Status == expected
+        
+class TestGroup:
+    def test_GroupCreation(self):
+        g = Group([Character("Foo", 
+                                "Skeleton", 
+                                1, 
+                                StatusIndicator(0), 
+                                ResourceBar(2, 3), 
+                                ResourceBar(4, 5), 
+                                ResourceBar(6, 7))])
+        assert isinstance(g, Group)
+    
+    def test_StringName_ReturnsLeader(self):
+        c = Character("Foo", 
+                        "Skeleton", 
+                        1, 
+                        StatusIndicator(0), 
+                        ResourceBar(2, 3), 
+                        ResourceBar(4, 5), 
+                        ResourceBar(6, 7))
+        member = Character("Foo", 
+                            "Bar", 
+                            11, 
+                            StatusIndicator(0),  
+                            ResourceBar(22, 33), 
+                            ResourceBar(44, 55), 
+                            ResourceBar(66, 77))
+        g = Group([c])
+        g.AddMembers([member])
+        leader = g.Leader
+
+        assert leader == c
+    
+    def test_CharacterObject_ReturnsLeader(self):
+        c = Character("Foo", 
+                        "Skeleton", 
+                        1, 
+                        StatusIndicator(0), 
+                        ResourceBar(2, 3), 
+                        ResourceBar(4, 5), 
+                        ResourceBar(6, 7))
+        member = Character("Foo", 
+                            "Bar", 
+                            11, 
+                            StatusIndicator(0), 
+                            ResourceBar(22, 33), 
+                            ResourceBar(44, 55), 
+                            ResourceBar(66, 77))
+        g = Group([c])
+        g.AddMembers([member])
+        leader = g.Leader
+
+        assert leader == c
+    
+    def test_RemovingMember_BasedOnStringName_SucceedsWhenMemberExists(self):
+        c = Character("Foo", 
+                        "Skeleton", 
+                        1, 
+                        StatusIndicator(0), 
+                        ResourceBar(2, 3), 
+                        ResourceBar(4, 5), 
+                        ResourceBar(6, 7))
+        member = Character("Foo", 
+                            "Bar", 
+                            11, 
+                            StatusIndicator(0), 
+                            ResourceBar(22, 33), 
+                            ResourceBar(44, 55), 
+                            ResourceBar(66, 77))
+        g = Group([c])
+        g.AddMembers([member])
+        countBeforeRemoval = g.Count
+
+        g.RemoveMembers([member.Name])
+        countAfterRemoval = g.Count
+
+        assert countBeforeRemoval == 2
+        assert countAfterRemoval == 1
+
+class TestResourceBar:
+
+    def test_Initialization(self):
+        rb = ResourceBar(current=50, maximum=100)
+        assert rb.Current == 50
+        assert rb.Maximum == 100
+    
+    def test_MakingIntoString(self):
+        rb = ResourceBar(current=75, maximum=150)
+        assert str(rb) == "75/150"
+
+    def test_Equality_SameValues_FromDifferentInstances_Passes(self):
+        rb1 = ResourceBar(current=30, maximum=60)
+        rb2 = ResourceBar(current=30, maximum=60)
+
+        assert rb1 == rb2
+    
+    def test_Inequality_DifferentValues_FromDifferentInstances_Fails(self):
+        rb1 = ResourceBar(current=30, maximum=61)
+        rb2 = ResourceBar(current=31, maximum=60)
+
+        assert rb1 != rb2
+    
+    @pytest.mark.parametrize("input,expected", argvalues=[
+                                                ("75/150", ResourceBar(75, 150)),
+                                                ("75/ 150", ResourceBar(75, 150))
+                                                ], 
+                                                ids=[
+                                                    "NoSpaceBeforeMaximum",
+                                                    "WithSpacesBeforeMaximum"
+                                                    ]
+    )
+    def test_Initialization_FromString(self, input: str, expected: ResourceBar):
+        rb = ResourceBar.FromString(input)
+
+        assert rb == expected
+    
+    @pytest.mark.parametrize("input,stringRepresentation", argvalues=[
+                                                            (ResourceBar(100, 100), "100/100"),
+                                                            (ResourceBar(100, 100), "100/ 100")
+                                                            ],
+                                                            ids=[
+                                                                "NoSpaceBeforeMaximum",
+                                                                "WithSpaceBeforeMaximum"
+                                                            ]
+    )
+    def test_Equality_ResourceBarAndStringRepresentation(self, input: ResourceBar, stringRepresentation: str):
+        assert input == stringRepresentation

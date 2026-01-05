@@ -1,6 +1,7 @@
 import time
 import pytest
 from unittest.mock import MagicMock
+from Wingman.core.parser import Character
 from Wingman.core.session import GameSession
 from Wingman.core.input_receiver import InputReceiver
 
@@ -35,12 +36,13 @@ def test_xp_per_hour_calculation(session):
 def test_reset_clears_state(session):
     sess, _ = session
     sess.total_xp = 50000
-    sess.latest_group_data = [{'name': 'OldData'}]  # Setup dirty state
-
+    sess.Group.AddMembers([Character("Foo")]) # Setup dirty state
+    countBeforeReset = sess.Group.Count
     sess.reset()
 
     assert sess.total_xp == 0
-    assert len(sess.latest_group_data) == 0  # Should be empty now
+    assert countBeforeReset == 1
+    assert sess.Group.Count == 0  # Should be empty now
     assert (time.time() - sess.start_time) < 1.0
 
 
@@ -48,8 +50,8 @@ def test_group_data_flow(session):
     sess, mock_receiver = session
 
     # 1. Pre-fill with stale data
-    sess.latest_group_data = [{'name': 'StaleUser'}]
-
+    sess.Group.AddMembers([Character("Foo")])
+    
     # 2. Mock incoming game text
     mock_receiver.remove_from_top.side_effect = [
         "<10:00:00> Earthquack's group:",
@@ -63,13 +65,13 @@ def test_group_data_flow(session):
     sess.process_queue()
 
     # 4. Verify
-    data = sess.get_latest_group_data()
+    group = sess.Group
 
     # This assertion failed before because StaleUser wasn't cleared
     # and new users weren't added. Now it should pass.
-    assert len(data) == 2
-    assert data[0]['name'] == 'Earthquack'
-    assert data[1]['name'] == 'Legolas'
+    assert group.Count == 2
+    assert group.Members[0].Name == 'Earthquack'
+    assert group.Members[1].Name == 'Legolas'
 
 def test_UngroupedCharacterGainsNewFollower_NewFollowerAddedToLatestGroupData():
     receiver = InputReceiver()
@@ -78,7 +80,7 @@ def test_UngroupedCharacterGainsNewFollower_NewFollowerAddedToLatestGroupData():
     session = GameSession(receiver)
     session.process_queue()
 
-    assert len(session.get_latest_group_data()) == 1
+    assert session.Group.Count == 1
 
 def test_LeaderGainsNewFollower_NewFollowerAddedToLatestGroupData():
     receiver = InputReceiver()
@@ -95,7 +97,7 @@ def test_LeaderGainsNewFollower_NewFollowerAddedToLatestGroupData():
     receiver.receive("FooBar follows you")
     session.process_queue()
 
-    assert len(session.get_latest_group_data()) == 3
+    assert session.Group.Count == 3
 
 def test_LeavingGroup_ClearsLatestGroupData():
     receiver = InputReceiver()
@@ -110,13 +112,13 @@ def test_LeavingGroup_ClearsLatestGroupData():
     session = GameSession(receiver)
     session.process_queue()
 
-    groupCountWhileMemberOfGroup = len(session.get_latest_group_data())
+    groupCountWhileMemberOfGroup = session.Group.Count
 
     receiver.receive("You disband from the group.")
     session.process_queue()
 
     assert groupCountWhileMemberOfGroup == 2
-    assert len(session.get_latest_group_data()) == 0
+    assert session.Group.Count == 0
 
 def test_nonGroupLeaderLeavesGroup_IsRemovedFromLatestGroupData():
     receiver = InputReceiver()
@@ -131,10 +133,10 @@ def test_nonGroupLeaderLeavesGroup_IsRemovedFromLatestGroupData():
     receiver.receive(groupText)
     session = GameSession(receiver)
     session.process_queue()
-    initialGroupSize = len(session.get_latest_group_data())
+    initialGroupSize = session.Group.Count
 
     receiver.receive("Baz disbands from the group.")
     session.process_queue()
 
     assert initialGroupSize == 3
-    assert len(session.get_latest_group_data()) == 2
+    assert session.Group.Count == 2
