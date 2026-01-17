@@ -1,3 +1,4 @@
+from Wingman.core.health_Tagger import HealthTagger
 from Wingman.gui.app import XPTrackerApp
 from Wingman.core.session import GameSession
 from Wingman.core.input_receiver import InputReceiver
@@ -87,4 +88,54 @@ class TestApp():
 
         assert unfollowedGroupCount == 1
         assert groupCountAfterFirstFollower == 2
-        assert groupCountAfterSecondFollower == 3
+        assert groupCountAfterSecondFollower == 3    
+
+    def test_GroupMemberZeroed_DisplaysZeroedFormatting(self):
+        receiver = InputReceiver()
+        session = GameSession(receiver)
+        app = XPTrackerApp(session)
+        receiver.receive("""Foo's group:
+[ Class        Lvl] Status     Name                 Hits               Fat                Power            
+[Bar            01]            Foo                 1/ 500 (  0%)      497/ 500 ( 99%)    592/ 707 ( 83%)   """)
+        
+        app.update_gui()
+        member = app.tree.get_children()[0]
+        healthTags = app.tree.item(member, 'tags')
+
+        assert HealthTagger.HealthLevels.ZEROED.value in healthTags
+    
+    def test_GroupMemberInRedHealth_DisplaysRedHealthFormatting(self):
+        receiver = InputReceiver()
+        session = GameSession(receiver)
+        app = XPTrackerApp(session)
+        receiver.receive("[Bar            01]            Foo                 25/ 100 (  0%)      497/ 500 ( 99%)    592/ 707 ( 83%)   """)
+        app.update_gui()
+        member = app.tree.get_children()[0]
+
+        healthTags = app.tree.item(member, 'tags')
+
+        assert HealthTagger.HealthLevels.AT_OR_BELOW_25.value in healthTags
+
+    def test_GroupMemberInYellowHealth_DisplaysYellowHealthFormatting(self):
+        receiver = InputReceiver()
+        session = GameSession(receiver)
+        app = XPTrackerApp(session)
+        receiver.receive("[Bar            01]            Foo                 50/ 100 (  0%)      497/ 500 ( 99%)    592/ 707 ( 83%)   """)
+        app.update_gui()
+        member = app.tree.get_children()[0]
+        
+        healthTags = app.tree.item(member, 'tags')
+
+        assert HealthTagger.HealthLevels.AT_OR_BELOW_50.value in healthTags
+    
+    def test_GroupMemberInGoodHealth_DisplaysNoHealthFormatting(self):
+        receiver = InputReceiver()
+        session = GameSession(receiver)
+        app = XPTrackerApp(session)
+        receiver.receive("[Bar            01]            Foo                 51/ 100 (  0%)      497/ 500 ( 99%)    592/ 707 ( 83%)   """)
+        app.update_gui()
+        member = app.tree.get_children()[0]
+
+        healthTags = app.tree.item(member, 'tags')
+
+        assert HealthTagger.HealthLevels.HEALTHY.value in healthTags

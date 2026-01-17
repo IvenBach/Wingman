@@ -5,6 +5,7 @@ from tkinter import ttk
 from Wingman.core.session import GameSession
 from Wingman.core.group import Group
 from Wingman.core.character import Character
+from Wingman.core.health_Tagger import HealthTagger
 
 class XPTrackerApp:
     def __init__(self, session: GameSession):
@@ -89,11 +90,15 @@ class XPTrackerApp:
         columns = ("cls", "lvl", "status", "name", "hp", "fat", "pwr")
         self.tree = ttk.Treeview(main_frame, columns=columns, show="headings", height=8)
 
-        self.tree.heading("cls", text="Class");
+        self.tree.tag_configure(HealthTagger.HealthLevels.ZEROED.value, background='#000000', foreground='#ffffff')
+        self.tree.tag_configure(HealthTagger.HealthLevels.AT_OR_BELOW_25.value, background='#ff0000')
+        self.tree.tag_configure(HealthTagger.HealthLevels.AT_OR_BELOW_50.value, background="#FFFF00")
+
+        self.tree.heading("cls", text="Class")
         self.tree.heading("lvl", text="Lvl")
-        self.tree.heading("status", text="Status");
+        self.tree.heading("status", text="Status")
         self.tree.heading("name", text="Name")
-        self.tree.heading("hp", text="HP");
+        self.tree.heading("hp", text="HP")
         self.tree.heading("fat", text="Fatigue")
         self.tree.heading("pwr", text="Power")
 
@@ -194,8 +199,10 @@ class XPTrackerApp:
         for m in group.Members:
             if isCurrentPartyMember(m):
                 values = (m.ClassProfession, m.Level, str(m.Status), m.Name, str(m.Hp), str(m.Fat), str(m.Pow))
-                item_id = self.tree.insert('', tk.END, iid=m.Name, values=values)
-                self.tree.see(item_id)
+                
+                healthTag = HealthTagger.HealthTag(m)
+                
+                item_id = self.tree.insert('', tk.END, iid=m.Name, values=values, tags=(healthTag))
             elif isNewlyJoinedPartyMember(m):
                 suffixToMakeUnique = ''
                 while self.tree.exists(m.Name + suffixToMakeUnique):
@@ -203,7 +210,6 @@ class XPTrackerApp:
 
                 values = ('__', "__", "__", m.Name, '__', '__', '__')
                 item_id = self.tree.insert('', tk.END, iid=m.Name + suffixToMakeUnique, values=values)
-                self.tree.see(item_id)
         
         self.session.shouldRefreshGroupDisplay = False
 
