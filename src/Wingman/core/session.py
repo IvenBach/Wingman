@@ -136,3 +136,4 @@ class GameSession:
                 logs.append(log_entry)
 
         return logs
+

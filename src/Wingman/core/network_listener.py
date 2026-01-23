@@ -40,7 +40,7 @@ class NetworkListener:
                             line = line.replace('\r', '')
 
                             # Remove color codes
-                            cleaned = self.remove_noise(line)
+                            cleaned = InputReceiver.remove_ANSI_color_codes(line)
 
                             # Send to app if it has content
                             # Note: We use strip() to avoid sending blank lines,
