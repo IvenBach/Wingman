@@ -5,7 +5,7 @@ class Group:
     '''
     Character group management class.
     '''
-    def __init__(self, members: List[Character] = []):
+    def __init__(self, members: List[Character] = []) -> None:
         self._members: List[Character] = []
         if members:
             for member in members:
@@ -59,3 +59,11 @@ class Group:
 
     def __repr__(self):
         return f"{self.Leader.Name}'s group"
+    
+    @property
+    def DisplayHealingIcon(self) -> bool:
+        for member in self._members:
+            if member.Hp.Current == 1:
+                return True
+        
+        return False

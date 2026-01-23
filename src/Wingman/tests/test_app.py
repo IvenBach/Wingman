@@ -1,3 +1,6 @@
+from tkinter import Widget
+from unittest.mock import Mock, patch
+import pytest
 from Wingman.core.health_Tagger import HealthTagger
 from Wingman.gui.app import XPTrackerApp
 from Wingman.core.session import GameSession
@@ -120,7 +123,7 @@ class TestApp():
         receiver = InputReceiver()
         session = GameSession(receiver)
         app = XPTrackerApp(session)
-        receiver.receive("[Bar            01]            Foo                 50/ 100 (  0%)      497/ 500 ( 99%)    592/ 707 ( 83%)   """)
+        receiver.receive("[Bar            01]            Foo                 50/ 100 (  0%)      497/ 500 ( 99%)    592/ 707 ( 83%)   ")
         app.update_gui()
         member = app.tree.get_children()[0]
         
@@ -132,10 +135,46 @@ class TestApp():
         receiver = InputReceiver()
         session = GameSession(receiver)
         app = XPTrackerApp(session)
-        receiver.receive("[Bar            01]            Foo                 51/ 100 (  0%)      497/ 500 ( 99%)    592/ 707 ( 83%)   """)
+        receiver.receive("[Bar            01]            Foo                 51/ 100 (  0%)      497/ 500 ( 99%)    592/ 707 ( 83%)   ")
         app.update_gui()
         member = app.tree.get_children()[0]
 
         healthTags = app.tree.item(member, 'tags')
 
         assert HealthTagger.HealthLevels.HEALTHY.value in healthTags
+
+    def test_HealGroupIcon_DisplaysWhenAnyGroupMemberZeroed(self):
+        receiver = InputReceiver()
+        session = GameSession(receiver)
+        app = XPTrackerApp(session)
+        receiver.receive("""Foo's group:
+[Bar            01]            Foo                 51/ 100 (  0%)      497/ 500 ( 99%)    592/ 707 ( 83%)   
+[Baz            01]            Fuzz                 1/ 50  (  0%)       50/  50 (100%)     50/ 50  (100%)
+[Duck           01]            Head               500/ 500 (  0%)      500/ 500 (100%)     50/ 50  (100%)""")
+        
+        patchMember = XPTrackerApp.displayHealGroupImage.__name__
+        with patch.object(XPTrackerApp, patchMember) as mockedMethod:
+            app.update_gui()
+        
+        
+        assert app._healGroupLabel.winfo_viewable() == 0  # display updates aren't performed (unreliable state) until `mainloop` is able to run freely
+        mockedMethod.assert_called_once_with()
+
+    def test_HealGroupIcon_WhileInitiallyDisplayed_RemovedAfterHealthUpdateShowsNonZeroed(self):
+        receiver = InputReceiver()
+        session = GameSession(receiver)
+        app = XPTrackerApp(session)
+        receiver.receive('[Baz            01]            Fuzz                 1/ 50  (  0%)       50/  50 (100%)     50/ 50  (100%)')
+        app.update_gui()
+        receiver.receive("""Fuzz's group:
+[Baz            01]            Fuzz                 2/ 50  (  0%)       50/  50 (100%)     50/ 50  (100%)""")
+
+        patchPath = f'{__name__}.{XPTrackerApp.__name__}.{XPTrackerApp.hideHealGroupImage.__name__}'
+        with patch(patchPath, Mock()) as mockedMethod:
+            app.update_gui()
+
+
+        assert mockedMethod.assert_called_once_with()
+
+if __name__ == "__main__":
+    TestApp().test_HealGroupIcon_WhileInitiallyDisplayed_RemovedAfterHealthUpdateShowsNonZeroed()

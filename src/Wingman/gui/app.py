@@ -1,6 +1,8 @@
 import tkinter as tk
 import time
 import ctypes
+import sys
+import os
 from tkinter import ttk
 from Wingman.core.session import GameSession
 from Wingman.core.group import Group
@@ -17,6 +19,8 @@ class XPTrackerApp:
         self.paused = False
 
         self.root = tk.Tk()
+        self.root.grid_rowconfigure(0, weight=1)
+        self.root.grid_columnconfigure(0, weight=1)
         self.root.title("Wingman - 0.2.5")
         self.root.geometry("500x350")
 
@@ -37,22 +41,34 @@ class XPTrackerApp:
         self.update_gui()
 
     def setup_ui(self):
-        main_frame = ttk.Frame(self.root, padding="10")
-        main_frame.pack(fill=tk.BOTH, expand=True)
+        main_frame = ttk.Frame(self.root, name="main_frame", padding="10")
+        main_frame.grid(row=0, column=0, sticky=tk.EW)
+        main_frame.grid_rowconfigure(2, weight=1)
+        main_frame.grid_columnconfigure(0, weight=1)
 
         # --- Top Stats Row ---
-        stats_frame = ttk.Frame(main_frame)
-        stats_frame.pack(fill=tk.X, pady=(0, 10))
+        stats_frame = ttk.Frame(main_frame, name="stats_frame", height=100)
+        stats_frame.grid(row=0, column=0, pady=(0, 10), sticky=tk.EW)
+        stats_frame.grid_columnconfigure(1, weight=1)
 
-        # Column 1: Totals
         col1 = ttk.Frame(stats_frame)
-        col1.pack(side=tk.LEFT, padx=5)
+        col1.grid(row=0, column=0, sticky=tk.W, padx=5, pady=10)
         ttk.Label(col1, textvariable=self.var_total_xp, font=("Segoe UI", 12, "bold")).pack(anchor="w")
         ttk.Label(col1, textvariable=self.var_xp_hr).pack(anchor="w")
 
-        # Column 2: Controls
+        hospitalIcon = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'gui', 'hospitalMapIcon.png')
+        self._healGroupImage = tk.PhotoImage(file=hospitalIcon)
+        self._healGroupLabel = ttk.Label(stats_frame, 
+                                        name='healGroupLabel', 
+                                        image=self._healGroupImage)
+        #Initially gridded/displayed to place it on the UI.
+        #Immediately removed/hidden, only to be shown when predicate conditions are satisfied.
+        self._healGroupLabel.grid(row=0, column=1)
+        self._healGroupLabel.grid_remove()
+        
+
         col2 = ttk.Frame(stats_frame)
-        col2.pack(side=tk.RIGHT, padx=5)
+        col2.grid(row=0, column=2, sticky=tk.E, padx=5)
         ttk.Label(col2, textvariable=self.var_duration, font=("Consolas", 10)).pack(anchor="e", pady=(0, 5))
 
         # Control Buttons Frame
@@ -84,11 +100,12 @@ class XPTrackerApp:
         self.mb_settings["menu"] = self.menu_settings
 
         # --- Group Dashboard (Treeview) ---
-        lbl_dash = ttk.Label(main_frame, text="Group Status:", font=("Segoe UI", 10, "bold"))
-        lbl_dash.pack(anchor="w", pady=(5, 0))
+        lbl_dash = ttk.Label(main_frame, name="groupStatusLabel", text="Group Status:", font=("Segoe UI", 10, "bold"))
+        lbl_dash.grid(row=1, column=0, sticky=tk.W, pady=(5, 0))
 
         columns = ("cls", "lvl", "status", "name", "hp", "fat", "pwr")
-        self.tree = ttk.Treeview(main_frame, columns=columns, show="headings", height=8)
+        self.tree = ttk.Treeview(main_frame, columns=columns, show="headings", height=8, 
+                                    name='groupTreeView')
 
         self.tree.tag_configure(HealthTagger.HealthLevels.ZEROED.value, background='#000000', foreground='#ffffff')
         self.tree.tag_configure(HealthTagger.HealthLevels.AT_OR_BELOW_25.value, background='#ff0000')
@@ -110,7 +127,7 @@ class XPTrackerApp:
         self.tree.column("fat", width=80, anchor="center")
         self.tree.column("pwr", width=80, anchor="center")
 
-        self.tree.pack(fill=tk.BOTH, expand=True, pady=5)
+        self.tree.grid(row=2, column=0, pady=5, sticky=tk.NSEW)
 
     # 3. The Toggle Logic
     def toggle_topmost(self):
@@ -211,7 +228,19 @@ class XPTrackerApp:
                 values = ('__', "__", "__", m.Name, '__', '__', '__')
                 item_id = self.tree.insert('', tk.END, iid=m.Name + suffixToMakeUnique, values=values)
         
+        
+        if group.DisplayHealingIcon:
+            self.displayHealGroupImage() #TODO: determine better way to externally indicate Image is displaying. Tying to implementation detail.
+        else:
+            self.hideHealGroupImage()
+
         self.session.shouldRefreshGroupDisplay = False
 
     def run(self):
         self.root.mainloop()
+
+    def displayHealGroupImage(self):
+        self._healGroupLabel.grid()
+    
+    def hideHealGroupImage(self):
+        self._healGroupLabel.grid_remove()
