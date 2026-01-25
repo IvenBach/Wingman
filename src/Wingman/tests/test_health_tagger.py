@@ -29,6 +29,3 @@ class TestHealthTagger():
 
         with pytest.raises(ValueError):
             tag = HealthTagger.HealthTag(c)
-
-if __name__ == "__main__":
-    TestHealthTagger().test_HealthBelow_1_RaisesValueError()

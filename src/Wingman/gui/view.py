@@ -9,7 +9,7 @@ from Wingman.core.character import Character
 from Wingman.core.health_Tagger import HealthTagger
 
 class View(tk.Frame):
-    def __init__(self, parent: tk.Tk):
+    def __init__(self, parent: tk.Tk | tk.Toplevel):
         super().__init__(parent)
 
         self.grid_rowconfigure(0, weight=1)
@@ -25,12 +25,28 @@ class View(tk.Frame):
         self.last_stat_update = 0
         self.dark_mode = False
         self.paused = False
+        self._controller: Controller
+        self.groupTreeview: ttk.Treeview
+        self.menu_settings: tk.Menu
 
         self.style = ttk.Style()
         self.style.theme_use('clam')
+    
+    @classmethod
+    def ForTesting(cls):
+        """
+        Instantiates all the dependency prerequisites, in the proper order to avoid `AttributeError`s from occurring.
+```
+c = Controller.ForTesting()
+```
+:returns: An instance of `View` its controller set up for testing.
+:rtype: `View`
+        """
+        c = Controller.ForTesting()
+        return c.view
 
     def set_controller(self, controller: Controller):
-        self.controller = controller
+        self._controller = controller
         # 1. Initialize "Always on Top" variable
         self.var_always_on_top = tk.BooleanVar(value=True)
         self.parent.attributes("-topmost", self.var_always_on_top.get())
@@ -53,9 +69,7 @@ class View(tk.Frame):
 
         hospitalIcon = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'gui', 'hospitalMapIcon.png')
         self._healGroupImage = tk.PhotoImage(file=hospitalIcon)
-        self._healGroupLabel = ttk.Label(stats_frame, 
-                                        name='healGroupLabel', 
-                                        image=self._healGroupImage)
+        self._healGroupLabel = ttk.Label(stats_frame, name='healGroupLabel', image=self._healGroupImage)
         #Initially gridded/displayed to place it on the UI.
         #Immediately removed/hidden, only to be shown when predicate conditions are satisfied.
         self._healGroupLabel.grid(row=0, column=1)
@@ -90,7 +104,7 @@ class View(tk.Frame):
 
         self.menu_settings.add_command(label="Toggle Dark Mode", command=self.toggle_theme)
         self.menu_settings.add_separator()
-        self.menu_settings.add_command(label="Reset Stats", command=self.controller.reset_stats)
+        self.menu_settings.add_command(label="Reset Stats", command=self._controller.reset_stats)
 
         self.mb_settings["menu"] = self.menu_settings
 
@@ -150,10 +164,10 @@ class View(tk.Frame):
         self.paused = not self.paused
         if self.paused:
             self.btn_pause.config(text="Resume")
-            if hasattr(self.controller.session, 'pause_clock'): self.controller.session.pause_clock()
+            if hasattr(self._controller.gameSession, 'pause_clock'): self._controller.gameSession.pause_clock()
         else:
             self.btn_pause.config(text="Pause")
-            if hasattr(self.controller.session, 'resume_clock'): self.controller.session.resume_clock()
+            if hasattr(self._controller.gameSession, 'resume_clock'): self._controller.gameSession.resume_clock()
     
     def set_windows_titlebar_color(self, use_dark: bool):
         try:
@@ -170,17 +184,17 @@ class View(tk.Frame):
     def update_gui(self):
         self.after(100, self.update_gui)
         if self.paused: return
-        self.controller.session.process_queue()
-        group_data = self.controller.session.Group
-        if group_data or self.controller.session.shouldRefreshGroupDisplay:
-            self._refresh_tree(group_data)
-        current_xp = self.controller.session.total_xp
+        self._controller.process_queue()
+        group_data = self._controller.gameSession.group
+        if group_data:
+            self.refreshGroupDisplay(group_data)
+        current_xp = self._controller.gameSession.total_xp
         self.var_total_xp.set(f"Total XP: {current_xp:,}")
         now = time.time()
         if now - self.last_stat_update >= 1.0:
-            current_rate = self.controller.session.get_xp_per_hour()
+            current_rate = self._controller.gameSession.get_xp_per_hour()
             self.var_xp_hr.set(f"{current_rate:,} xp / hr")
-            self.var_duration.set(self.controller.session.get_duration_str())
+            self.var_duration.set(self._controller.gameSession.get_duration_str())
             self.last_stat_update = now
 
     # 3. The Toggle Logic
@@ -194,7 +208,7 @@ class View(tk.Frame):
         self.apply_theme()
 
     def reset_stats(self):
-        self.controller.session.reset()
+        self._controller.gameSession.reset()
         for item in self.groupTreeview.get_children():
             self.groupTreeview.delete(item)
 
@@ -204,7 +218,7 @@ class View(tk.Frame):
     def hideHealGroupImage(self):
         self._healGroupLabel.grid_remove()
 
-    def _refresh_tree(self, group: Group):
+    def refreshGroupDisplay(self, group: Group):
         def isCurrentPartyMember(m: Character):
             return m.ClassProfession != ""
 
@@ -233,5 +247,3 @@ class View(tk.Frame):
             self.displayHealGroupImage() #TODO: determine better way to externally indicate Image is displaying. Tying to implementation detail.
         else:
             self.hideHealGroupImage()
-
-        self.controller.session.shouldRefreshGroupDisplay = False

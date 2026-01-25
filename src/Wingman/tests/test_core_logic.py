@@ -1,19 +1,22 @@
 import pytest
-from Wingman.core.parser import parse_xp_message
+from Wingman.core.parser import Parser
 from Wingman.core.input_receiver import InputReceiver
 
 
+@pytest.fixture
+def parser():
+    return Parser()
+
 # --- TEST 1: The XP Parser ---
 # We verify that the regex handles Single Kills AND Multi-Kills correctly.
-
-def test_parser_single_kill():
+def test_parser_single_kill(parser):
     log_line = "You gain 17325 (+43312) experience points."
-    xp = parse_xp_message(log_line)
+    xp = parser.parse_xp_message(log_line)
     # 17325 + 43312 = 60637
     assert xp == 60637, f"Expected 60637, got {xp}"
 
 
-def test_parser_multi_kill_block():
+def test_parser_multi_kill_block(parser):
     # This is the "Icicle.Rain" scenario that was failing before
     log_block = """
     A golden sphinx dies!
@@ -21,7 +24,7 @@ def test_parser_multi_kill_block():
     A high priest of Ghict dies!
     You gain 20625 (+51562) experience points.
     """
-    xp = parse_xp_message(log_block)
+    xp = parser.parse_xp_message(log_block)
 
     # Sphinx: 60,637
     # Priest: 72,187
@@ -29,9 +32,9 @@ def test_parser_multi_kill_block():
     assert xp == 132824, f"Expected 132824 (sum of both), got {xp}"
 
 
-def test_parser_no_xp():
+def test_parser_no_xp(parser):
     log_line = "A golden sphinx attacks you for 69 damage!"
-    xp = parse_xp_message(log_line)
+    xp = parser.parse_xp_message(log_line)
     assert xp == 0, "Should return 0 for combat text"
 
 
@@ -44,10 +47,10 @@ def test_receiver_stack_order():
     receiver.receive("Line 2")
     receiver.receive("Line 3")
 
-    assert receiver.remove_from_top() == "Line 1"
-    assert receiver.remove_from_top() == "Line 2"
-    assert receiver.remove_from_top() == "Line 3"
-    assert receiver.remove_from_top() is None
+    assert receiver.dequeue_from_left() == "Line 1"
+    assert receiver.dequeue_from_left() == "Line 2"
+    assert receiver.dequeue_from_left() == "Line 3"
+    assert receiver.dequeue_from_left() is None
 
 
 # --- TEST 3: The Network Buffering Logic ---

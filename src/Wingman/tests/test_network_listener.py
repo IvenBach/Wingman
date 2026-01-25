@@ -47,7 +47,7 @@ def test_packet_callback_buffers_split_lines(listener_stack):
     listener.packet_callback(pkt1)
 
     # Receiver should be empty, buffer should hold data
-    assert receiver.remove_from_top() is None
+    assert receiver.dequeue_from_left() is None
     assert listener._buffer == "You gain 1"
 
     # Packet 2: "00 XP.\n" (Completes the line)
@@ -55,7 +55,7 @@ def test_packet_callback_buffers_split_lines(listener_stack):
     listener.packet_callback(pkt2)
 
     # Now receiver should have the line
-    assert receiver.remove_from_top() == "You gain 100 XP."
+    assert receiver.dequeue_from_left() == "You gain 100 XP."
     assert listener._buffer == ""  # Buffer should be cleared
 
 
@@ -66,7 +66,7 @@ def test_ignores_wrong_ip(listener_stack):
     pkt = MockPacket("1.2.3.4", 4000, b"You gain 100 XP.\n")
     listener.packet_callback(pkt)
 
-    assert receiver.remove_from_top() is None
+    assert receiver.dequeue_from_left() is None
 
 
 def test_clean_payload_decoding(listener_stack):
@@ -79,4 +79,4 @@ def test_clean_payload_decoding(listener_stack):
     pkt = MockPacket(target_ip, target_port, payload)
     listener.packet_callback(pkt)
 
-    assert receiver.remove_from_top() == "Testing output."
+    assert receiver.dequeue_from_left() == "Testing output."

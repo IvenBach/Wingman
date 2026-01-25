@@ -15,14 +15,6 @@ class Group:
     def Leader(self) -> Character | None:
         return self._members[0] if self._members else None
 
-    def TryFind(self, character: str, outCharacter: Character) -> bool:
-        for member in self._members:
-            if member.Name == character:
-                outCharacter = member
-                return True
-
-        return False
-
     def Disband(self):
         self._members.clear()
 

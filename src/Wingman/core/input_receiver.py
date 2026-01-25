@@ -1,13 +1,12 @@
-from email.mime import message
 import re
-from typing import List
+from collections import deque
 
 class InputReceiver:
     stack_log_file = 'stack_log.txt'  # File to store stack logs
 
     def __init__(self, on_new_line_callback=None):
         self.last_received = ""
-        self.stack: List[str] = []
+        self.queue: deque[str | None] = deque()
         self.on_new_line_callback = on_new_line_callback  # Optional callback function
 
         # Clear the log file when the instance is initialized
@@ -33,14 +32,14 @@ class InputReceiver:
 
         self.last_received = input_line
         cleaned_input = self.remove_ANSI_color_codes(input_line)
-        self._add_to_stack(cleaned_input)
+        self._add_to_queue(cleaned_input)
         # debugging line as needed print("receiver received " + cleaned_input)
 
-    def _add_to_stack(self, cleaned_input: str):
-        self.stack.append(cleaned_input)
+    def _add_to_queue(self, cleaned_input: str):
+        self.queue.append(cleaned_input)
 
-    def remove_from_top(self) -> str | None:
-        removed = self.stack.pop(0) if self.stack else None
+    def dequeue_from_left(self) -> str | None:
+        removed = self.queue.popleft() if self.queue else None
         return removed
 
     def get_last_received(self) -> str:
