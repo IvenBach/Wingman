@@ -12,6 +12,7 @@ class View(tk.Frame):
     def __init__(self, parent: tk.Tk | tk.Toplevel):
         super().__init__(parent)
 
+        self.grid(row=0, column=0, sticky=tk.NSEW)
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
@@ -53,7 +54,7 @@ c = Controller.ForTesting()
     
     def setup_ui(self):
         main_frame = ttk.Frame(self, name="main_frame", padding="10")
-        main_frame.grid(row=0, column=0, sticky=tk.EW)
+        main_frame.grid(row=0, column=0, sticky=tk.NSEW)
         main_frame.grid_rowconfigure(2, weight=1)
         main_frame.grid_columnconfigure(0, weight=1)
 

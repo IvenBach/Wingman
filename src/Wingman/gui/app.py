@@ -7,6 +7,9 @@ from Wingman.core.parser import Parser
 class WingmanApp(tk.Tk):
     def __init__(self, inUnitTesting: bool = False):
         super().__init__()
+
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
         
         self.title("Wingman - 0.2.5")
         self.geometry("500x350")
@@ -17,9 +20,6 @@ class WingmanApp(tk.Tk):
             self.view = View(tk.Toplevel())
         else:
             self.view = View(self)
-        
-        self.configure(background='blue')
-        self.bind('<Motion>', lambda e: print(f"Mouse moved to ({e.x}, {e.y}) in WingmanApp"))
 
         self.controller = Controller(self.model, self.view)
         self.view.set_controller(self.controller)
