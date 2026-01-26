@@ -91,11 +91,13 @@ class Parser():
         :param text: The text to check for a leaving group member.
 
         :returns: The name of the member(s) who is/are leaving the group."""
-        pattern = re.compile(r"(?P<leavingMember>([A-Za-z -]+)) disbands from (your|the) group", re.IGNORECASE)
+        petArticleIdentifier = r"(?P<petArticleIdentifier>(A |An )?)"
+        leavingMember = r"(?P<leavingMember>([A-Za-z -]+))"
+        pattern = re.compile(f"{petArticleIdentifier}{leavingMember} disbands from (your|the) group", re.IGNORECASE)
 
         members = []
         leavingMembers = pattern.findall(text)
         for member in leavingMembers:
-            members.append(member[1].strip())
+            members.append(member[2].strip())
 
         return members

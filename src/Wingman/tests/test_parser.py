@@ -218,8 +218,8 @@ class TestLeavingGroupParser:
 
 
     @pytest.mark.parametrize('input, expected', [
-                                                ('An angel of death disbands from your group', 'An angel of death'),
-                                                ('A hand of justice disbands from your group.', 'A hand of justice'),
+                                                ('An angel of death disbands from your group', 'angel of death'),
+                                                ('A hand of justice disbands from your group.', 'hand of justice'),
                                                 ],
     )
     def test_GroupedPetMember_DiesWhichIsConsideredLeaving_IsCorrectlyParsed(self, input, expected, leaveGroupParser):
@@ -235,11 +235,13 @@ class TestLeavingGroupParser:
         nameOfLeaver = leavers[0]
 
         assert len(leavers) == 1
-        assert nameOfLeaver == 'An angel of death'
+        assert nameOfLeaver == 'angel of death'
 
     def test_ShapeshiftedMemberLeaves_IsCorrectlyParsed(self, leaveGroupParser):
         leavers = leaveGroupParser('A vapor-shrouded mistwolf disbands from your group.')
         nameOfLeaver = leavers[0]
 
         assert len(leavers) == 1
-        assert nameOfLeaver == 'A vapor-shrouded mistwolf'
+        assert nameOfLeaver == 'vapor-shrouded mistwolf'
+
+    
