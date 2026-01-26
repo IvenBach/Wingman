@@ -118,8 +118,8 @@ c = Controller.ForTesting()
                                     name='groupTreeView')
 
         self.groupTreeview.tag_configure(HealthTagger.HealthLevels.ZEROED.value, background='#000000', foreground='#ffffff')
-        self.groupTreeview.tag_configure(HealthTagger.HealthLevels.AT_OR_BELOW_25.value, background='#ff0000')
-        self.groupTreeview.tag_configure(HealthTagger.HealthLevels.AT_OR_BELOW_50.value, background="#FFFF00")
+        self.groupTreeview.tag_configure(HealthTagger.HealthLevels.AT_OR_BELOW_25.value, background='#ff0000', foreground='#000000')
+        self.groupTreeview.tag_configure(HealthTagger.HealthLevels.AT_OR_BELOW_50.value, background="#FFFF00", foreground='#000000')
 
         self.groupTreeview.heading("cls", text="Class")
         self.groupTreeview.heading("lvl", text="Lvl")
