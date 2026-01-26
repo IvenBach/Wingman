@@ -39,18 +39,18 @@ def test_parser_no_xp(parser):
 
 
 # --- TEST 2: The Input Receiver ---
-# We verify the stack behaves First-In-First-Out (FIFO)
+# We verify the queue behaves First-In-First-Out (FIFO)
 
-def test_receiver_stack_order():
+def test_receiver_queue_order():
     receiver = InputReceiver()
     receiver.receive("Line 1")
     receiver.receive("Line 2")
     receiver.receive("Line 3")
 
-    assert receiver.dequeue_from_left() == "Line 1"
-    assert receiver.dequeue_from_left() == "Line 2"
-    assert receiver.dequeue_from_left() == "Line 3"
-    assert receiver.dequeue_from_left() is None
+    assert receiver.dequeue() == "Line 1"
+    assert receiver.dequeue() == "Line 2"
+    assert receiver.dequeue() == "Line 3"
+    assert receiver.dequeue() is None
 
 
 # --- TEST 3: The Network Buffering Logic ---

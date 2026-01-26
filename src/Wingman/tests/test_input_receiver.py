@@ -24,7 +24,7 @@ def test_queue_fifo_order(receiver):
     receiver.receive("Second")
     receiver.receive("Third")
 
-    assert receiver.dequeue_from_left() == "First"
-    assert receiver.dequeue_from_left() == "Second"
-    assert receiver.dequeue_from_left() == "Third"
-    assert receiver.dequeue_from_left() is None
+    assert receiver.dequeue() == "First"
+    assert receiver.dequeue() == "Second"
+    assert receiver.dequeue() == "Third"
+    assert receiver.dequeue() is None

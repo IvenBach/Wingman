@@ -2,11 +2,12 @@ import re
 from collections import deque
 
 class InputReceiver:
+    '''Accepts input lines and queues them for processing.'''
     stack_log_file = 'stack_log.txt'  # File to store stack logs
 
     def __init__(self, on_new_line_callback=None):
         self.last_received = ""
-        self.queue: deque[str | None] = deque()
+        self._queue: deque[str | None] = deque()
         self.on_new_line_callback = on_new_line_callback  # Optional callback function
 
         # Clear the log file when the instance is initialized
@@ -27,6 +28,9 @@ class InputReceiver:
         return ansi_code_pattern.sub('', input_line)
 
     def receive(self, input_line: str):
+        '''
+        Receives an input line, cleans it, and adds it to the processing queue.
+        '''
         if not input_line.strip():
             return
 
@@ -36,10 +40,10 @@ class InputReceiver:
         # debugging line as needed print("receiver received " + cleaned_input)
 
     def _add_to_queue(self, cleaned_input: str):
-        self.queue.append(cleaned_input)
+        self._queue.append(cleaned_input)
 
-    def dequeue_from_left(self) -> str | None:
-        removed = self.queue.popleft() if self.queue else None
+    def dequeue(self) -> str | None:
+        removed = self._queue.popleft() if self._queue else None
         return removed
 
     def get_last_received(self) -> str:

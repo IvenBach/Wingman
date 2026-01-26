@@ -29,7 +29,7 @@ class MockPacket:
 
 
 @pytest.fixture
-def listener_stack():
+def listener_stack() -> tuple[NetworkListener, InputReceiver]:
     receiver = InputReceiver()
     listener = NetworkListener(receiver)
     # Ensure buffer is empty
@@ -38,7 +38,7 @@ def listener_stack():
 
 
 def test_packet_callback_buffers_split_lines(listener_stack):
-    listener, receiver = listener_stack
+    listener, receiver  = listener_stack
     target_ip = listener.target_ip
     target_port = listener.target_port
 
@@ -47,15 +47,15 @@ def test_packet_callback_buffers_split_lines(listener_stack):
     listener.packet_callback(pkt1)
 
     # Receiver should be empty, buffer should hold data
-    assert receiver.dequeue_from_left() is None
+    assert receiver.dequeue() is None
     assert listener._buffer == "You gain 1"
 
     # Packet 2: "00 XP.\n" (Completes the line)
     pkt2 = MockPacket(target_ip, target_port, b"00 XP.\n")
     listener.packet_callback(pkt2)
-
+    
     # Now receiver should have the line
-    assert receiver.dequeue_from_left() == "You gain 100 XP."
+    assert receiver.dequeue() == "You gain 100 XP."
     assert listener._buffer == ""  # Buffer should be cleared
 
 
@@ -66,7 +66,7 @@ def test_ignores_wrong_ip(listener_stack):
     pkt = MockPacket("1.2.3.4", 4000, b"You gain 100 XP.\n")
     listener.packet_callback(pkt)
 
-    assert receiver.dequeue_from_left() is None
+    assert receiver.dequeue() is None
 
 
 def test_clean_payload_decoding(listener_stack):
@@ -79,4 +79,4 @@ def test_clean_payload_decoding(listener_stack):
     pkt = MockPacket(target_ip, target_port, payload)
     listener.packet_callback(pkt)
 
-    assert receiver.dequeue_from_left() == "Testing output."
+    assert receiver.dequeue() == "Testing output."

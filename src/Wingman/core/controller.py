@@ -79,7 +79,7 @@ v._setup_ui()
 
         # Process everything currently in the stack
         while True:
-            line = self.receiver.dequeue_from_left()
+            line = self.receiver.dequeue()
             if line is None:
                 break
 
