@@ -1,5 +1,5 @@
 import pytest
-from tkinter import Tk
+import tkinter as tk
 from unittest.mock import Mock, patch
 from Wingman.gui.view import View
 from Wingman.gui.app import WingmanApp
@@ -12,7 +12,7 @@ class TestView():
         assert isinstance(v, View)
 
     def test_HealGroupIcon_DisplaysWhenAnyGroupMemberZeroed(self):
-        app = WingmanApp()
+        app = WingmanApp(True)
         app.controller.receiver.receive("""Foo's group:
 [Bar            01]            Foo                 51/ 100 (  0%)      497/ 500 ( 99%)    592/ 707 ( 83%)   
 [Baz            01]            Fuzz                 1/ 50  (  0%)       50/  50 (100%)     50/ 50  (100%)
@@ -26,7 +26,7 @@ class TestView():
         mockedMethod.assert_called_once_with()
 
     def test_HealGroupIcon_WhileInitiallyDisplayed_RemovedAfterHealthGuiUpdateShowsNonZeroed(self):
-        app = WingmanApp()
+        app = WingmanApp(True)
         app.controller.receiver.receive('[Baz            01]            Fuzz                 1/ 50  (  0%)       50/  50 (100%)     50/ 50  (100%)')
         app.controller.view.update_gui()
         app.controller.receiver.receive("""Fuzz's group:

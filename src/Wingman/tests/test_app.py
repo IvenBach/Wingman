@@ -3,7 +3,7 @@ from Wingman.gui.app import WingmanApp
 
 class TestApp():
     def test_GainNewFollower_NewFollowerAddedToGroupForDisplay(self):
-        app = WingmanApp()
+        app = WingmanApp(True)
         app.controller.receiver.receive("""Beautiful's group:
 
 [ Class        Lvl] Status     Name                 Hits               Fat                Power            
@@ -19,7 +19,7 @@ class TestApp():
         assert groupCountAfterNewFollower == 3
     
     def test_LoseFollower_FollowerRemovedFromGroupForDisplay(self):
-        app = WingmanApp()
+        app = WingmanApp(True)
         app.controller.receiver.receive("""Beautiful's group:
 
 [ Class        Lvl] Status     Name                 Hits               Fat                Power            
@@ -37,7 +37,7 @@ class TestApp():
         assert groupCountAfterLosingFollower == 2
     
     def test_GainNewFollowerAndLoseFollower_WithoutInvokingGroupCommand_CountsCorrectlyForAdditionAndRemoval(self):        
-        app = WingmanApp()
+        app = WingmanApp(True)
         app.controller.receiver.receive("""Beautiful's group:
 
 [ Class        Lvl] Status     Name                 Hits               Fat                Power            
@@ -59,7 +59,7 @@ class TestApp():
         assert groupCountAfterLosingFollower == 2
 
     def test_FollowedByTwoIdenticallyDisguisedCharacters_BothAddedToGroupForDisplay(self):
-        app = WingmanApp()
+        app = WingmanApp(True)
         app.controller.receiver.receive("""Beautiful's group:
 
 [ Class        Lvl] Status     Name                 Hits               Fat                Power            
@@ -80,7 +80,7 @@ class TestApp():
         assert groupCountAfterSecondFollower == 3    
 
     def test_GroupMemberZeroed_DisplaysZeroedFormatting(self):
-        app = WingmanApp()
+        app = WingmanApp(True)
         app.controller.receiver.receive("""Foo's group:
 [ Class        Lvl] Status     Name                 Hits               Fat                Power            
 [Bar            01]            Foo                 1/ 500 (  0%)      497/ 500 ( 99%)    592/ 707 ( 83%)   """)
@@ -92,7 +92,7 @@ class TestApp():
         assert HealthTagger.HealthLevels.ZEROED.value in healthTags
     
     def test_GroupMemberInRedHealth_DisplaysRedHealthFormatting(self):
-        app = WingmanApp()
+        app = WingmanApp(True)
         app.controller.receiver.receive("[Bar            01]            Foo                 25/ 100 (  0%)      497/ 500 ( 99%)    592/ 707 ( 83%)   """)
         app.controller.view.update_gui()
         member = app.controller.view.groupTreeview.get_children()[0]
@@ -102,7 +102,7 @@ class TestApp():
         assert HealthTagger.HealthLevels.AT_OR_BELOW_25.value in healthTags
 
     def test_GroupMemberInYellowHealth_DisplaysYellowHealthFormatting(self):
-        app = WingmanApp()
+        app = WingmanApp(True)
         app.controller.receiver.receive("[Bar            01]            Foo                 50/ 100 (  0%)      497/ 500 ( 99%)    592/ 707 ( 83%)   ")
         app.controller.view.update_gui()
         member = app.controller.view.groupTreeview.get_children()[0]
@@ -112,7 +112,7 @@ class TestApp():
         assert HealthTagger.HealthLevels.AT_OR_BELOW_50.value in healthTags
     
     def test_GroupMemberInGoodHealth_DisplaysNoHealthFormatting(self):
-        app = WingmanApp()
+        app = WingmanApp(True)
         app.controller.receiver.receive("[Bar            01]            Foo                 51/ 100 (  0%)      497/ 500 ( 99%)    592/ 707 ( 83%)   ")
         app.controller.view.update_gui()
         member = app.controller.view.groupTreeview.get_children()[0]
