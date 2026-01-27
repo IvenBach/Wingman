@@ -81,4 +81,9 @@ class TestGroup:
         assert countBeforeRemoval == 2
         assert countAfterRemoval == 1
 
-    
+    def test_ClearingGroup_LeaderReturnsNone(self):
+        c = Character("Foo", "Troll")
+        g = Group([c])
+        g.Disband()
+
+        assert g.Leader is None
