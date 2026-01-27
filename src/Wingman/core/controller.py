@@ -1,6 +1,7 @@
 import tkinter as tk
 import re
 import time
+from Wingman.core.group import Group
 from Wingman.core.input_receiver import InputReceiver
 from Wingman.core.session import GameSession
 from Wingman.core.network_listener import NetworkListener
@@ -60,7 +61,7 @@ v._setup_ui()
         """
         logs = []
 
-        def needToClearGroupData(line: str) -> bool:
+        def needToClearGroupData(line: str, group: Group) -> bool:
             # --- Logic 1: Group Detection ---
             # If we see "Someone's group:", we assume a fresh list is coming.
             # We clear the current data so we don't hold onto stale members.
@@ -75,6 +76,12 @@ v._setup_ui()
             if "You disband from " in line:
                 return True
 
+            leader = group.Leader
+            if leader is None:
+                return False
+            if self.model.parser.parse_has_group_leader_disbanded_party(line, group):
+                return True
+
             return False
 
         # Process everything currently in the stack
@@ -83,9 +90,8 @@ v._setup_ui()
             if line is None:
                 break
 
-            if needToClearGroupData(line):
+            if needToClearGroupData(line, self.gameSession.group):
                 self.gameSession.group.Disband()
-                # self.view.refreshGroupDisplay(self.gameSession.group)
 
             # Check for member rows in this line
             found_members = self.model.parser.parse_group_status(line)

@@ -1,6 +1,8 @@
 import pytest
 from Wingman.core.parser import Parser
 from Wingman.core.status_indicator import StatusIndicator
+from Wingman.core.group import Group
+from Wingman.core.character import Character
 
 @pytest.fixture
 def parser():
@@ -244,4 +246,31 @@ class TestLeavingGroupParser:
         assert len(leavers) == 1
         assert nameOfLeaver == 'vapor-shrouded mistwolf'
 
+class TestPartyDisbands:
+    def test_NonPartyRelatedText_ReturnsFalse(self):
+        actual = Parser().parse_has_group_leader_disbanded_party("You move east", Group())
+
+        assert actual == False
+
+    def test_YourLeaderDisbandsParty_ReturnsTrue(self):
+        cLead = Character("Foo", 'Skeleton')
+        cFollower = Character('Bar', 'Zombie')
+        g = Group([cLead, cFollower])
+        actual = Parser().parse_has_group_leader_disbanded_party("Foo disbanded their group.", g)
+
+        assert actual
     
+    def test_NonLeaderParty_ReturnsFalse(self): #Recently disbanded and no `group` command executed, hence empty group
+        actual = Parser().parse_has_group_leader_disbanded_party("Bar disbanded their group.", Group())
+    
+        assert actual == False
+    
+    def test_OtherPartyLeaderDisbands_ReturnsFalse(self):
+        yourLead = Character("You", "Sin")
+        yourFollower = Character("Pet", "mob")
+        yourGroup = Group([yourLead, yourFollower])
+
+        actual = Parser().parse_has_group_leader_disbanded_party("Foo disbanded their group.", yourGroup)
+
+        assert actual == False
+TestPartyDisbands().test_OtherPartyLeaderDisbands_ReturnsFalse()

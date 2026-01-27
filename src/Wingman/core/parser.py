@@ -3,6 +3,7 @@ from typing import List
 from Wingman.core.status_indicator import StatusIndicator
 from Wingman.core.resource_bar import ResourceBar
 from Wingman.core.character import Character
+from Wingman.core.group import Group
 
 class Parser():
     def parse_xp_message(self, text_block: str) -> int:
@@ -101,3 +102,28 @@ class Parser():
             members.append(member[2].strip())
 
         return members
+
+    def parse_has_group_leader_disbanded_party(self, text: str, group:Group) -> bool:
+        """
+        Checks whether the group leader has disbanded the party.
+
+        This does not work for disguised/shapeshifted leaders, too many assumptions would be needed.
+        
+        :param text: Line to parse
+        :type text: str
+        :param group: Current party group
+        :type group: Group
+        :return: True if the group leader disbanded the party, False otherwise
+        :rtype: bool
+        """
+        if group.Leader is None:
+            return False
+
+        if ' disbanded their group.' not in text:
+            return False
+        
+        groupLeaderName = r"(?P<leaderName>[A-Za-z -']+)"
+        pattern = re.compile(f'{groupLeaderName} disbanded their group.', re.IGNORECASE)
+        
+        disbandingGroup = pattern.findall(text)
+        return disbandingGroup[0] == group.Leader.Name

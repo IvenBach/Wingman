@@ -80,3 +80,5 @@ class TestGroup:
 
         assert countBeforeRemoval == 2
         assert countAfterRemoval == 1
+
+    
