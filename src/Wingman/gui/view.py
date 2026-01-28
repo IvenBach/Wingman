@@ -68,14 +68,20 @@ c = Controller.ForTesting()
         ttk.Label(col1, textvariable=self.var_total_xp, font=("Segoe UI", 12, "bold")).pack(anchor="w")
         ttk.Label(col1, textvariable=self.var_xp_hr).pack(anchor="w")
 
-        hospitalIcon = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'gui', 'hospitalMapIcon.png')
-        self._healGroupImage = tk.PhotoImage(file=hospitalIcon)
+        hospitalIconPath = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'gui', 'hospitalMapIcon.png')
+        self._healGroupImage = tk.PhotoImage(file=hospitalIconPath)
         self._healGroupLabel = ttk.Label(stats_frame, name='healGroupLabel', image=self._healGroupImage)
         #Initially gridded/displayed to place it on the UI.
         #Immediately removed/hidden, only to be shown when predicate conditions are satisfied.
         self._healGroupLabel.grid(row=0, column=1)
         self._healGroupLabel.grid_remove()
         
+        # afkIconPath = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'gui', 'afk.png')
+        # self._afkImage = tk.PhotoImage(file=afkIconPath)
+        self._displayAfkImageLabel = ttk.Label(stats_frame, name='afkStatusLabel', text="AFK", style="afk.TLabel") #, image=self._afkImage)
+        afkStyle = ttk.Style().configure('afk.TLabel', font=("Segoe UI", 30, "bold"))
+        self._displayAfkImageLabel.grid(row=0, column=1)
+        self._displayAfkImageLabel.grid_remove()
 
         col2 = ttk.Frame(stats_frame)
         col2.grid(row=0, column=2, sticky=tk.E, padx=5)
@@ -248,3 +254,8 @@ c = Controller.ForTesting()
             self.displayHealGroupImage() #TODO: determine better way to externally indicate Image is displaying. Tying to implementation detail.
         else:
             self.hideHealGroupImage()
+
+    def displayAfkImage(self):
+        self._displayAfkImageLabel.grid()
+    def hideAfkImage(self):
+        self._displayAfkImageLabel.grid_remove()

@@ -17,7 +17,7 @@ class Controller:
         
         # Create the SHARED receiver
         self.receiver = InputReceiver()
-        self.listener = NetworkListener(self.receiver) # Pass it to both
+        self.listener = NetworkListener(self.receiver, self) # Pass it to both
         
         self.gameSession = GameSession(self.receiver)
 
@@ -115,6 +115,15 @@ v._setup_ui()
                 timestamp = time.strftime("%H:%M:%S", time.localtime())
                 log_entry = f"[{timestamp}] +{xp_gain:,} XP"
                 logs.append(log_entry)
+
+            afkRelated = self.model.parser.parseAfkStatus(line)
+            match afkRelated:
+                case True:
+                    self.view.displayAfkImage()
+                case False:
+                    self.view.hideAfkImage()
+                case _:
+                    pass  # Do nothing if the line doesn't indicate AFK status
 
         return logs
     

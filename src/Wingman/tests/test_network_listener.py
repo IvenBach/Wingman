@@ -1,8 +1,9 @@
 import pytest
 from unittest.mock import MagicMock
+from scapy.all import IP, TCP
 from Wingman.core.network_listener import NetworkListener
 from Wingman.core.input_receiver import InputReceiver
-from scapy.all import IP, TCP
+from Wingman.core.controller import Controller
 
 
 # Helper class to mock Scapy packet behavior cleanly
@@ -31,7 +32,7 @@ class MockPacket:
 @pytest.fixture
 def listener_stack() -> tuple[NetworkListener, InputReceiver]:
     receiver = InputReceiver()
-    listener = NetworkListener(receiver)
+    listener = NetworkListener(receiver, Controller.ForTesting())
     # Ensure buffer is empty
     listener._buffer = ""
     return listener, receiver

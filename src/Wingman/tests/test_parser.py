@@ -273,4 +273,20 @@ class TestPartyDisbands:
         actual = Parser().parse_has_group_leader_disbanded_party("Foo disbanded their group.", yourGroup)
 
         assert actual == False
-TestPartyDisbands().test_OtherPartyLeaderDisbands_ReturnsFalse()
+
+class TestAfkParser:
+    def test_SentAfkLine_ReturnsTrue(self):
+        actual = Parser().parseAfkStatus("You are now listed as AFK.")
+        
+        assert actual
+    
+    def test_SentAfkReturnLine_ReturnsFalse(self):
+        actual = Parser().parseAfkStatus("You are no longer AFK.")
+        
+        assert actual == False
+
+    def test_SentNonAfkRelatedLine_ReturnsNone(self):
+        actual = Parser().parseAfkStatus("Anything not related to being AFK.")
+        
+        assert actual is None
+

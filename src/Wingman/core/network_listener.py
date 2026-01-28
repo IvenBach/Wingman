@@ -4,7 +4,7 @@ from scapy.all import sniff, IP, TCP
 from Wingman.core.input_receiver import InputReceiver
 
 class NetworkListener:
-    def __init__(self, input_receiver: InputReceiver):
+    def __init__(self, input_receiver: InputReceiver, controller):
         self.receiver = input_receiver
         # Update this if your game server IP changes
         self.target_ip = '18.119.153.121'
@@ -13,6 +13,8 @@ class NetworkListener:
 
         # Persistent buffer to hold split packet data
         self._buffer = ""
+
+        self.controller = controller
 
     def remove_noise(self, message):
         """

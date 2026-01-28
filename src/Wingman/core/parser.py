@@ -127,3 +127,31 @@ class Parser():
         
         disbandingGroup = pattern.findall(text)
         return disbandingGroup[0] == group.Leader.Name
+    
+    def parseAfkStatus(self, text: str) -> bool | None:
+        """
+        Parse line of text to determine if it indicates AFK status.
+
+        - True = You are now listed as AFK.
+        - False = You are no longer AFK.
+        - None = Anything else.
+
+        :param text: line of text to parse
+        :type text: str
+        :return: True for AFK, False for not-AFK, None if doesn't deal with AFK status
+        :rtype: bool | None
+        """
+        if "AFK" not in text:
+            return None
+
+        afkPattern = re.compile(r"You are now listed as AFK\.", re.IGNORECASE)
+        foundAfk = afkPattern.findall(text)
+        if len(foundAfk) > 0:
+            return True
+        
+        notAfkPattern = re.compile(r"You are no longer AFK\.", re.IGNORECASE)
+        notAfk = notAfkPattern.findall(text)
+        if len(notAfk) > 0:
+            return False
+        
+        return None
