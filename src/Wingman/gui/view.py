@@ -208,6 +208,15 @@ c = Controller.ForTesting()
             self.var_xp_hr.set(f"{current_rate:,} xp / hr")
             self.var_duration.set(self._controller.gameSession.get_duration_str())
             self.last_stat_update = now
+        
+        match self._controller.model.isAfk:
+            case True:
+                self.displayAfkLabel()
+            case False:
+                self.hideAfkLabel()
+            case _:
+                pass
+
 
     # 3. The Toggle Logic
     def toggle_topmost(self):
@@ -260,7 +269,7 @@ c = Controller.ForTesting()
         else:
             self.hideHealGroupImage()
 
-    def displayAfkImage(self):
+    def displayAfkLabel(self):
         self._displayAfkImageLabel.grid()
-    def hideAfkImage(self):
+    def hideAfkLabel(self):
         self._displayAfkImageLabel.grid_remove()

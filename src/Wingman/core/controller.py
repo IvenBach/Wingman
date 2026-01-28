@@ -119,11 +119,11 @@ v._setup_ui()
             afkRelated = self.model.parser.parseAfkStatus(line)
             match afkRelated:
                 case True:
-                    self.view.displayAfkImage()
+                    self.model.isAfk = True
                 case False:
-                    self.view.hideAfkImage()
+                    self.model.isAfk = False
                 case _:
-                    pass  # Do nothing if the line doesn't indicate AFK status
+                    self.model.isAfk = None
 
         return logs
     

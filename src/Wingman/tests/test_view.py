@@ -43,3 +43,33 @@ class TestView():
 
         with pytest.raises(AttributeError):
             v.update_gui()
+
+    class TestAfkLabelDisplay:
+        def test_AfkLabelDisplays_WhenAfkStatusReceived(self):
+            app = WingmanApp(True)
+            app.controller.receiver.receive("You are now listed as AFK.")
+
+            with patch.object(app.controller.view, f'{View.displayAfkLabel.__name__}') as mockedDisplay:
+                app.controller.view.update_gui()
+            
+            mockedDisplay.assert_called_once_with()
+        
+        def test_AfkLabelHides_WhenNoLongerAfkStatusReceived(self):
+            app = WingmanApp(True)
+            app.controller.receiver.receive("You are no longer AFK.")
+
+            with patch.object(app.controller.view, f'{View.hideAfkLabel.__name__}') as mockedHide:
+                app.controller.view.update_gui()
+            
+            mockedHide.assert_called_once_with()
+
+        def test_NonAfkInput_NeitherDisplayNorHideInvoked(self):
+            app = WingmanApp(True)
+            app.controller.receiver.receive("AFK in input but nothing invoked.")
+
+            with patch.object(app.controller.view, f'{View.displayAfkLabel.__name__}') as mockedDisplay:
+                with patch.object(app.controller.view, f'{View.hideAfkLabel.__name__}') as mockedHide:
+                    app.controller.view.update_gui()
+            
+            mockedDisplay.assert_not_called()
+            mockedHide.assert_not_called()
