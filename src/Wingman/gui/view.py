@@ -53,6 +53,11 @@ c = Controller.ForTesting()
         self.parent.attributes("-topmost", self.var_always_on_top.get())
     
     def setup_ui(self):
+        """
+        Setting up the UI requires the controller to be set first for binding.
+
+        If the controller is not set an `AttributeError` occurs.
+        """
         main_frame = ttk.Frame(self, name="main_frame", padding="10")
         main_frame.grid(row=0, column=0, sticky=tk.NSEW)
         main_frame.grid_rowconfigure(2, weight=1)
