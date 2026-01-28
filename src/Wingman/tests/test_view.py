@@ -37,3 +37,9 @@ class TestView():
             app.controller.view.update_gui()
 
         mockedMethod.assert_called_once_with()
+
+    def test_ViewWithoutSetController_WhenUiUpdated_RaisesError(self):
+        v = View(tk.Toplevel())
+
+        with pytest.raises(AttributeError):
+            v.update_gui()

@@ -47,7 +47,7 @@ v._setup_ui()
         c = Controller(m, v)
         
         v.set_controller(c)
-        v.setup_ui() # Setting up the UI requires the controller to be set first for binding
+        v.setup_ui()
         
         return c
         
