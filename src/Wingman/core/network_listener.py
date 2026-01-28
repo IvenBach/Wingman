@@ -16,42 +16,30 @@ class NetworkListener:
 
         self.controller = controller
 
-    def remove_noise(self, message):
-        """
-        Removes ANSI color codes.
-        """
-        return re.sub(r'\x1b\[\d+(?:;\d+)*m', '', message)
-
     def packet_callback(self, packet):
         if IP in packet and TCP in packet:
             if packet[IP].src == self.target_ip and packet[TCP].sport == self.target_port:
-                if len(packet[TCP].payload) > 0:
-                    try:
-                        payload_bytes = bytes(packet[TCP].payload)
+                if len(packet[TCP].payload) <= 0:
+                    return 
+                
+                try:
+                    payload_bytes = bytes(packet[TCP].payload)
 
-                        # Decode and append to buffer immediately
-                        chunk = payload_bytes.decode('utf-8', errors='replace')
-                        self._buffer += chunk
+                    # Decode and append to buffer immediately
+                    chunk = payload_bytes.decode('utf-8', errors='replace')
+                    self._buffer += chunk
 
-                        # Process buffer: extract complete lines only
-                        while '\n' in self._buffer:
-                            # Split at the first newline
-                            line, self._buffer = self._buffer.split('\n', 1)
+                    # Process buffer: extract complete lines only
+                    while '\n' in self._buffer:
+                        # Split at the first newline
+                        line, self._buffer = self._buffer.split('\n', 1)
 
-                            # Clean up carriage returns common in MUDs
-                            line = line.replace('\r', '')
+                        # Clean up carriage returns common in MUDs
+                        line = line.replace('\r', '')
+                        self.receiver.receive(line)
 
-                            # Remove color codes
-                            cleaned = InputReceiver.remove_ANSI_color_codes(line)
-
-                            # Send to app if it has content
-                            # Note: We use strip() to avoid sending blank lines,
-                            # but the regex in parser.py handles whitespace fine.
-                            if cleaned.strip():
-                                self.receiver.receive(cleaned)
-
-                    except Exception as e:
-                        print(f"Error decoding packet: {e}")
+                except Exception as e:
+                    print(f"Error decoding packet: {e}")
 
     def start(self):
         self.is_running = True

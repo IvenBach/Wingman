@@ -14,8 +14,7 @@ class InputReceiver:
         with open(self.stack_log_file, 'w') as f:
             f.write('')  # Clear the contents of the file
 
-    @staticmethod
-    def remove_ANSI_color_codes(input_line: str) -> str:
+    def _remove_ANSI_color_codes(self, input_line: str) -> str:
         '''
         Cleans the input string by removing ANSI color codes.
         
@@ -30,12 +29,13 @@ class InputReceiver:
     def receive(self, input_line: str):
         '''
         Receives an input line, cleans it, and adds it to the processing queue.
+
+        Empty lines are ignored.
         '''
         if not input_line.strip():
             return
 
-        self.last_received = input_line
-        cleaned_input = self.remove_ANSI_color_codes(input_line)
+        self.last_received = cleaned_input = self._remove_ANSI_color_codes(input_line)
         self._add_to_queue(cleaned_input)
         # debugging line as needed print("receiver received " + cleaned_input)
 
