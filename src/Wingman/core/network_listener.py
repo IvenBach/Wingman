@@ -27,7 +27,7 @@ class NetworkListener:
 
                     # Decode and append to buffer immediately
                     chunk = payload_bytes.decode('utf-8', errors='replace')
-                    self._buffer += chunk
+                    self._buffer += self.receiver.remove_ANSI_color_codes(chunk)
 
                     # Process buffer: extract complete lines only
                     while '\n' in self._buffer:

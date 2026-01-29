@@ -28,16 +28,15 @@ class InputReceiver:
 
     def receive(self, input_line: str):
         '''
-        Receives an input line, cleans it, and adds it to the processing queue.
+        Receives an input line, and adds it to the processing queue.
 
         Empty lines are ignored.
         '''
         if not input_line.strip():
             return
 
-        self.last_received = cleaned_input = self.remove_ANSI_color_codes(input_line)
-        self._add_to_queue(cleaned_input)
-        # debugging line as needed print("receiver received " + cleaned_input)
+        self.last_received = input_line
+        self._add_to_queue(input_line)
 
     def _add_to_queue(self, cleaned_input: str):
         self._queue.append(cleaned_input)
@@ -48,7 +47,3 @@ class InputReceiver:
 
     def get_last_received(self) -> str:
         return self.last_received
-
-
-if __name__ == "__main__":
-    input_receiver_instance = InputReceiver()
