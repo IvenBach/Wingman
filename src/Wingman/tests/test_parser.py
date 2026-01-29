@@ -290,3 +290,23 @@ class TestAfkParser:
         
         assert actual is None
 
+class TestMeditationParse:
+    def test_StartedMeditating_ReturnsTrue(self):
+        actual = Parser().parseMeditation(Parser.Meditation.Begin.value)
+
+        assert actual
+    
+    def test_EndedMeditatingVoluntarily_ReturnsFalse(self):
+        actual = Parser().parseMeditation(Parser.Meditation.Termination_Voluntary.value)
+
+        assert actual == False
+    
+    def test_EndedMeditationNonVoluntarily_ReturnsFalse(self):
+        actual = Parser().parseMeditation(Parser.Meditation.Termination_NonVoluntary.value)
+
+        assert actual == False
+    
+    def test_NonMeditationRelatedLine_ReturnsNone(self):
+        actual = Parser().parseMeditation("Some other line unrelated to meditation.")
+
+        assert actual is None

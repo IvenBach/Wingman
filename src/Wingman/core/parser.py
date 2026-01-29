@@ -1,5 +1,6 @@
 import re
 from typing import List
+from enum import StrEnum
 from Wingman.core.status_indicator import StatusIndicator
 from Wingman.core.resource_bar import ResourceBar
 from Wingman.core.character import Character
@@ -128,12 +129,15 @@ class Parser():
         disbandingGroup = pattern.findall(text)
         return disbandingGroup[0] == group.Leader.Name
     
+    class AfkStatus(StrEnum):
+        BeginAfk = "You are now listed as AFK."
+        EndAfk = "You are no longer AFK."
     def parseAfkStatus(self, text: str) -> bool | None:
         """
         Parse line of text to determine if it indicates AFK status.
 
-        - True = You are now listed as AFK.
-        - False = You are no longer AFK.
+        - True = `You are now listed as AFK.`
+        - False = `You are no longer AFK.`
         - None = Anything else.
 
         :param text: line of text to parse
@@ -144,14 +148,43 @@ class Parser():
         if "AFK" not in text:
             return None
 
-        afkPattern = re.compile(r"You are now listed as AFK\.", re.IGNORECASE)
+        afkPattern = re.compile(self.AfkStatus.BeginAfk.value, re.IGNORECASE)
         foundAfk = afkPattern.findall(text)
         if len(foundAfk) > 0:
             return True
-        
-        notAfkPattern = re.compile(r"You are no longer AFK\.", re.IGNORECASE)
+
+        notAfkPattern = re.compile(self.AfkStatus.EndAfk.value, re.IGNORECASE)
         notAfk = notAfkPattern.findall(text)
         if len(notAfk) > 0:
             return False
         
+        return None
+    
+    class Meditation(StrEnum):
+        Begin = "You slip into a meditative trance..."
+        Termination_Voluntary = "You end your meditation."
+        Termination_NonVoluntary = "Your meditation is interrupted."
+    def parseMeditation(self, text: str) -> bool | None:
+        """
+        Parse line of text to determine if it indicates meditation status.
+
+        - True = `You slip into a meditative trance...`
+        - False = `You end your meditation.` or `Your meditation is interrupted.`
+        - None = Anything else.
+
+        :param text: line of text to parse
+        :type text: str
+        :return: True for meditation, False for not-meditation, None if doesn't deal with meditation status
+        :rtype: bool | None
+        """
+        if self.Meditation.Begin.value in text:
+            return True
+        
+        voluntaryTermination = self.Meditation.Termination_Voluntary.value
+        nonVoluntaryTermination = self.Meditation.Termination_NonVoluntary.value
+        meditatingEndPattern = re.compile(f"({voluntaryTermination}|{nonVoluntaryTermination})", re.IGNORECASE)
+        hasMeditationEnded = meditatingEndPattern.findall(text)
+        if len(hasMeditationEnded) > 0:
+            return False
+
         return None

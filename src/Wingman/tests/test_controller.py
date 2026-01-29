@@ -1,4 +1,8 @@
+import pytest
+from unittest.mock import patch
 from Wingman.core.controller import Controller
+from Wingman.gui.view import View
+from Wingman.core.parser import Parser
 
 class TestProcessQueue():
     def test_process_queue_calculates_xp(self):
@@ -81,3 +85,65 @@ class TestGrouping():
         assert initialGroupSize == 3
         assert c.gameSession.group.Count == 2
 
+class TestDisplayingCentralColumnLabelInView():
+    def test_DisplayAfkLabel(self):
+        c = Controller.ForTesting()
+        v = c.view
+        c.receiver.receive(Parser.AfkStatus.BeginAfk.value)
+        c.process_queue()
+
+        with patch.object(v, v.displayAfkLabel.__name__) as mockedMethod:
+            v.update_gui()
+
+        mockedMethod.assert_called_once_with()
+    
+    def test_HideAfkLabel(self):
+        c = Controller.ForTesting()
+        v = c.view
+        c.receiver.receive(Parser.AfkStatus.EndAfk.value)
+        c.process_queue()
+
+        with patch.object(v, v.hideAfkLabel.__name__) as mockedMethod:
+            v.update_gui()
+
+        mockedMethod.assert_called_once_with()
+
+    def test_BeginMeditating_MeditationLabelDisplayedInView(self):
+        c = Controller.ForTesting()
+        v = c.view
+        c.receiver.receive(Parser.Meditation.Begin.value)
+        c.process_queue()
+
+        with patch.object(v, v.displayMeditationLabel.__name__) as mockedMethod:
+            v.update_gui()
+
+        mockedMethod.assert_called_once_with()
+
+    @pytest.mark.parametrize("input_line", [Parser.Meditation.Termination_Voluntary.value, Parser.Meditation.Termination_NonVoluntary.value],
+                                        ids=['VoluntaryTermination', 'NonVoluntaryTermination'])
+    def test_StopMeditating_MeditationLabelHiddenInView(self, input_line):
+        c = Controller.ForTesting()
+        v = c.view
+        c.receiver.receive(input_line)
+        c.process_queue()
+
+        with patch.object(View, v.hideMeditationLabel.__name__) as mockedMethod:
+            v.update_gui()
+
+        mockedMethod.assert_called_once_with()
+
+    def test_MeditationNotAffectedByNonMeditationInput_NeitherDisplayNorHideInvoked(self):
+        c = Controller.ForTesting()
+        v = c.view
+        c.receiver.receive("Any text not relating to meditation.")
+        c.process_queue()
+
+        with patch.object(v, v.displayMeditationLabel.__name__) as mockedDisplay:
+            with patch.object(v, v.hideMeditationLabel.__name__) as mockedHide:
+                v.update_gui()
+        
+        mockedDisplay.assert_not_called()
+        mockedHide.assert_not_called()
+
+if __name__ == "__main__":
+    TestDisplayingCentralColumnLabelInView().test_HideAfkLabel()

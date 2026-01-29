@@ -22,6 +22,7 @@ class View(tk.Frame):
         self.var_xp_hr = tk.StringVar(value="XP/Hr: 0")
         self.var_duration = tk.StringVar(value="Time: 00:00:00")
         self.var_always_on_top = tk.BooleanVar(value=True)
+        self.var_meditationRegenDisplay = tk.StringVar(value="Med: 0")
         self.paused: bool = False
         self.last_stat_update = 0
         self.dark_mode = False
@@ -73,6 +74,7 @@ c = Controller.ForTesting()
         ttk.Label(col1, textvariable=self.var_total_xp, font=("Segoe UI", 12, "bold")).pack(anchor="w")
         ttk.Label(col1, textvariable=self.var_xp_hr).pack(anchor="w")
 
+        #Central Column Labels
         hospitalIconPath = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'gui', 'hospitalMapIcon.png')
         self._healGroupImage = tk.PhotoImage(file=hospitalIconPath)
         self._healGroupLabel = ttk.Label(stats_frame, name='healGroupLabel', image=self._healGroupImage)
@@ -81,12 +83,18 @@ c = Controller.ForTesting()
         self._healGroupLabel.grid(row=0, column=1)
         self._healGroupLabel.grid_remove()
         
-        # afkIconPath = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'gui', 'afk.png')
-        # self._afkImage = tk.PhotoImage(file=afkIconPath)
-        self._displayAfkImageLabel = ttk.Label(stats_frame, name='afkStatusLabel', text="AFK", style="afk.TLabel") #, image=self._afkImage)
-        afkStyle = ttk.Style().configure('afk.TLabel', font=("Segoe UI", 30, "bold"))
+        centralLabelStyleName = 'centralLabel.TLabel'
+        self._displayAfkImageLabel = ttk.Label(stats_frame, name='afkStatusLabel', text="AFK", style=centralLabelStyleName)
+        afkStyle = ttk.Style().configure(centralLabelStyleName, font=("Segoe UI", 30, "bold"))
         self._displayAfkImageLabel.grid(row=0, column=1)
         self._displayAfkImageLabel.grid_remove()
+
+        self._meditatingLabel = ttk.Label(stats_frame, name='meditationStatusLabel', 
+                                          textvariable=self.var_meditationRegenDisplay, 
+                                          style=centralLabelStyleName)
+        self._meditatingLabel.grid(row=0, column=1)
+        self._meditatingLabel.grid_remove()
+
 
         col2 = ttk.Frame(stats_frame)
         col2.grid(row=0, column=2, sticky=tk.E, padx=5)
@@ -216,6 +224,15 @@ c = Controller.ForTesting()
                 self.hideAfkLabel()
             case _:
                 pass
+        
+        match self._controller.model.isMeditating:
+            case True:
+                self.displayMeditationLabel()
+            case False:
+                self.hideMeditationLabel()
+            case _:
+                pass
+
 
 
     # 3. The Toggle Logic
@@ -265,7 +282,7 @@ c = Controller.ForTesting()
         
         
         if group.DisplayHealingIcon:
-            self.displayHealGroupImage() #TODO: determine better way to externally indicate Image is displaying. Tying to implementation detail.
+            self.displayHealGroupImage()
         else:
             self.hideHealGroupImage()
 
@@ -273,3 +290,11 @@ c = Controller.ForTesting()
         self._displayAfkImageLabel.grid()
     def hideAfkLabel(self):
         self._displayAfkImageLabel.grid_remove()
+
+    def displayMeditationLabel(self):
+        self.var_meditationRegenDisplay.set(self._controller.model.meditationRegenDisplay.show())
+        self._meditatingLabel.grid()
+    def hideMeditationLabel(self):
+        self._meditatingLabel.grid_remove()
+
+    

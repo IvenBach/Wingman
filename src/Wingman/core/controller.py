@@ -7,6 +7,7 @@ from Wingman.core.session import GameSession
 from Wingman.core.network_listener import NetworkListener
 from Wingman.core.model import Model
 from Wingman.core.parser import Parser
+from Wingman.core.meditation_display import MeditationDisplay
 
 class Controller:
     def __init__(self, model: Model, view):
@@ -105,7 +106,6 @@ v._setup_ui()
 
             # --- Logic 2: XP Detection ---
             xp_gain = self.model.parser.parse_xp_message(line)
-
             if xp_gain > 0:
                 # Optional: You could check if self.pause_start_time is None here
                 # if you want to ignore XP gained while paused, though the UI
@@ -122,8 +122,27 @@ v._setup_ui()
                     self.model.isAfk = True
                 case False:
                     self.model.isAfk = False
+                    # Method invoked here since moving while AFK will 
+                    # immediately overwrite the models state of `False` 
+                    # with `None`, before the view can update the gui for the user to see.
+                    self.view.hideAfkLabel()
                 case _:
                     self.model.isAfk = None
+            
+
+            meditationRelated = self.model.parser.parseMeditation(line)
+            match meditationRelated:
+                case True:
+                    self.model.isMeditating = True
+                    self.model.meditationRegenDisplay = MeditationDisplay()
+                    self.view.displayMeditationLabel()
+                case False:
+                    self.model.isMeditating = False
+                    self.model.meditationRegenDisplay = None
+                    self.view.hideMeditationLabel()
+                case _:
+                    self.model.isMeditating = None
+
 
         return logs
     
