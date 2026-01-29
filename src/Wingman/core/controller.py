@@ -57,7 +57,7 @@ v._setup_ui()
     
     def process_queue(self):
         """
-        Pops items, calculates XP, and parses Group stats.
+        Dequeues items, calculates XP, and parses Group stats.
         Returns a list of text logs for the GUI.
         """
         logs = []
