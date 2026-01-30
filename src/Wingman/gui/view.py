@@ -230,6 +230,7 @@ c = Controller.ForTesting()
                 self.displayMeditationLabel()
             case False:
                 self.hideMeditationLabel()
+                self._controller.model.isMeditating = None
             case _:
                 pass
 

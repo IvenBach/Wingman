@@ -20,4 +20,6 @@ class MeditationDisplay:
     
     def show(self) -> str:
         return f"Med: {self.meditationRegenerationValue()}"
-        
+    
+    def resetMeditationStartTime(self):
+        self.startTime = time.time()

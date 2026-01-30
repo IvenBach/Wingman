@@ -134,15 +134,13 @@ v._setup_ui()
             match meditationRelated:
                 case True:
                     self.model.isMeditating = True
-                    self.model.meditationRegenDisplay = MeditationDisplay()
+                    self.model.meditationRegenDisplay.resetMeditationStartTime()
                     self.view.displayMeditationLabel()
                 case False:
                     self.model.isMeditating = False
-                    self.model.meditationRegenDisplay = None
                     self.view.hideMeditationLabel()
                 case _:
-                    self.model.isMeditating = None
-
+                    self.model.isMeditating = None            
 
         return logs
     

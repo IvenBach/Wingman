@@ -5,4 +5,4 @@ class Model:
         self.parser = parser
         self.isAfk: bool | None = None
         self.isMeditating: bool | None = None
-        self.meditationRegenDisplay: MeditationDisplay | None = None
+        self.meditationRegenDisplay = MeditationDisplay()
