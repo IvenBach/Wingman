@@ -145,5 +145,37 @@ class TestDisplayingCentralColumnLabelInView():
         mockedDisplay.assert_not_called()
         mockedHide.assert_not_called()
 
-if __name__ == "__main__":
-    TestDisplayingCentralColumnLabelInView().test_HideAfkLabel()
+    def test_BeginHiding_HideLabelDisplayedInView(self):
+        c = Controller.ForTesting()
+        v = c.view
+        c.receiver.receive(Parser.HideStatus.Begin.value)
+        c.process_queue()
+
+        with patch.object(v, v.displayHidingLabel.__name__) as mockedMethod:
+            v.update_gui()
+
+        mockedMethod.assert_called_once_with()
+
+    def test_StopHiding_HideLabelHiddenInView(self):
+        c = Controller.ForTesting()
+        v = c.view
+        c.receiver.receive(Parser.HideStatus.EndHiding.value)
+        c.process_queue()
+
+        with patch.object(v, v.hideHidingLabel.__name__) as mockedMethod:
+            v.update_gui()
+
+        mockedMethod.assert_called_once_with()
+    
+    def test_HidingNotAffectedByNonHidingInput_NeitherDisplayNorHideInvoked(self):
+        c = Controller.ForTesting()
+        v = c.view
+        c.receiver.receive("Any text not relating to hiding.")
+        c.process_queue()
+
+        with patch.object(v, v.displayHidingLabel.__name__) as mockedDisplay:
+            with patch.object(v, v.hideHidingLabel.__name__) as mockedHide:
+                v.update_gui()
+        
+        mockedDisplay.assert_not_called()
+        mockedHide.assert_not_called()

@@ -310,3 +310,19 @@ class TestMeditationParse:
         actual = Parser().parseMeditation("Some other line unrelated to meditation.")
 
         assert actual is None
+
+class TestHidingParse:
+    def test_StartHiding_ReturnsTrue(self):
+        actual = Parser().parseHideStatus(Parser.HideStatus.Begin.value)
+
+        assert actual
+    
+    def test_EndHiding_ReturnsFalse(self):
+        actual = Parser().parseHideStatus(Parser.HideStatus.EndHiding.value)
+
+        assert actual == False
+    
+    def test_NonHidingRelatedLine_ReturnsNone(self):
+        actual = Parser().parseHideStatus("Some line unrelated to hiding.")
+
+        assert actual is None

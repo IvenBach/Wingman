@@ -140,7 +140,18 @@ v._setup_ui()
                     self.model.isMeditating = False
                     self.view.hideMeditationLabel()
                 case _:
-                    self.model.isMeditating = None            
+                    self.model.isMeditating = None
+
+            hidingRelated = self.model.parser.parseHideStatus(line)
+            match hidingRelated:
+                case True:
+                    self.model.isHiding = True
+                    self.view.displayHidingLabel()
+                case False:
+                    self.model.isHiding = False
+                    self.view.hideHidingLabel()
+                case _:
+                    self.model.isHiding = None
 
         return logs
     

@@ -69,48 +69,56 @@ c = Controller.ForTesting()
         stats_frame.grid(row=0, column=0, pady=(0, 10), sticky=tk.EW)
         stats_frame.grid_columnconfigure(1, weight=1)
 
-        col1 = ttk.Frame(stats_frame)
-        col1.grid(row=0, column=0, sticky=tk.W, padx=5, pady=10)
-        ttk.Label(col1, textvariable=self.var_total_xp, font=("Segoe UI", 12, "bold")).pack(anchor="w")
-        ttk.Label(col1, textvariable=self.var_xp_hr).pack(anchor="w")
+        experienceFrame = ttk.Frame(stats_frame)
+        experienceFrame.grid(row=0, column=0, sticky=tk.W, padx=5, pady=10)
+        ttk.Label(experienceFrame, textvariable=self.var_total_xp, font=("Segoe UI", 12, "bold")).pack(anchor="w")
+        ttk.Label(experienceFrame, textvariable=self.var_xp_hr).pack(anchor="w")
 
         #Central Column Labels
+        centerFrame = ttk.Frame(stats_frame)
+        centerFrame.grid(row=0, column=1, sticky=tk.NSEW)
+        centerFrame.grid_rowconfigure(0, weight=1)
+        centerFrame.grid_columnconfigure(0, weight=1)
+
         hospitalIconPath = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'gui', 'hospitalMapIcon.png')
         self._healGroupImage = tk.PhotoImage(file=hospitalIconPath)
-        self._healGroupLabel = ttk.Label(stats_frame, name='healGroupLabel', image=self._healGroupImage)
+        self._healGroupLabel = ttk.Label(centerFrame, name='healGroupLabel', image=self._healGroupImage)
         #Initially gridded/displayed to place it on the UI.
         #Immediately removed/hidden, only to be shown when predicate conditions are satisfied.
-        self._healGroupLabel.grid(row=0, column=1)
+        self._healGroupLabel.grid(row=0, column=0)
         self._healGroupLabel.grid_remove()
         
         centralLabelStyleName = 'centralLabel.TLabel'
-        self._displayAfkImageLabel = ttk.Label(stats_frame, name='afkStatusLabel', text="AFK", style=centralLabelStyleName)
+        self._displayAfkImageLabel = ttk.Label(centerFrame, name='afkStatusLabel', text="AFK", style=centralLabelStyleName)
         afkStyle = ttk.Style().configure(centralLabelStyleName, font=("Segoe UI", 30, "bold"))
-        self._displayAfkImageLabel.grid(row=0, column=1)
+        self._displayAfkImageLabel.grid(row=0, column=0)
         self._displayAfkImageLabel.grid_remove()
 
-        self._meditatingLabel = ttk.Label(stats_frame, name='meditationStatusLabel', 
+        self._meditatingLabel = ttk.Label(centerFrame, name='meditationStatusLabel', 
                                           textvariable=self.var_meditationRegenDisplay, 
                                           style=centralLabelStyleName)
         self._meditatingLabel.grid(row=0, column=1)
         self._meditatingLabel.grid_remove()
 
+        self._hidingLabel = ttk.Label(main_frame, text="Hiding", anchor=tk.CENTER)
+        self._hidingLabel.grid(row=1, column=0, sticky=tk.EW)
+        self._hidingLabel.grid_remove()
 
-        col2 = ttk.Frame(stats_frame)
-        col2.grid(row=0, column=2, sticky=tk.E, padx=5)
-        ttk.Label(col2, textvariable=self.var_duration, font=("Consolas", 10)).pack(anchor="e", pady=(0, 5))
+        pauseSettingsTimerFrame = ttk.Frame(stats_frame)
+        pauseSettingsTimerFrame.grid(row=0, column=2, sticky=tk.E, padx=5)
+        ttk.Label(pauseSettingsTimerFrame, textvariable=self.var_duration, font=("Consolas", 10)).grid(row=0, column=0,sticky=tk.E, pady=(0,5))
 
         # Control Buttons Frame
-        btns_frame = ttk.Frame(col2)
-        btns_frame.pack(anchor="e")
+        btns_frame = ttk.Frame(pauseSettingsTimerFrame)
+        btns_frame.grid(row=1, column=0, sticky=tk.E)
 
         # Pause Button (Updated width to 8 per previous request)
         self.btn_pause = ttk.Button(btns_frame, text="Pause", command=self.toggle_pause, width=8)
-        self.btn_pause.pack(side=tk.LEFT, padx=(0, 2))
+        self.btn_pause.grid(row=0, column=0, sticky=tk.W, padx=(0, 2))
 
         # Settings Dropdown
         self.mb_settings = ttk.Menubutton(btns_frame, text="⚙", width=3)
-        self.mb_settings.pack(side=tk.LEFT)
+        self.mb_settings.grid(row=0, column=1, sticky=tk.W)
 
         self.menu_settings = tk.Menu(self.mb_settings, tearoff=0)
 
@@ -233,8 +241,15 @@ c = Controller.ForTesting()
                 self._controller.model.isMeditating = None
             case _:
                 pass
-
-
+        
+        match self._controller.model.isHiding:
+            case True:
+                self.displayHidingLabel()
+            case False:
+                self.hideHidingLabel()
+            case _:
+                pass
+        
 
     # 3. The Toggle Logic
     def toggle_topmost(self):
@@ -298,4 +313,7 @@ c = Controller.ForTesting()
     def hideMeditationLabel(self):
         self._meditatingLabel.grid_remove()
 
-    
+    def displayHidingLabel(self):
+        self._hidingLabel.grid()
+    def hideHidingLabel(self):
+        self._hidingLabel.grid_remove()

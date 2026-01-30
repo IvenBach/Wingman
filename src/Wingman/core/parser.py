@@ -188,3 +188,29 @@ class Parser():
             return False
 
         return None
+    
+    class HideStatus(StrEnum):
+        Begin = "You're hidden."
+        AlreadyHidden = "You are already hiding."
+        EndHiding = "You are no longer hidden."
+    def parseHideStatus(self, text: str) -> bool | None:
+        """
+        Parse line of text to determine if it indicates hiding status.
+
+        - True = `You're hidden.`
+        - False = `You are no longer hidden.`
+        - None = Anything else.
+
+        :param text: line of text to parse
+        :type text: str
+        :return: True for hiding, False for not-hiding, None if doesn't deal with hiding status
+        :rtype: bool | None
+        """
+        if self.HideStatus.Begin.value in text or self.HideStatus.AlreadyHidden.value in text:
+            return True
+
+        if self.HideStatus.EndHiding.value in text:
+            return False
+        
+        return None
+
