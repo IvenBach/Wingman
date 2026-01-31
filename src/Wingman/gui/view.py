@@ -89,10 +89,10 @@ c = Controller.ForTesting()
         self._healGroupLabel.grid_remove()
         
         centralLabelStyleName = 'centralLabel.TLabel'
-        self._displayAfkImageLabel = ttk.Label(centerFrame, name='afkStatusLabel', text="AFK", style=centralLabelStyleName)
+        self._afkImageLabel = ttk.Label(centerFrame, name='afkStatusLabel', text="AFK", style=centralLabelStyleName)
         afkStyle = ttk.Style().configure(centralLabelStyleName, font=("Segoe UI", 30, "bold"))
-        self._displayAfkImageLabel.grid(row=0, column=0)
-        self._displayAfkImageLabel.grid_remove()
+        self._afkImageLabel.grid(row=0, column=0)
+        self._afkImageLabel.grid_remove()
 
         self._meditatingLabel = ttk.Label(centerFrame, name='meditationStatusLabel', 
                                           textvariable=self.var_meditationRegenDisplay, 
@@ -303,9 +303,9 @@ c = Controller.ForTesting()
             self.hideHealGroupImage()
 
     def displayAfkLabel(self):
-        self._displayAfkImageLabel.grid()
+        self._afkImageLabel.grid()
     def hideAfkLabel(self):
-        self._displayAfkImageLabel.grid_remove()
+        self._afkImageLabel.grid_remove()
 
     def displayMeditationLabel(self):
         self.var_meditationRegenDisplay.set(self._controller.model.meditationRegenDisplay.show())
