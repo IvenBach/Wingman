@@ -97,7 +97,7 @@ c = Controller.ForTesting()
         self._meditatingLabel = ttk.Label(centerFrame, name='meditationStatusLabel', 
                                           textvariable=self.var_meditationRegenDisplay, 
                                           style=centralLabelStyleName)
-        self._meditatingLabel.grid(row=0, column=1)
+        self._meditatingLabel.grid(row=0, column=0)
         self._meditatingLabel.grid_remove()
 
         self._hidingLabel = ttk.Label(main_frame, text="Hiding", anchor=tk.CENTER)
