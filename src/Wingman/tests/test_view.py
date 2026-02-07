@@ -1,6 +1,11 @@
 import pytest
 import tkinter as tk
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, call
+import sys
+from pathlib import Path
+if __name__ == "__main__":
+    srcDirectory = Path(__file__).parent.parent.parent.resolve()
+    sys.path.append(str(srcDirectory))
 from Wingman.gui.view import View
 from Wingman.core.controller import Controller
 from Wingman.core.parser import Parser
@@ -66,7 +71,11 @@ class TestView():
             with patch.object(v, f'{View.hideAfkLabel.__name__}') as mockedHide:
                 v.update_gui()
             
-            mockedHide.assert_called_once_with()
+            # Edge case of moving while AFK will overwrite the models AFK state before gui can update.
+            # Called as part of `update_gui` and inside view._controller.process_queue
+            # that is why `assert_called_with()` is used instead of `assert_called_once_with()`
+            mockedHide.assert_called_with()
+            assert mockedHide.call_args_list == [call(), call()]
 
         def test_NonAfkInput_NeitherDisplayNorHideInvoked(self):
             c = Controller.ForTesting()
