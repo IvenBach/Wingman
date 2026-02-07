@@ -1,5 +1,11 @@
 import pytest
 from unittest.mock import patch
+from pathlib import Path
+import sys
+if __name__ == "__main__":
+    srcDirectory = Path(__file__).parent.parent.parent.resolve()
+    sys.path.append(str(srcDirectory))
+
 from Wingman.core.controller import Controller
 from Wingman.gui.view import View
 from Wingman.core.parser import Parser
@@ -15,6 +21,103 @@ class TestProcessQueue():
 
         assert c.gameSession.total_xp == 1000
         assert len(logs) == 1
+
+    class TestMobRoomMovement():
+        def test_MobMovement_Enters_EmptyRoom_DisplayUpdatesAndMobsInRoomMatchesExpected(self):
+            c = Controller.ForTesting()
+            c.model.currentMobsInRoom = []
+            v = c.view
+            
+            c.receiver.receive("A windfang hatchling enters the room.")
+            c.process_queue()
+
+            with patch.object(v, v.displayOrUpdateMobCountInRoom.__name__) as mockedDisplay:
+                v.update_gui()
+            
+            mockedDisplay.assert_called_once_with()
+            assert c.model.currentMobsInRoom == ['a windfang hatchling']
+        
+        def test_MobMovement_ArrivesFrom_With2Mobs_DisplayUpdatesAndMobsInRoomMatchesExpected(self):
+            c = Controller.ForTesting()
+            c.model.currentMobsInRoom = ['a foo bar', 'a bar foo']
+            v = c.view
+            
+            c.receiver.receive("A windfang hatchling arrives from the east.")
+            c.process_queue()
+
+            with patch.object(v, v.displayOrUpdateMobCountInRoom.__name__) as mockedDisplay:
+                v.update_gui()
+            
+            mockedDisplay.assert_called_once_with()
+            assert c.model.currentMobsInRoom == ['a foo bar', 'a bar foo', 'a windfang hatchling']
+
+        def test_MobMovement_ChasesIn_With1Mob_DisplayUpdatesAndMobsInRoomMatchesExpected(self):
+            c = Controller.ForTesting()
+            c.model.currentMobsInRoom = ['a foo bar']
+            v = c.view
+            
+            c.receiver.receive("A windfang hatchling chases Foo into the room.")
+            c.process_queue()
+
+            with patch.object(v, v.displayOrUpdateMobCountInRoom.__name__) as mockedDisplay:
+                v.update_gui()
+            
+            mockedDisplay.assert_called_once_with()
+            assert c.model.currentMobsInRoom == ['a foo bar', 'a windfang hatchling']
+
+        def test_MobMovement_Dies_With2MobsInRoom_DisplayUpdatesAndMobsInRoomMatchesExpected(self):
+            c = Controller.ForTesting()
+            c.model.currentMobsInRoom = ['a foo bar', 'a windfang hatchling']
+            v = c.view
+            
+            c.receiver.receive("A windfang hatchling dies.")
+            c.process_queue()
+
+            with patch.object(v, v.displayOrUpdateMobCountInRoom.__name__) as mockedDisplay:
+                v.update_gui()
+            
+            mockedDisplay.assert_called_once_with()
+            assert c.model.currentMobsInRoom == ['a foo bar']
+        
+        def test_MobMovement_Leaves_With5MobsInRoom_DisplayUpdatesAndMobsInRoomMatchesExpected(self):
+            c = Controller.ForTesting()
+            c.model.currentMobsInRoom = ['a foo bar', 'a bar foo', 'a dog', 'a cat', 'a windfang hatchling']
+            v = c.view
+            
+            c.receiver.receive("A cat leaves North.")
+            c.process_queue()
+
+            with patch.object(v, v.displayOrUpdateMobCountInRoom.__name__) as mockedDisplay:
+                v.update_gui()
+            
+            mockedDisplay.assert_called_once_with()
+            assert c.model.currentMobsInRoom == ['a foo bar', 'a bar foo', 'a dog', 'a windfang hatchling']
+        
+        def test_MobMovement_ChasesOut_AsOnlyMobInTheRoom_DisplayUpdatesAndMobsInRoomMatchesExpected(self):
+            c = Controller.ForTesting()
+            c.model.currentMobsInRoom = ['a windfang hatchling']
+            v = c.view
+            
+            c.receiver.receive("A windfang hatchling chases Foo out of the room.")
+            c.process_queue()
+
+            with patch.object(v, v.hideMobCountInRoom.__name__) as mockedDisplay:
+                v.update_gui()
+            
+            mockedDisplay.assert_called_once_with()
+            assert c.model.currentMobsInRoom == []
+
+    class TestPlayerMovement():
+        def test_PlayerMovement_ClearsMobsInRoomAndHidesMobCountInView(self):
+            c = Controller.ForTesting()
+            
+            c.receiver.receive("Obvious exits: east, northwest, and a small, smelly hut.")
+            with patch.object(c, c.clearMobsInRoom.__name__) as mockedClear:
+                with patch.object(c, c.hideMobCountInRoom.__name__) as mockedHide:
+                    c.process_queue()
+            
+            mockedClear.assert_called_once_with()
+            mockedHide.assert_called_once_with()
 
 class TestGrouping():
     def test_UngroupedCharacterGainsNewFollower_NewFollowerAddedToLatestGroupData(self):

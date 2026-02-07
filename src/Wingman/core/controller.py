@@ -6,8 +6,8 @@ from Wingman.core.input_receiver import InputReceiver
 from Wingman.core.session import GameSession
 from Wingman.core.network_listener import NetworkListener
 from Wingman.core.model import Model
-from Wingman.core.parser import Parser
-from Wingman.core.meditation_display import MeditationDisplay
+from Wingman.core.parser import Parser, MobMovement
+from Wingman.core.mobs_in_room import MobsInRoom
 
 class Controller:
     def __init__(self, model: Model, view):
@@ -90,6 +90,11 @@ v._setup_ui()
             line = self.receiver.dequeue()
             if line is None:
                 break
+            
+            if isinstance(line, MobsInRoom):
+                self.model.currentMobsInRoom = line.mobs_in_room
+                self.view.displayOrUpdateMobCountInRoom()
+                continue
 
             if needToClearGroupData(line, self.gameSession.group):
                 self.gameSession.group.Disband()
@@ -128,7 +133,6 @@ v._setup_ui()
                     self.view.hideAfkLabel()
                 case _:
                     self.model.isAfk = None
-            
 
             meditationRelated = self.model.parser.parseMeditation(line)
             match meditationRelated:
@@ -153,5 +157,24 @@ v._setup_ui()
                 case _:
                     self.model.isHiding = None
 
+            if self.model.parser.ParseMovement().playerMovement(line):
+                self.clearMobsInRoom()
+                self.hideMobCountInRoom()
+
+            mobMovementRelated, movement, mobName = self.model.parser.ParseMovement().mobRelatedMovement(line, self.model.currentMobsInRoom)
+            if mobMovementRelated:
+                match movement:
+                    case MobMovement.ENTERING:
+                        self.model.currentMobsInRoom.append(mobName)
+                        self.view.displayOrUpdateMobCountInRoom()
+                    case MobMovement.LEAVING:
+                        self.model.currentMobsInRoom.remove(mobName)
+                        self.view.displayOrUpdateMobCountInRoom()
+            
         return logs
     
+    def clearMobsInRoom(self):
+        self.model.currentMobsInRoom.clear()
+    
+    def hideMobCountInRoom(self):
+        self.view.hideMobCountInRoom()

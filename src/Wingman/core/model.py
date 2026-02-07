@@ -7,3 +7,4 @@ class Model:
         self.isMeditating: bool | None = None
         self.meditationRegenDisplay = MeditationDisplay()
         self.isHiding: bool | None = None
+        self.currentMobsInRoom: list[str] = []

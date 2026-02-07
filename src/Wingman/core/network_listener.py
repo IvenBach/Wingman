@@ -2,6 +2,8 @@ import threading
 import re
 from scapy.all import sniff, IP, TCP
 from Wingman.core.input_receiver import InputReceiver
+from Wingman.core.parser import Parser
+from Wingman.core.mobs_in_room import MobsInRoom
 
 class NetworkListener:
     def __init__(self, input_receiver: InputReceiver, controller):
@@ -17,6 +19,8 @@ class NetworkListener:
         self.controller = controller
 
     def packet_callback(self, packet):
+        predeterminedChunkMobList = []
+        mobsInRoom: MobsInRoom | None = None
         if IP in packet and TCP in packet:
             if packet[IP].src == self.target_ip and packet[TCP].sport == self.target_port:
                 if len(packet[TCP].payload) <= 0:
@@ -27,6 +31,9 @@ class NetworkListener:
 
                     # Decode and append to buffer immediately
                     chunk = payload_bytes.decode('utf-8', errors='replace')
+                    if Parser().ParseMobs().hasAnsiColorCodedMobs(chunk, predeterminedChunkMobList):
+                        mobsInRoom = MobsInRoom(predeterminedChunkMobList)
+
                     self._buffer += self.receiver.remove_ANSI_color_codes(chunk)
 
                     # Process buffer: extract complete lines only
@@ -37,6 +44,10 @@ class NetworkListener:
                         # Clean up carriage returns common in MUDs
                         line = line.replace('\r', '')
                         self.receiver.receive(line)
+
+                    if mobsInRoom is not None:
+                        self.receiver.receive(mobsInRoom)
+                        mobsInRoom = None
 
                 except Exception as e:
                     print(f"Error decoding packet: {e}")

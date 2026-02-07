@@ -6,6 +6,10 @@ from Wingman.core.resource_bar import ResourceBar
 from Wingman.core.character import Character
 from Wingman.core.group import Group
 
+class MobMovement(StrEnum):
+    LEAVING = "LEAVING"
+    ENTERING = "ENTERING"
+
 class Parser():
     def parse_xp_message(self, text_block: str) -> int:
         """Parses text for XP gains."""
@@ -214,3 +218,100 @@ class Parser():
         
         return None
 
+    class ParseMobs:
+        def hasAnsiColorCodedMobs(self, text: str, outMobList: list[str]) -> bool:
+            '''Parse text for mobs that still have Ansi color coding applied. The color codes permit parsing via `re` to get the mob names.
+
+Method returns `True` if mobs are found with Ansi color coding, `False` otherwise.
+
+The list passed in `outMobList` is populated with the found mobs if any are found, and cleared if none are found.
+'''
+            tempList = Parser().ParseMobs().parsePreAnsiScrubbingForMobs(text)
+            if not tempList:
+                outMobList.clear()
+                return False
+            
+            outMobList.clear()
+            outMobList.extend(tempList)
+            return True
+
+        def parsePreAnsiScrubbingForMobs(self, text: str) -> List[str]:
+            r"""Parse pre-Ansi scrubbed input text for mobs in the room. 
+```
+\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31ma mithril dealer\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\n\n\x1b[8m
+```
+Ansi color codes are left in to aid in identifying mobs.
+        
+Works under the assumption that the Ansi foreground color of `31` is always used for mob coloring.
+
+Looks for `Also there is ` to determine whether to parse or not.
+```
+Ansi				Olmran
+BG	FC	Color			Color
+30	40	Black	
+31	41	Red			Red
+32	42	Green			Green
+33	43	Yellow			Brown
+34	44	Blue			Blue
+35	45	Magenta			Purple
+36	46	Cyan			Cyan
+37	47	White			Darkgrey
+90	100	Bright Black (Gray)	Grey
+91	101	Bright Red	        Lightred
+92	102	Bright Green		Lightgreen
+93	103	Bright Yellow		Yellow
+94	104	Bright Blue		Lightblue
+95	105	Bright Magenta		Lightpurple
+96	106	Bright Cyan		Lightcyan
+97	107	Bright White		White
+```
+"""
+            if "Also there is " not in text:
+                return []
+
+            mobIndicator = r"(?P<subMob>\x1b\[1;31m(?P<name>[a-zA-Z '-,]+))+"
+            searchPattern = re.compile(mobIndicator)
+            foundMobs = searchPattern.findall(text)
+
+            if not foundMobs:
+                return []
+            
+            listedMobs = list[str]()
+            for mob in foundMobs:
+                listedMobs.append(mob[1])
+            return listedMobs
+    
+    class ParseMovement:
+        def playerMovement(self, text: str) -> bool:
+            return "Obvious exits:" in text
+            
+        def mobRelatedMovement(self, text: str, mobsInRoom: list[str]) -> tuple[bool, MobMovement | None, str | None]:
+            '''Parse text for mob related movement. Assumes `mobsInRoom` have their indefinite-articles (a, an) lower cased as part of `Also there is `.
+
+- First Tuple Part: `bool` - `True` = mob movement occurred - `False` = no mob movement, remaining tuple parts are then `None`.
+- Second Tuple Part: `MobMovement` - indicates the kind of movement, either entering/leaving.
+- Last Tuple Part: `str` - the mob that moved.
+
+Subsequent removal of mob from the model needs to be dealt with by the caller.'''
+            text = text[:1].lower() + text[1:]
+            isDeathMovement = "dies" in text
+            isExitingRoom = 'leaves' in text or ('chases' in text and 'out of the room' in text)            
+            if isDeathMovement or isExitingRoom:
+                for mob in mobsInRoom:
+                    if mob in text:
+                        return True, MobMovement.LEAVING, mob
+            
+            if ' arrives from ' in text:
+                index = text.find(' arrives from ')
+                return True, MobMovement.ENTERING, text[:index]
+            
+            
+            if ' enters the room' in text:
+                index = text.find(' enters the room')
+                return True, MobMovement.ENTERING, text[:index]
+
+            if ' chases ' in text and ' into the room' in text:
+                index = text.find(' chases ')
+                return True, MobMovement.ENTERING, text[:index]
+
+            return False, None, None

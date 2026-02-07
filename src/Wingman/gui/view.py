@@ -20,6 +20,7 @@ class View(tk.Frame):
         # State
         self.var_total_xp = tk.StringVar(value="Total XP: 0")
         self.var_xp_hr = tk.StringVar(value="XP/Hr: 0")
+        self.var_mobs_in_room = tk.StringVar(value="Mobs in Room: 0")
         self.var_duration = tk.StringVar(value="Time: 00:00:00")
         self.var_always_on_top = tk.BooleanVar(value=True)
         self.var_meditationRegenDisplay = tk.StringVar(value="Med: 0")
@@ -71,8 +72,9 @@ c = Controller.ForTesting()
 
         experienceFrame = ttk.Frame(stats_frame)
         experienceFrame.grid(row=0, column=0, sticky=tk.W, padx=5, pady=10)
-        ttk.Label(experienceFrame, textvariable=self.var_total_xp, font=("Segoe UI", 12, "bold")).pack(anchor="w")
-        ttk.Label(experienceFrame, textvariable=self.var_xp_hr).pack(anchor="w")
+        ttk.Label(experienceFrame, textvariable=self.var_total_xp, font=("Segoe UI", 12, "bold")).grid(sticky=tk.W)
+        ttk.Label(experienceFrame, textvariable=self.var_xp_hr).grid(sticky=tk.W)
+        ttk.Label(experienceFrame, textvariable=self.var_mobs_in_room).grid(sticky=tk.W)
 
         #Central Column Labels
         centerFrame = ttk.Frame(stats_frame)
@@ -249,7 +251,11 @@ c = Controller.ForTesting()
                 self.hideHidingLabel()
             case _:
                 pass
-        
+        if len(self._controller.model.currentMobsInRoom) >= 1:
+            self.displayOrUpdateMobCountInRoom()
+        else:
+            self.hideMobCountInRoom()
+
 
     # 3. The Toggle Logic
     def toggle_topmost(self):
@@ -317,3 +323,11 @@ c = Controller.ForTesting()
         self._hidingLabel.grid()
     def hideHidingLabel(self):
         self._hidingLabel.grid_remove()
+
+    def displayOrUpdateMobCountInRoom(self):
+        if len(self._controller.model.currentMobsInRoom) == 0:
+            self.var_mobs_in_room.set("")
+        else:
+            self.var_mobs_in_room.set(f"Mobs in Room: {len(self._controller.model.currentMobsInRoom)}")
+    def hideMobCountInRoom(self):
+        self.var_mobs_in_room.set("")

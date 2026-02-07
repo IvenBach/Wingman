@@ -1,8 +1,18 @@
 import pytest
-from Wingman.core.parser import Parser
+
+from pathlib import Path
+import sys
+if __name__ == "__main__":
+    srcDirectory = Path(__file__).parent.parent.parent.resolve()
+    sys.path.append(str(srcDirectory))
+
+
+from Wingman.core.parser import MobMovement, Parser
 from Wingman.core.status_indicator import StatusIndicator
 from Wingman.core.group import Group
 from Wingman.core.character import Character
+
+
 
 @pytest.fixture
 def parser():
@@ -326,3 +336,105 @@ class TestHidingParse:
         actual = Parser().parseHideStatus("Some line unrelated to hiding.")
 
         assert actual is None
+
+class TestMobParse:
+    def test_SingleMob_ReturnsMob(self):
+        expected = ["a mithril dealer"]
+        text = "\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31ma mithril dealer\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\n\n\x1b[8m"
+        
+        actual = Parser().ParseMobs().parsePreAnsiScrubbingForMobs(text)
+
+        assert expected == actual
+    
+    def test_OrderOfMobs_RemainsUnchanged(self):
+        expected = ["Foo", "Bar", "Bazz"]
+        text = "\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31mFoo\x1b[1;30m\x1b[0;37m,\x1b[0;0m\x1b[1;30m \x1b[1;30m\x1b[1;30m\x1b[1;31mBar\x1b[1;30m\x1b[0;37m,\x1b[0;0m\x1b[1;30m \x1b[1;30mand\x1b[0;0m\x1b[1;30m \x1b[1;30m\x1b[1;30m\x1b[1;31mBazz\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\n\n\x1b[8m"
+
+        actual = Parser().ParseMobs().parsePreAnsiScrubbingForMobs(text)
+
+        assert expected == actual
+    
+    def test_NonMobRelatedText_ReturnsEmptyList(self):
+        text = "This is a line of text with no mobs present."
+        expected = []
+
+        actual = Parser().ParseMobs().parsePreAnsiScrubbingForMobs(text)
+
+        assert expected == actual
+
+    def test_MobText_ButItIsAGreenMob_ReturnsEmptyList(self):
+        text = "\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31m\x1b[1;32mGreenMob\x1b[0;0m\x1b[1;31m\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\n\n\x1b[8m"
+        expected = []
+
+        actual = Parser().ParseMobs().parsePreAnsiScrubbingForMobs(text)
+
+        assert expected == actual
+
+    def test_PredeterminedChunk_GreenMobShouldNotCreateAPredeterminedChunk(self):
+        text = "\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31m\x1b[1;32mGreenMob\x1b[0;0m\x1b[1;31m\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\n\n\x1b[8m"
+        outList = ['any values will be cleared']
+
+        actual = Parser().ParseMobs().hasAnsiColorCodedMobs(text, outList)
+
+        assert actual == False
+        assert outList == []
+
+    def test_PredeterminedChunk_StandardMobsShouldCreateAPredeterminedChunk(self):
+        text = "\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31ma mithril dealer\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\n\n\x1b[8m"
+        list = []
+
+        actual = Parser().ParseMobs().hasAnsiColorCodedMobs(text, list)
+
+        assert actual
+        assert list == ["a mithril dealer"]
+
+    @pytest.mark.parametrize("text", ["A Kaidite zombie general dies!",
+                                      "a Kaidite zombie general dies!"],
+                                      ids=["Indefinite article capitalized",
+                                           "Indefinite article lowercase"])
+    def test_MobRelatedMovement_LeavingBy_Death_UnaffectedByIndefiniteArticleCasing(self, text):
+        mobsInRoom = ['a Kaidite zombie general', 'a Kaidite lady']
+
+        actual = Parser().ParseMovement().mobRelatedMovement(text, mobsInRoom)
+
+        assert actual == (True, MobMovement.LEAVING, 'a Kaidite zombie general')
+    
+    def test_MobRelatedMovement_LeavingBy_RoomMovement(self):
+        text = "A windfang hatchling leaves West"
+        mobsInRoom = ['a razor-backed windfang', 'a windfang hatchling', 'a guardian of the nameless']
+
+        actual = Parser().ParseMovement().mobRelatedMovement(text, mobsInRoom)
+
+        assert actual == (True, MobMovement.LEAVING, 'a windfang hatchling')
+    
+    def test_MobRelatedMovement_LeavingBy_Chasing(self):
+        text = 'A windfang hatchling chases Foo out of the room.'
+        mobsInRoom = ['a windfang hatchling']
+
+        actual = Parser().ParseMovement().mobRelatedMovement(text, mobsInRoom)
+
+        assert actual == (True, MobMovement.LEAVING, 'a windfang hatchling')
+
+    def test_MobRelatedMovement_EnteringBy_RoomMovement(self):
+        text = 'A windfang hatchling arrives from the north.'
+        mobsInRoom = ['a windfang hatchling']
+
+        actual = Parser().ParseMovement().mobRelatedMovement(text, mobsInRoom)
+
+        assert actual == (True, MobMovement.ENTERING, 'a windfang hatchling')
+
+    def test_MobRelatedMovement_EnteringBy_SpawningInRoom(self):
+        text = 'A mermaid temptress enters the room.'
+        mobsInRoom = ['a mermaid temptress']
+
+        actual = Parser().ParseMovement().mobRelatedMovement(text, mobsInRoom)
+
+        assert actual == (True, MobMovement.ENTERING, 'a mermaid temptress')
+
+    def test_MobRelatedMovement_EnteringBy_ChasingIntoRoom(self):
+        text = 'A windfang hatchling chases Foo into the room.'
+        mobsInRoom = ['a windfang hatchling']
+
+        actual = Parser().ParseMovement().mobRelatedMovement(text, mobsInRoom)
+
+        assert actual == (True, MobMovement.ENTERING, 'a windfang hatchling')
