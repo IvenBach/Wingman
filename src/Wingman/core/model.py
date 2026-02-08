@@ -8,3 +8,4 @@ class Model:
         self.meditationRegenDisplay = MeditationDisplay()
         self.isHiding: bool | None = None
         self.currentMobsInRoom: list[str] = []
+        self.ignoreTheseMobsInCurrentRoom: list[str] = []

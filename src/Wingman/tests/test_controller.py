@@ -31,7 +31,7 @@ class TestProcessQueue():
             c.receiver.receive("A windfang hatchling enters the room.")
             c.process_queue()
 
-            with patch.object(v, v.displayOrUpdateMobCountInRoom.__name__) as mockedDisplay:
+            with patch.object(v, v.updateMobCountInRoom.__name__) as mockedDisplay:
                 v.update_gui()
             
             mockedDisplay.assert_called_once_with()
@@ -45,7 +45,7 @@ class TestProcessQueue():
             c.receiver.receive("A windfang hatchling arrives from the east.")
             c.process_queue()
 
-            with patch.object(v, v.displayOrUpdateMobCountInRoom.__name__) as mockedDisplay:
+            with patch.object(v, v.updateMobCountInRoom.__name__) as mockedDisplay:
                 v.update_gui()
             
             mockedDisplay.assert_called_once_with()
@@ -59,7 +59,7 @@ class TestProcessQueue():
             c.receiver.receive("A windfang hatchling chases Foo into the room.")
             c.process_queue()
 
-            with patch.object(v, v.displayOrUpdateMobCountInRoom.__name__) as mockedDisplay:
+            with patch.object(v, v.updateMobCountInRoom.__name__) as mockedDisplay:
                 v.update_gui()
             
             mockedDisplay.assert_called_once_with()
@@ -73,7 +73,7 @@ class TestProcessQueue():
             c.receiver.receive("A windfang hatchling dies.")
             c.process_queue()
 
-            with patch.object(v, v.displayOrUpdateMobCountInRoom.__name__) as mockedDisplay:
+            with patch.object(v, v.updateMobCountInRoom.__name__) as mockedDisplay:
                 v.update_gui()
             
             mockedDisplay.assert_called_once_with()
@@ -87,7 +87,7 @@ class TestProcessQueue():
             c.receiver.receive("A cat leaves North.")
             c.process_queue()
 
-            with patch.object(v, v.displayOrUpdateMobCountInRoom.__name__) as mockedDisplay:
+            with patch.object(v, v.updateMobCountInRoom.__name__) as mockedDisplay:
                 v.update_gui()
             
             mockedDisplay.assert_called_once_with()
@@ -101,7 +101,7 @@ class TestProcessQueue():
             c.receiver.receive("A windfang hatchling chases Foo out of the room.")
             c.process_queue()
 
-            with patch.object(v, v.hideMobCountInRoom.__name__) as mockedDisplay:
+            with patch.object(v, v.updateMobCountInRoom.__name__) as mockedDisplay:
                 v.update_gui()
             
             mockedDisplay.assert_called_once_with()
@@ -112,12 +112,12 @@ class TestProcessQueue():
             c = Controller.ForTesting()
             
             c.receiver.receive("Obvious exits: east, northwest, and a small, smelly hut.")
-            with patch.object(c, c.clearMobsInRoom.__name__) as mockedClear:
-                with patch.object(c, c.hideMobCountInRoom.__name__) as mockedHide:
+            with patch.object(c, c.clearCountOfMobsInRoom.__name__) as mockedClear:
+                with patch.object(c, c.updateMobCountInRoom.__name__) as mockedUpdate:
                     c.process_queue()
             
             mockedClear.assert_called_once_with()
-            mockedHide.assert_called_once_with()
+            mockedUpdate.assert_called_once_with()
 
 class TestGrouping():
     def test_UngroupedCharacterGainsNewFollower_NewFollowerAddedToLatestGroupData(self):
@@ -282,3 +282,43 @@ class TestDisplayingCentralColumnLabelInView():
         
         mockedDisplay.assert_not_called()
         mockedHide.assert_not_called()
+
+class TestIgnoredMobsInRoom:
+    def test_UpdatingIgnoredMobsPets_WithCsvIncludingWhitespace_WhitespaceTrimmedAndNotIncludedInModel(self):
+        c = Controller.ForTesting()
+        c.updateIgnoredMobsPets(' foo, bar ,baz ')
+
+        assert c.model.ignoreTheseMobsInCurrentRoom == ['foo', 'bar', 'baz']
+
+    def test_UpdatingIgnoredMobsPets_WithEmptyInput_ClearsIgnoredMobs(self):
+        c = Controller.ForTesting()
+        c.updateIgnoredMobsPets('foo,bar,baz')
+
+        c.updateIgnoredMobsPets('')
+        
+        assert c.model.ignoreTheseMobsInCurrentRoom == []
+
+    def test_UpdatingIgnoredMobsPets_WhenDifferentCsvMobsEntered_ClearsOldValuesLeavingOnlyNew(self):
+        c = Controller.ForTesting()
+        c.updateIgnoredMobsPets('foo,bar,baz')
+        
+        c.updateIgnoredMobsPets('a, b, c, d')
+
+        assert c.model.ignoreTheseMobsInCurrentRoom == ['a', 'b', 'c', 'd']
+    
+    def test_InvokingUpdateMobsInRoom_WhenCurrentRoomHasMobListedInIgnoredMobs__RemovesMobFromCurrentRoomMobsOnModel(self):
+        c = Controller.ForTesting()
+        c.model.currentMobsInRoom = ['a foo', 'a bar', 'a baz']
+        c.updateIgnoredMobsPets('a foo')
+
+        c.updateMobsInCurrentRoom()
+
+        assert c.model.currentMobsInRoom == ['a bar', 'a baz']
+
+    def test_ClearingCountOfMobsInRoom_ReflectedInModel(self):
+        c = Controller.ForTesting()
+        c.model.currentMobsInRoom = ['a foo', 'a bar', 'a baz']
+
+        c.clearCountOfMobsInRoom()
+
+        assert c.model.currentMobsInRoom == []

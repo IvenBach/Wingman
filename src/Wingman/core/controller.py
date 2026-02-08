@@ -33,7 +33,7 @@ v = View(tk.Tk())
 c = Controller(m, v)
 
 v.set_controller(c)
-v._setup_ui()
+v.setup_ui()
 ```
 
 :returns: An instance of Controller with all dependencies set up for testing.
@@ -93,7 +93,7 @@ v._setup_ui()
             
             if isinstance(line, MobsInRoom):
                 self.model.currentMobsInRoom = line.mobs_in_room
-                self.view.displayOrUpdateMobCountInRoom()
+                self.updateMobCountInRoom()
                 continue
 
             if needToClearGroupData(line, self.gameSession.group):
@@ -158,23 +158,43 @@ v._setup_ui()
                     self.model.isHiding = None
 
             if self.model.parser.ParseMovement().playerMovement(line):
-                self.clearMobsInRoom()
-                self.hideMobCountInRoom()
+                self.clearCountOfMobsInRoom()
+                self.updateMobCountInRoom()
 
             mobMovementRelated, movement, mobName = self.model.parser.ParseMovement().mobRelatedMovement(line, self.model.currentMobsInRoom)
             if mobMovementRelated:
                 match movement:
                     case MobMovement.ENTERING:
                         self.model.currentMobsInRoom.append(mobName)
-                        self.view.displayOrUpdateMobCountInRoom()
+                        self.updateMobCountInRoom()
                     case MobMovement.LEAVING:
                         self.model.currentMobsInRoom.remove(mobName)
-                        self.view.displayOrUpdateMobCountInRoom()
+                        self.updateMobCountInRoom()
             
         return logs
     
-    def clearMobsInRoom(self):
+    def clearCountOfMobsInRoom(self):
         self.model.currentMobsInRoom.clear()
     
-    def hideMobCountInRoom(self):
-        self.view.hideMobCountInRoom()
+    def open_ignore_mobs_window(self):
+        self.view.open_ignore_mobs_window()
+    
+    def updateIgnoredMobsPets(self, csvMobList: str):
+        self.clearIgnoredMobsPets()
+
+        if csvMobList == '':    
+            return
+        
+        values = csvMobList.split(',')
+        self.model.ignoreTheseMobsInCurrentRoom.extend(value.strip() for value in values)
+    
+    def clearIgnoredMobsPets(self):
+        self.model.ignoreTheseMobsInCurrentRoom.clear()
+    
+    def updateMobsInCurrentRoom(self):
+        for mob in self.model.ignoreTheseMobsInCurrentRoom:
+            if mob in self.model.currentMobsInRoom:
+                self.model.currentMobsInRoom.remove(mob)
+    
+    def updateMobCountInRoom(self):
+        self.view.updateMobCountInRoom()

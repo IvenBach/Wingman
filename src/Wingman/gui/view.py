@@ -20,7 +20,7 @@ class View(tk.Frame):
         # State
         self.var_total_xp = tk.StringVar(value="Total XP: 0")
         self.var_xp_hr = tk.StringVar(value="XP/Hr: 0")
-        self.var_mobs_in_room = tk.StringVar(value="Mobs in Room: 0")
+        self.var_count_of_mobs_in_room = tk.StringVar(value="Mobs in Room: 0")
         self.var_duration = tk.StringVar(value="Time: 00:00:00")
         self.var_always_on_top = tk.BooleanVar(value=True)
         self.var_meditationRegenDisplay = tk.StringVar(value="Med: 0")
@@ -31,6 +31,8 @@ class View(tk.Frame):
         self._controller: Controller
         self.groupTreeview: ttk.Treeview
         self.menu_settings: tk.Menu
+        self.ignored_mobsOrPets = tk.StringVar(value="")
+        self._ignored_mobs_window = tk.Toplevel(parent)
 
         self.style = ttk.Style()
         self.style.theme_use('clam')
@@ -74,7 +76,7 @@ c = Controller.ForTesting()
         experienceFrame.grid(row=0, column=0, sticky=tk.W, padx=5, pady=10)
         ttk.Label(experienceFrame, textvariable=self.var_total_xp, font=("Segoe UI", 12, "bold")).grid(sticky=tk.W)
         ttk.Label(experienceFrame, textvariable=self.var_xp_hr).grid(sticky=tk.W)
-        ttk.Label(experienceFrame, textvariable=self.var_mobs_in_room).grid(sticky=tk.W)
+        ttk.Label(experienceFrame, textvariable=self.var_count_of_mobs_in_room).grid(sticky=tk.W)
 
         #Central Column Labels
         centerFrame = ttk.Frame(stats_frame)
@@ -135,7 +137,24 @@ c = Controller.ForTesting()
         self.menu_settings.add_command(label="Toggle Dark Mode", command=self.toggle_theme)
         self.menu_settings.add_separator()
         self.menu_settings.add_command(label="Reset Stats", command=self._controller.reset_stats)
-
+        self.menu_settings.add_separator()
+        self.menu_settings.add_command(label="Mobs/Pet settings", command=self._controller.open_ignore_mobs_window)
+        self._ignored_mobs_window.attributes("-topmost", True)
+        self._ignored_mobs_window.protocol("WM_DELETE_WINDOW", self._withdraw_mob_settings_window_and_focus_on_main_window)  # Hide on close
+        self._ignored_mobs_window.withdraw()  # Start hidden
+        self._ignored_mobs_window.title("Mob/Pet Settings")
+        ttk.Label(self._ignored_mobs_window, 
+                  text="Ignore mobs/pets in room\n(comma-separated):")\
+            .grid(row=1, column=0, sticky=tk.W, padx=10, pady=10)
+        ignoredMobsPetsCsv = ttk.Entry(self._ignored_mobs_window, 
+                                       textvariable=self.ignored_mobsOrPets, 
+                                       width=50)
+        ignoredMobsPetsCsv.grid(row=1, column=1, sticky=tk.W, padx=10, pady=10)
+        # helpful lambda explanation: https://stackoverflow.com/a/55093731
+        ignoredMobsPetsCsv.bind("<FocusOut>", # Without the lambda the function is never invoked.
+                                lambda e: self._controller.updateIgnoredMobsPets(self.ignored_mobsOrPets.get()))
+        
+        
         self.mb_settings["menu"] = self.menu_settings
 
         # --- Group Dashboard (Treeview) ---
@@ -251,10 +270,8 @@ c = Controller.ForTesting()
                 self.hideHidingLabel()
             case _:
                 pass
-        if len(self._controller.model.currentMobsInRoom) >= 1:
-            self.displayOrUpdateMobCountInRoom()
-        else:
-            self.hideMobCountInRoom()
+        
+        self.updateMobCountInRoom()
 
 
     # 3. The Toggle Logic
@@ -324,10 +341,15 @@ c = Controller.ForTesting()
     def hideHidingLabel(self):
         self._hidingLabel.grid_remove()
 
-    def displayOrUpdateMobCountInRoom(self):
+    def updateMobCountInRoom(self):
+        self._controller.updateMobsInCurrentRoom()
         if len(self._controller.model.currentMobsInRoom) == 0:
-            self.var_mobs_in_room.set("")
+            self.var_count_of_mobs_in_room.set("")
         else:
-            self.var_mobs_in_room.set(f"Mobs in Room: {len(self._controller.model.currentMobsInRoom)}")
-    def hideMobCountInRoom(self):
-        self.var_mobs_in_room.set("")
+            self.var_count_of_mobs_in_room.set(f"Mobs in Room: {len(self._controller.model.currentMobsInRoom)}")
+
+    def open_ignore_mobs_window(self):
+        self._ignored_mobs_window.deiconify()
+
+    def _withdraw_mob_settings_window_and_focus_on_main_window(self):
+         self._ignored_mobs_window.withdraw()
