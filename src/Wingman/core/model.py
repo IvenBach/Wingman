@@ -5,7 +5,7 @@ class Model:
         self.parser = parser
         self.isAfk: bool | None = None
         self.isMeditating: bool | None = None
-        self.meditationRegenDisplay = MeditationDisplay()
+        self.meditationDisplay = MeditationDisplay()
         self.isHiding: bool | None = None
         self.currentMobsInRoom: list[str] = []
         self.ignoreTheseMobsInCurrentRoom: list[str] = []

@@ -259,14 +259,12 @@ c = Controller.ForTesting()
             case _:
                 pass
         
-        match self._controller.model.isMeditating:
-            case True:
+        if self._controller.model.isMeditating is not None:
+            if self._controller.model.isMeditating:
                 self.displayMeditationLabel()
-            case False:
+            else:
                 self.hideMeditationLabel()
-                self._controller.model.isMeditating = None
-            case _:
-                pass
+                self._controller.model.isMeditating = None # Set to None to avoid repeated grid removals.
         
         match self._controller.model.isHiding:
             case True:
@@ -336,7 +334,7 @@ c = Controller.ForTesting()
         self._afkImageLabel.grid_remove()
 
     def displayMeditationLabel(self):
-        self.var_meditationRegenDisplay.set(self._controller.model.meditationRegenDisplay.show())
+        self._controller.updateMeditationDisplayValue()
         self._meditatingLabel.grid()
     def hideMeditationLabel(self):
         self._meditatingLabel.grid_remove()

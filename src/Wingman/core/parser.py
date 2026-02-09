@@ -172,13 +172,13 @@ class Parser():
         """
         Parse line of text to determine if it indicates meditation status.
 
-        - True = `You slip into a meditative trance...`
-        - False = `You end your meditation.` or `Your meditation is interrupted.`
-        - None = Anything else.
+- True = `You slip into a meditative trance...`
+- False = `You end your meditation.` or `Your meditation is interrupted.`
+- None = Anything non-meditation-related.
 
         :param text: line of text to parse
         :type text: str
-        :return: True for meditation, False for not-meditation, None if doesn't deal with meditation status
+        :return: True for meditation-related, False for non-meditation-related, None if it doesn't deal with meditation status
         :rtype: bool | None
         """
         if self.Meditation.Begin.value in text:
@@ -190,7 +190,7 @@ class Parser():
         hasMeditationEnded = meditatingEndPattern.findall(text)
         if len(hasMeditationEnded) > 0:
             return False
-
+        
         return None
     
     class HideStatus(StrEnum):

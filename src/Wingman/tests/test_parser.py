@@ -302,24 +302,29 @@ class TestAfkParser:
 
 class TestMeditationParse:
     def test_StartedMeditating_ReturnsTrue(self):
-        actual = Parser().parseMeditation(Parser.Meditation.Begin.value)
+        isMeditating = Parser().parseMeditation(Parser.Meditation.Begin.value)
 
-        assert actual
+        assert isMeditating
     
     def test_EndedMeditatingVoluntarily_ReturnsFalse(self):
-        actual = Parser().parseMeditation(Parser.Meditation.Termination_Voluntary.value)
+        isMeditating = Parser().parseMeditation(Parser.Meditation.Termination_Voluntary.value)
 
-        assert actual == False
+        assert isMeditating == False
     
     def test_EndedMeditationNonVoluntarily_ReturnsFalse(self):
-        actual = Parser().parseMeditation(Parser.Meditation.Termination_NonVoluntary.value)
+        isMeditating = Parser().parseMeditation(Parser.Meditation.Termination_NonVoluntary.value)
 
-        assert actual == False
+        assert isMeditating == False
     
-    def test_NonMeditationRelatedLine_ReturnsNone(self):
-        actual = Parser().parseMeditation("Some other line unrelated to meditation.")
+    def test_NonMeditationRelatedLine_CurrentlyMeditating_ReturnsNone(self):
+        isMeditating = Parser().parseMeditation("Some other line unrelated to meditation.")
 
-        assert actual is None
+        assert isMeditating == None
+    
+    def test_NonMeditationRelatedLine_NotCurrentlyMeditating_ReturnsNone(self):
+        isMeditating = Parser().parseMeditation("Some other line unrelated to meditation.")
+
+        assert isMeditating == None
 
 class TestHidingParse:
     def test_StartHiding_ReturnsTrue(self):

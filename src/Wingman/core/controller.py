@@ -16,6 +16,7 @@ class Controller:
         from Wingman.gui.view import View #TODO: Confirm whether valid workaround for circular import
         assert isinstance(view, View)
         self.model = model
+        self.model.meditationDisplay.attach(self)
         self.view = view
         
         # Create the SHARED receiver
@@ -67,7 +68,7 @@ v.setup_ui()
     
     def process_queue(self):
         """
-        Dequeues items, calculates XP, and parses Group stats.
+        Dequeues items (alters state as needed), calculates XP, and parses Group stats.
         Returns a list of text logs for the GUI.
         """
         logs = []
@@ -144,17 +145,14 @@ v.setup_ui()
                 case _:
                     self.model.isAfk = None
 
-            meditationRelated = self.model.parser.parseMeditation(line)
-            match meditationRelated:
-                case True:
+            isMeditationRelated  = self.model.parser.parseMeditation(line)
+            if isMeditationRelated is not None:
+                if isMeditationRelated:
                     self.model.isMeditating = True
-                    self.model.meditationRegenDisplay.resetMeditationStartTime()
-                    self.view.displayMeditationLabel()
-                case False:
+                    self.model.meditationDisplay.resetMeditationStartTime()
+                else:
                     self.model.isMeditating = False
-                    self.view.hideMeditationLabel()
-                case _:
-                    self.model.isMeditating = None
+
 
             hidingRelated = self.model.parser.parseHideStatus(line)
             match hidingRelated:
@@ -183,7 +181,12 @@ v.setup_ui()
                         self.updateMobCountInRoom()
             
         return logs
-    
+
+    def updateMeditationDisplayValue(self):
+        '''Method used to inform subscribers of `MeditationDisplay.attach(...)` that a change has occurred.'''
+        self.view.var_meditationRegenDisplay.set(self.model.meditationDisplay.displayValue())
+
+
     def clearCountOfMobsInRoom(self):
         self.model.currentMobsInRoom.clear()
     

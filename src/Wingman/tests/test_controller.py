@@ -232,7 +232,7 @@ class TestDisplayingCentralColumnLabelInView():
         c.receiver.receive(input_line)
         c.process_queue()
 
-        with patch.object(View, v.hideMeditationLabel.__name__) as mockedMethod:
+        with patch.object(v, v.hideMeditationLabel.__name__) as mockedMethod:
             v.update_gui()
 
         mockedMethod.assert_called_once_with()
@@ -241,6 +241,7 @@ class TestDisplayingCentralColumnLabelInView():
         c = Controller.ForTesting()
         v = c.view
         c.receiver.receive("Any text not relating to meditation.")
+
         c.process_queue()
 
         with patch.object(v, v.displayMeditationLabel.__name__) as mockedDisplay:
@@ -249,6 +250,15 @@ class TestDisplayingCentralColumnLabelInView():
         
         mockedDisplay.assert_not_called()
         mockedHide.assert_not_called()
+
+    def test_MeditationRegenValueChanges_ObserverNotified(self):
+        c = Controller.ForTesting()
+        c.receiver.receive(Parser.Meditation.Begin.value)
+        c.process_queue()
+        md = c.model.meditationDisplay
+        with patch.object(md, md.meditationDurationInSeconds.__name__) as mockedDuration:
+            mockedDuration.return_value = 40
+
 
     def test_BeginHiding_HideLabelDisplayedInView(self):
         c = Controller.ForTesting()
@@ -355,4 +365,3 @@ class TestSettings:
         
         mockedOpen.assert_not_called()
         mockedUpdateIgnoredMobsPets.assert_called_once_with('foo, bar, baz')
-TestSettings().test_LoadSettings_AppliesMobPetIgnore()
