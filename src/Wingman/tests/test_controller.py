@@ -1,7 +1,9 @@
+import unittest.mock
 import pytest
 from unittest.mock import patch
 from pathlib import Path
 import sys
+import configparser
 if __name__ == "__main__":
     srcDirectory = Path(__file__).parent.parent.parent.resolve()
     sys.path.append(str(srcDirectory))
@@ -322,3 +324,35 @@ class TestIgnoredMobsInRoom:
         c.clearCountOfMobsInRoom()
 
         assert c.model.currentMobsInRoom == []
+
+class TestSettings:
+    def test_ApplySettings_WhenSettingsFileIsMissingAKey_FallbackValueIsUsed_OpenNotInvokedToWriteFile(self):
+        c = Controller.ForTesting()
+
+        with patch('builtins.open', new_callable=unittest.mock.mock_open()) as mockedOpen:
+            c.applySettings(configParser=configparser.ConfigParser())
+        
+        mockedOpen.assert_not_called()
+    
+    def test_SaveSettings_OpenInvoked(self):
+        c = Controller.ForTesting()
+
+        with patch('builtins.open', new_callable=unittest.mock.mock_open()) as mockedOpen:
+            c.saveSettings()
+        
+        mockedOpen.assert_called_once_with(unittest.mock.ANY, 'w')
+
+    def test_LoadSettings_AppliesMobPetIgnore(self):
+        c = Controller.ForTesting()
+        cp = configparser.ConfigParser()
+        cp.add_section(c._VIEW_SETTINGS)
+        cp.add_section(c._APP_SETTINGS)
+        cp[c._VIEW_SETTINGS][c._IGNORED_MOB_PETS_CSV__OPTION] = 'foo, bar, baz'
+        
+        with patch.object(c, c.updateIgnoredMobsPets.__name__) as mockedUpdateIgnoredMobsPets:
+            with patch('builtins.open', new_callable=unittest.mock.mock_open()) as mockedOpen:
+                c.applySettings(cp)
+        
+        mockedOpen.assert_not_called()
+        mockedUpdateIgnoredMobsPets.assert_called_once_with('foo, bar, baz')
+TestSettings().test_LoadSettings_AppliesMobPetIgnore()

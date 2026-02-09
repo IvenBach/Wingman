@@ -15,3 +15,7 @@ env/
 .pytest_cache/
 htmlcov/
 stack_log.txt
+
+# Settings
+**/No settings file.txt
+**/Settings.ini

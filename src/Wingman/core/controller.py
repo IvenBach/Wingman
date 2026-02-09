@@ -1,6 +1,8 @@
 import tkinter as tk
 import re
 import time
+import configparser
+from pathlib import Path
 from Wingman.core.group import Group
 from Wingman.core.input_receiver import InputReceiver
 from Wingman.core.session import GameSession
@@ -23,7 +25,15 @@ class Controller:
         self.gameSession = GameSession(self.receiver)
 
         self.listener.start()
-    
+
+        self._SETTINGS_FILE_NAME = 'Settings.ini'
+        self._VIEW_SETTINGS = 'ViewSettings'
+        self._APP_SETTINGS = 'AppSettings'
+        self._IGNORED_MOB_PETS_CSV__OPTION = 'IgnoredMobsPetsCsv'
+        self._DARK_MODE__OPTION = 'DarkMode'
+        self._ROOT_WINDOW_POSITION__OPTION = 'RootWindowPosition'
+        self._IGNORED_MOBS_WINDOW_POSITION__OPTION = 'IgnoredMobsWindowPosition'
+
     @classmethod
     def ForTesting(cls) -> 'Controller':
         """Instantiates all the dependency prerequisites, in the proper order to avoid `AttributeError`s from occurring.
@@ -163,6 +173,7 @@ v.setup_ui()
 
             mobMovementRelated, movement, mobName = self.model.parser.ParseMovement().mobRelatedMovement(line, self.model.currentMobsInRoom)
             if mobMovementRelated:
+                assert isinstance(mobName, str)
                 match movement:
                     case MobMovement.ENTERING:
                         self.model.currentMobsInRoom.append(mobName)
@@ -198,3 +209,59 @@ v.setup_ui()
     
     def updateMobCountInRoom(self):
         self.view.updateMobCountInRoom()
+    
+    def saveSettings(self):
+        cp = configparser.ConfigParser()
+        cp[self._VIEW_SETTINGS] = {
+            self._DARK_MODE__OPTION: str(self.view.dark_mode),
+            self._IGNORED_MOB_PETS_CSV__OPTION: self.view.ignoredMobsPetsCsv.get(),
+        }
+
+        cp[self._APP_SETTINGS] = {
+            self._ROOT_WINDOW_POSITION__OPTION: '+' + self.view.parent.geometry().split('+', 1)[1],
+            self._IGNORED_MOBS_WINDOW_POSITION__OPTION: '+' + self.view._ignored_mobs_window.geometry().split('+', 1)[1]
+        }
+
+        srcDirectory = self.settingsFilePath()
+        self._writeSettingsToFile(cp, srcDirectory, self._SETTINGS_FILE_NAME)
+    
+    def settingsFilePath(self) -> Path:
+        return Path(__file__).parent.parent.resolve()
+
+    def _writeSettingsToFile(self, 
+                            configParser: configparser.ConfigParser, 
+                            filePath: Path, 
+                            fileName: str):
+        fullPath = filePath.joinpath(fileName).resolve()
+        with open(fullPath, 'w') as f:
+            configParser.write(f)
+    
+    def loadSettings(self) -> configparser.ConfigParser:
+        cp = configparser.ConfigParser()
+        cp.read(self.settingsFilePath().joinpath(self._SETTINGS_FILE_NAME))
+        return cp
+        
+    def applySettings(self, configParser: configparser.ConfigParser):       
+        try:
+            if configParser.has_section(self._VIEW_SETTINGS):
+                ignoredMobsPetsCsv = configParser.get(self._VIEW_SETTINGS, self._IGNORED_MOB_PETS_CSV__OPTION, fallback='')
+                self.view.var_ignoredMobPetsCsv.set(ignoredMobsPetsCsv)
+                self.updateIgnoredMobsPets(ignoredMobsPetsCsv)
+                darkModeSavedSetting = configParser.getboolean(self._VIEW_SETTINGS, self._DARK_MODE__OPTION, fallback=False)
+                if darkModeSavedSetting != False:
+                    self.view.toggle_theme()
+
+            if configParser.has_section(self._APP_SETTINGS):
+                rootWindowSize = self.view.parent.geometry().split('+')[0]
+                rootWindowPosition = configParser.get(self._APP_SETTINGS, self._ROOT_WINDOW_POSITION__OPTION, fallback='+0+0')
+                self.view.parent.geometry(rootWindowSize + rootWindowPosition)
+
+                ignoredMobWindowSize = self.view._ignored_mobs_window.geometry().split('+')[0]
+                ignoredMobWindowPosition = configParser.get(self._APP_SETTINGS, self._IGNORED_MOBS_WINDOW_POSITION__OPTION, fallback='+0+0')
+                self.view._ignored_mobs_window.geometry(ignoredMobWindowSize + ignoredMobWindowPosition)
+            
+        except KeyError:
+            # This means the config file was missing or malformed. We can choose to ignore this and just use defaults.
+            with open(self.settingsFilePath().joinpath('No settings file.txt'), 'w') as f:
+                f.write("No settings file found or failed to load. Default settings have been used.\n")
+                f.write(f"This file can be deleted if a `{self._SETTINGS_FILE_NAME}` file exists in the same folder.\n")

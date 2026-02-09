@@ -27,15 +27,16 @@ class View(tk.Frame):
         self.paused: bool = False
         self.last_stat_update = 0
         self.dark_mode = False
-        self.paused = False
         self._controller: Controller
         self.groupTreeview: ttk.Treeview
         self.menu_settings: tk.Menu
-        self.ignored_mobsOrPets = tk.StringVar(value="")
+        self.var_ignoredMobPetsCsv = tk.StringVar(value="")
         self._ignored_mobs_window = tk.Toplevel(parent)
 
         self.style = ttk.Style()
         self.style.theme_use('clam')
+
+        self._TopLevelWidgets: list[tk.Tk | tk.Toplevel] = [self.parent, self._ignored_mobs_window]
     
     @classmethod
     def ForTesting(cls):
@@ -146,13 +147,13 @@ c = Controller.ForTesting()
         ttk.Label(self._ignored_mobs_window, 
                   text="Ignore mobs/pets in room\n(comma-separated):")\
             .grid(row=1, column=0, sticky=tk.W, padx=10, pady=10)
-        ignoredMobsPetsCsv = ttk.Entry(self._ignored_mobs_window, 
-                                       textvariable=self.ignored_mobsOrPets, 
+        self.ignoredMobsPetsCsv = ttk.Entry(self._ignored_mobs_window, 
+                                       textvariable=self.var_ignoredMobPetsCsv, 
                                        width=50)
-        ignoredMobsPetsCsv.grid(row=1, column=1, sticky=tk.W, padx=10, pady=10)
+        self.ignoredMobsPetsCsv.grid(row=1, column=1, sticky=tk.W, padx=10, pady=10)
         # helpful lambda explanation: https://stackoverflow.com/a/55093731
-        ignoredMobsPetsCsv.bind("<FocusOut>", # Without the lambda the function is never invoked.
-                                lambda e: self._controller.updateIgnoredMobsPets(self.ignored_mobsOrPets.get()))
+        self.ignoredMobsPetsCsv.bind("<FocusOut>", # Without the lambda the function is never invoked.
+                                lambda e: self._controller.updateIgnoredMobsPets(self.var_ignoredMobPetsCsv.get()))
         
         
         self.mb_settings["menu"] = self.menu_settings
@@ -200,8 +201,10 @@ c = Controller.ForTesting()
             field_bg = "#ffffff"
             select_bg = "#0078d7"
             self.set_windows_titlebar_color(False)
+        
+        for window in self._TopLevelWidgets:
+            window.configure(bg=bg_color)
 
-        self.parent.configure(bg=bg_color)
         self.style.configure(".", background=bg_color, foreground=fg_color, fieldbackground=field_bg)
         self.style.configure("Treeview", background=field_bg, foreground=fg_color, fieldbackground=field_bg)
         self.style.map("Treeview", background=[("selected", select_bg)], foreground=[("selected", "white")])
@@ -223,9 +226,11 @@ c = Controller.ForTesting()
             DWMWA_USE_IMMERSIVE_DARK_MODE = 20
             set_window_attribute = ctypes.windll.dwmapi.DwmSetWindowAttribute
             get_parent = ctypes.windll.user32.GetParent
-            hwnd = get_parent(self.parent.winfo_id())
             value = 1 if use_dark else 0
-            set_window_attribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ctypes.byref(ctypes.c_int(value)), 4)
+            for window in self._TopLevelWidgets:
+                hwnd = get_parent(window.winfo_id())
+                set_window_attribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ctypes.byref(ctypes.c_int(value)), 4)
+            
             self.update()
         except Exception:
             pass

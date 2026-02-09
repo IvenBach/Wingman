@@ -8,6 +8,8 @@ class WingmanApp(tk.Tk):
     def __init__(self, inUnitTesting: bool = False):
         super().__init__()
 
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
+
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
         
@@ -28,5 +30,12 @@ class WingmanApp(tk.Tk):
         self.controller.view.apply_theme()
         self.controller.view.update_gui()
 
+        settings = self.controller.loadSettings()
+        self.controller.applySettings(settings)
+
     def run(self):
         self.mainloop()
+
+    def on_closing(self):
+        self.controller.saveSettings()
+        self.destroy()
