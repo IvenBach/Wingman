@@ -58,3 +58,15 @@ class TestCharacter:
                          ResourceBar(6, 7))
 
         assert char.Status == expected
+
+    def test_EqualityComparison_AllAttributesIdentical_Equal(self):
+        c1 = Character("Foo", "Skeleton", 1, StatusIndicator.BLEED, ResourceBar(2, 3), ResourceBar(4, 5), ResourceBar(6, 7))
+        c2 = Character("Foo", "Skeleton", 1, StatusIndicator.BLEED, ResourceBar(2, 3), ResourceBar(4, 5), ResourceBar(6, 7))
+
+        assert c1 == c2
+
+    def test_EqualityComparison_AttributesDiffer_NotEqual(self):
+        c1 = Character("Foo", "Skeleton", 1, StatusIndicator.BLEED, ResourceBar(1, 3), ResourceBar(4, 5), ResourceBar(6, 7))
+        c2 = Character("Foo", "Skeleton", 1, StatusIndicator.BLEED, ResourceBar(2, 3), ResourceBar(4, 5), ResourceBar(6, 7))
+
+        assert c1 != c2

@@ -33,6 +33,7 @@ class View(tk.Frame):
         self.var_ignoredMobPetsCsv = tk.StringVar(value="")
         self._pet_or_mobs_display_settings_window = tk.Toplevel(parent)
         self.var_includePetsInGroup = tk.BooleanVar(value=False)
+        self._cachedGroup: Group = Group([])
 
         self.style = ttk.Style()
         self.style.theme_use('clam')
@@ -247,8 +248,9 @@ c = Controller.ForTesting()
         if self.paused: return
         self._controller.process_queue()
         group_data = self._controller.gameSession.group
-        if group_data:
+        if group_data != self._cachedGroup:
             self.refreshGroupDisplay(group_data)
+            self._cachedGroup = Group(group_data.Members) # Cache a new instance to avoid using the same reference for next comparison.
         current_xp = self._controller.gameSession.total_xp
         self.var_total_xp.set(f"Total XP: {current_xp:,}")
         now = time.time()

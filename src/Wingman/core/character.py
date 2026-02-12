@@ -22,3 +22,20 @@ class Character:
 
     def __repr__(self):
         return f"{self.Name}"
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, Character):
+            return False
+
+        # Compare `ResourceBar`s first since they're most likely to differ
+        return (self.Hp == other.Hp and
+                self.Fat == other.Fat and
+                self.Pow == other.Pow and
+                self.Status == other.Status and
+                self.Name == other.Name and
+                self.Class_ == other.Class_ and
+                self.Level == other.Level and
+                self.IsNewGroupFollower == other.IsNewGroupFollower)
+
+    def __ne__(self, other) -> bool:
+        return not self.__eq__(other)

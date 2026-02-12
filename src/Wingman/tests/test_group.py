@@ -1,3 +1,9 @@
+from pathlib import Path
+import sys
+if __name__ == "__main__":
+    srcDirectory = Path(__file__).parent.parent.parent.resolve()
+    sys.path.append(str(srcDirectory))
+    
 from Wingman.core.character import Character
 from Wingman.core.group import Group
 from Wingman.core.status_indicator import StatusIndicator
@@ -87,3 +93,19 @@ class TestGroup:
         g.Disband()
 
         assert g.Leader is None
+
+    def test_EqualityComparison_AllMembersIdentical_Equal(self):
+        c1 = Character("Foo", "Skeleton", 1, StatusIndicator.BLEED, ResourceBar(2, 3), ResourceBar(4, 5), ResourceBar(6, 7))
+        c2 = Character("Foo", "Skeleton", 1, StatusIndicator.BLEED, ResourceBar(2, 3), ResourceBar(4, 5), ResourceBar(6, 7))
+        g1 = Group([c1])
+        g2 = Group([c2])
+
+        assert g1 == g2
+    
+    def test_EqualityComparison_SameNameButDifferentAttributeValues_NotEqual(self):
+        c1 = Character("Foo", "Skeleton", 1, StatusIndicator.BLEED, ResourceBar(5, 10), ResourceBar(4, 5), ResourceBar(6, 7))
+        c2 = Character("Foo", "Skeleton", 1, StatusIndicator.BLEED, ResourceBar(10, 10), ResourceBar(4, 5), ResourceBar(6, 7))
+        g1 = Group([c1])
+        g2 = Group([c2])
+
+        assert g1 != g2

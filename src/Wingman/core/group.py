@@ -8,8 +8,7 @@ class Group:
     def __init__(self, members: List[Character] = []) -> None:
         self._members: List[Character] = []
         if members:
-            for member in members:
-                self._members.append(member)
+            self._members.extend(members)
 
     @property
     def Leader(self) -> Character | None:
@@ -59,3 +58,12 @@ class Group:
                 return True
         
         return False
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, Group):
+            return False
+
+        return self._members == other._members
+
+    def __ne__(self, other) -> bool:
+        return not self.__eq__(other)

@@ -111,3 +111,39 @@ class TestView():
         
         assert groupCountWithPetsIncluded == 2
         assert c.gameSession.group.Count == 1
+
+    def test_CachedGroupMatchesCurrentGroup_GroupDisplayNotRefreshed(self):
+        c = Controller.ForTesting()
+        v = c.view
+        c.receiver.receive("""Beautiful's group:
+
+[ Class      Lv] Status   Name              Hits            Fat             Power         
+[Sin         74]         Beautiful        500/500 (100%)  500/500 (100%)  687/731 ( 93%)  
+[mob         72]         angel of death   417/417 (100%)  417/417 (100%)  618/618 (100%)  """)
+        v.update_gui() # Update once to cache the group
+
+        with patch.object(v, v.refreshGroupDisplay.__name__) as mockedRefresh:
+            v.update_gui()
+
+        mockedRefresh.assert_not_called()
+
+    def test_CachedGroupDoesNotMatchCurrentGroup_GroupDisplayRefreshed(self):
+        c = Controller.ForTesting()
+        v = c.view
+        c.receiver.receive("""Beautiful's group:
+
+[ Class      Lv] Status   Name              Hits            Fat             Power         
+[Sin         74]         Beautiful        500/500 (100%)  500/500 (100%)  687/731 ( 93%)  
+[Skeleton    72]         Bones            417/417 (100%)  417/417 (100%)   50/ 50 (100%)  """)
+        v.update_gui() # Update once to cache the group
+
+        c.receiver.receive("""Beautiful's group:
+
+[ Class      Lv] Status   Name              Hits            Fat             Power         
+[Sin         74]         Beautiful        75/500 ( 60%)  500/500 (100%)  687/731 ( 93%)  
+[Skeleton    72]         Bones            417/417 (100%)  417/417 (100%)   50/ 50 (100%)  """)
+
+        with patch.object(v, v.refreshGroupDisplay.__name__) as mockedRefresh:
+            v.update_gui()
+
+        mockedRefresh.assert_called_once()
