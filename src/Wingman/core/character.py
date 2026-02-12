@@ -3,7 +3,7 @@ from Wingman.core.resource_bar import ResourceBar
 
 class Character:
     def __init__(self, name: str,
-                        classProfession: str = "",
+                        class_: str = "",
                         level: int = -1,
                         status: StatusIndicator = StatusIndicator(0),
                         hp: ResourceBar = ResourceBar(-1,-1),
@@ -12,7 +12,7 @@ class Character:
                         isNewFollower: bool = False):
         self.Name = name.strip()
 
-        self.ClassProfession = classProfession.strip(); 
+        self.Class_ = class_.strip(); 
         self.Level = level
         self.Status = status
         self.Hp = hp

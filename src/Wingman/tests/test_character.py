@@ -5,7 +5,7 @@ from Wingman.core.resource_bar import ResourceBar
 
 class TestCharacter:
     def test_CharacterInitialization(self):
-        c = Character(classProfession="Sin", 
+        c = Character(class_="Sin", 
                          level=1, 
                          status=StatusIndicator(0), 
                          name="Beautiful", 
@@ -13,7 +13,7 @@ class TestCharacter:
                          fat=ResourceBar(4, 5), 
                          pow=ResourceBar(6, 7))
 
-        assert c.ClassProfession == "Sin"
+        assert c.Class_ == "Sin"
         assert c.Level == 1
         assert c.Status == StatusIndicator(0)
         assert c.Name == "Beautiful"

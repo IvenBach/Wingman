@@ -302,16 +302,16 @@ c = Controller.ForTesting()
 
     def refreshGroupDisplay(self, group: Group):
         def isCurrentPartyMember(m: Character):
-            return m.ClassProfession != ""
+            return m.Class_ != ""
 
         def isNewlyJoinedPartyMember(m: Character):
-            return m.ClassProfession == "" and m.IsNewGroupFollower
+            return m.Class_ == "" and m.IsNewGroupFollower
 
         for item in self.groupTreeview.get_children():
             self.groupTreeview.delete(item)
         for m in group.Members:
             if isCurrentPartyMember(m):
-                values = (m.ClassProfession, m.Level, str(m.Status), m.Name, str(m.Hp), str(m.Fat), str(m.Pow))
+                values = (m.Class_, m.Level, str(m.Status), m.Name, str(m.Hp), str(m.Fat), str(m.Pow))
                 
                 healthTag = HealthTagger.HealthTag(m)
                 

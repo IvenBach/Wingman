@@ -59,7 +59,7 @@ class TestGroupParser:
 
         # Check first member details
         p1 = results[0]
-        assert p1.ClassProfession == "Orc"
+        assert p1.Class_ == "Orc"
         assert p1.Level == 40
         assert p1.Status == "B"
         assert p1.Name == "Earthquack"
@@ -67,7 +67,7 @@ class TestGroupParser:
 
         # Check second member details
         p2 = results[1]
-        assert p2.ClassProfession == "Kenku"
+        assert p2.Class_ == "Kenku"
         assert p2.Name == "Big"
 
     def test_parse_single_line_update(self, groupParser):
