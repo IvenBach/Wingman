@@ -259,12 +259,14 @@ c = Controller.ForTesting()
             case _:
                 pass
         
-        if self._controller.model.isMeditating is not None:
-            if self._controller.model.isMeditating:
+        match self._controller.model.isMeditating :
+            case True:
                 self.displayMeditationLabel()
-            else:
+            case False:
                 self.hideMeditationLabel()
                 self._controller.model.isMeditating = None # Set to None to avoid repeated grid removals.
+            case _:
+                pass
         
         match self._controller.model.isHiding:
             case True:

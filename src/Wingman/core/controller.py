@@ -146,12 +146,14 @@ v.setup_ui()
                     self.model.isAfk = None
 
             isMeditationRelated  = self.model.parser.parseMeditation(line)
-            if isMeditationRelated is not None:
-                if isMeditationRelated:
+            match isMeditationRelated:
+                case True:
                     self.model.isMeditating = True
                     self.model.meditationDisplay.resetMeditationStartTime()
-                else:
+                case False:
                     self.model.isMeditating = False
+                case None:
+                    pass
 
 
             hidingRelated = self.model.parser.parseHideStatus(line)
