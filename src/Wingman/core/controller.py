@@ -27,7 +27,7 @@ class Controller:
 
         self.listener.start()
 
-        self._SETTINGS_FILE_NAME = 'Settings.ini'
+        self._SETTINGS_FILE_NAME = 'WingmanSettings.ini'
         self._VIEW_SETTINGS = 'ViewSettings'
         self._APP_SETTINGS = 'AppSettings'
         self._IGNORED_MOB_PETS_CSV__OPTION = 'IgnoredMobsPetsCsv'
