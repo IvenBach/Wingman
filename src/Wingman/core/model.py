@@ -9,3 +9,4 @@ class Model:
         self.isHiding: bool | None = None
         self.currentMobsInRoom: list[str] = []
         self.ignoreTheseMobsInCurrentRoom: list[str] = []
+        self.includePetsInGroup: bool = False

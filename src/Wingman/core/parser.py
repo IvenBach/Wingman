@@ -67,6 +67,10 @@ class Parser():
                 match = pattern.search(line)
                 if match:
                     data = match.groupdict()
+                    
+                    # NEW: Exclude pets/mobs immediately
+                    if not includePets and data['cls'] == 'mob':
+                        continue
 
                     c = Character(data['name'],
                                 data['cls'],
@@ -75,9 +79,6 @@ class Parser():
                                 ResourceBar.FromString(data['hp']),
                                 ResourceBar.FromString(data['fat']),
                                 ResourceBar.FromString(data['pwr']))
-                    # NEW: Exclude pets/mobs immediately
-                    if not includePets and c.ClassProfession == 'mob':
-                        continue
 
                     members.append(c)
 

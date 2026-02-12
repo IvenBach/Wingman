@@ -31,16 +31,17 @@ class Controller:
         self._VIEW_SETTINGS = 'ViewSettings'
         self._APP_SETTINGS = 'AppSettings'
         self._IGNORED_MOB_PETS_CSV__OPTION = 'IgnoredMobsPetsCsv'
+        self._DISPLAY_PETS_IN_GROUP__OPTION = 'DisplayPetsInGroup'
         self._DARK_MODE__OPTION = 'DarkMode'
         self._ROOT_WINDOW_POSITION__OPTION = 'RootWindowPosition'
         self._IGNORED_MOBS_WINDOW_POSITION__OPTION = 'IgnoredMobsWindowPosition'
 
     @classmethod
-    def ForTesting(cls) -> 'Controller':
+    def ForTesting(cls, m: Model | None = None, view = None) -> 'Controller':
         """Instantiates all the dependency prerequisites, in the proper order to avoid `AttributeError`s from occurring.
 ```
 m = Model(Parser())
-v = View(tk.Tk())
+v = View(tk.Toplevel())
 c = Controller(m, v)
 
 v.set_controller(c)
@@ -51,11 +52,11 @@ v.setup_ui()
 :rtype: `Controller`
         """
         from Wingman.gui.view import View #To avoid circular import
-        m = Model(Parser())
+        m = m or Model(Parser())
         # https://stackoverflow.com/questions/26097811/image-pyimage2-doesnt-exist
         # `tk.Toplevel()` is used instead of `tk.Tk()` to prevent multiple root windows
         # from being created during tests, which leads to `TclError`s.
-        v = View(tk.Toplevel()) # https://tkdocs.com/shipman/toplevel.html
+        v = view or View(tk.Toplevel()) # https://tkdocs.com/shipman/toplevel.html
         c = Controller(m, v)
         
         v.set_controller(c)
@@ -111,7 +112,7 @@ v.setup_ui()
                 self.gameSession.group.Disband()
 
             # Check for member rows in this line
-            found_members = self.model.parser.parse_group_status(line)
+            found_members = self.model.parser.parse_group_status(line, self.model.includePetsInGroup)
             if found_members:
                 # Add found members to our "dashboard" list
                 self.gameSession.group.AddMembers(found_members)
@@ -123,10 +124,6 @@ v.setup_ui()
             # --- Logic 2: XP Detection ---
             xp_gain = self.model.parser.parse_xp_message(line)
             if xp_gain > 0:
-                # Optional: You could check if self.pause_start_time is None here
-                # if you want to ignore XP gained while paused, though the UI
-                # usually stops calling process_queue anyway.
-                print(f"DEBUG: XP FOUND: {xp_gain}")
                 self.gameSession.total_xp += xp_gain
                 timestamp = time.strftime("%H:%M:%S", time.localtime())
                 log_entry = f"[{timestamp}] +{xp_gain:,} XP"
@@ -188,12 +185,11 @@ v.setup_ui()
         '''Method used to inform subscribers of `MeditationDisplay.attach(...)` that a change has occurred.'''
         self.view.var_meditationRegenDisplay.set(self.model.meditationDisplay.displayValue())
 
-
     def clearCountOfMobsInRoom(self):
         self.model.currentMobsInRoom.clear()
     
     def open_ignore_mobs_window(self):
-        self.view.open_ignore_mobs_window()
+        self.view.open_pet_or_mobs_display_settings_window()
     
     def updateIgnoredMobsPets(self, csvMobList: str):
         self.clearIgnoredMobsPets()
@@ -220,11 +216,12 @@ v.setup_ui()
         cp[self._VIEW_SETTINGS] = {
             self._DARK_MODE__OPTION: str(self.view.dark_mode),
             self._IGNORED_MOB_PETS_CSV__OPTION: self.view.ignoredMobsPetsCsv.get(),
+            self._DISPLAY_PETS_IN_GROUP__OPTION: str(self.model.includePetsInGroup)
         }
 
         cp[self._APP_SETTINGS] = {
             self._ROOT_WINDOW_POSITION__OPTION: '+' + self.view.parent.geometry().split('+', 1)[1],
-            self._IGNORED_MOBS_WINDOW_POSITION__OPTION: '+' + self.view._ignored_mobs_window.geometry().split('+', 1)[1]
+            self._IGNORED_MOBS_WINDOW_POSITION__OPTION: '+' + self.view._pet_or_mobs_display_settings_window.geometry().split('+', 1)[1]
         }
 
         srcDirectory = self.settingsFilePath()
@@ -255,18 +252,30 @@ v.setup_ui()
                 darkModeSavedSetting = configParser.getboolean(self._VIEW_SETTINGS, self._DARK_MODE__OPTION, fallback=False)
                 if darkModeSavedSetting != False:
                     self.view.toggle_theme()
+                displayPetsInGroup = configParser.getboolean(self._VIEW_SETTINGS, self._DISPLAY_PETS_IN_GROUP__OPTION, fallback=False)
+                self.view.var_includePetsInGroup.set(displayPetsInGroup)
+                self.model.includePetsInGroup = displayPetsInGroup
 
             if configParser.has_section(self._APP_SETTINGS):
                 rootWindowSize = self.view.parent.geometry().split('+')[0]
-                rootWindowPosition = configParser.get(self._APP_SETTINGS, self._ROOT_WINDOW_POSITION__OPTION, fallback='+0+0')
+                rootWindowPosition = configParser.get(self._APP_SETTINGS, self._ROOT_WINDOW_POSITION__OPTION, fallback='+50+50')
                 self.view.parent.geometry(rootWindowSize + rootWindowPosition)
 
-                ignoredMobWindowSize = self.view._ignored_mobs_window.geometry().split('+')[0]
-                ignoredMobWindowPosition = configParser.get(self._APP_SETTINGS, self._IGNORED_MOBS_WINDOW_POSITION__OPTION, fallback='+0+0')
-                self.view._ignored_mobs_window.geometry(ignoredMobWindowSize + ignoredMobWindowPosition)
+                petOrMobDisplaySettingsWindowSize = self.view._pet_or_mobs_display_settings_window.geometry().split('+')[0]
+                petOrMobDisplaySettingsWindowPosition = configParser.get(self._APP_SETTINGS, self._IGNORED_MOBS_WINDOW_POSITION__OPTION, fallback='+50+50')
+                self.view._pet_or_mobs_display_settings_window.geometry(petOrMobDisplaySettingsWindowSize + petOrMobDisplaySettingsWindowPosition)
             
         except KeyError:
             # This means the config file was missing or malformed. We can choose to ignore this and just use defaults.
             with open(self.settingsFilePath().joinpath('No settings file.txt'), 'w') as f:
                 f.write("No settings file found or failed to load. Default settings have been used.\n")
                 f.write(f"This file can be deleted if a `{self._SETTINGS_FILE_NAME}` file exists in the same folder.\n")
+        
+    def update_display_of_pets_in_group_window(self, displayMobsInGroupWindow: bool):
+        """
+        Updates displayed members in the group. A `False` value will remove any pets from the group.
+        """
+        self.model.includePetsInGroup = displayMobsInGroupWindow
+        if not displayMobsInGroupWindow:
+            # If we're toggling off the display of pets/mobs in the group window, we need to remove any that are currently being displayed.
+            self.gameSession.group.RemoveMembers([member for member in self.gameSession.group.Members if member.Class_ == 'mob'])

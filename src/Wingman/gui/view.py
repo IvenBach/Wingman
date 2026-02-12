@@ -31,12 +31,13 @@ class View(tk.Frame):
         self.groupTreeview: ttk.Treeview
         self.menu_settings: tk.Menu
         self.var_ignoredMobPetsCsv = tk.StringVar(value="")
-        self._ignored_mobs_window = tk.Toplevel(parent)
+        self._pet_or_mobs_display_settings_window = tk.Toplevel(parent)
+        self.var_includePetsInGroup = tk.BooleanVar(value=False)
 
         self.style = ttk.Style()
         self.style.theme_use('clam')
 
-        self._TopLevelWidgets: list[tk.Tk | tk.Toplevel] = [self.parent, self._ignored_mobs_window]
+        self._TopLevelWidgets: list[tk.Tk | tk.Toplevel] = [self.parent, self._pet_or_mobs_display_settings_window]
     
     @classmethod
     def ForTesting(cls):
@@ -140,21 +141,27 @@ c = Controller.ForTesting()
         self.menu_settings.add_command(label="Reset Stats", command=self._controller.reset_stats)
         self.menu_settings.add_separator()
         self.menu_settings.add_command(label="Mobs/Pet settings", command=self._controller.open_ignore_mobs_window)
-        self._ignored_mobs_window.attributes("-topmost", True)
-        self._ignored_mobs_window.protocol("WM_DELETE_WINDOW", self._withdraw_mob_settings_window_and_focus_on_main_window)  # Hide on close
-        self._ignored_mobs_window.withdraw()  # Start hidden
-        self._ignored_mobs_window.title("Mob/Pet Settings")
-        ttk.Label(self._ignored_mobs_window, 
+        self._pet_or_mobs_display_settings_window.attributes("-topmost", True)
+        self._pet_or_mobs_display_settings_window.protocol("WM_DELETE_WINDOW", self._withdraw_pet_or_mobs_display_settings_window)  # Hide on close
+        self._pet_or_mobs_display_settings_window.withdraw()  # Start hidden
+        self._pet_or_mobs_display_settings_window.title("Mob/Pet Settings")
+        ttk.Label(self._pet_or_mobs_display_settings_window, 
                   text="Ignore mobs/pets in room\n(comma-separated):")\
-            .grid(row=1, column=0, sticky=tk.W, padx=10, pady=10)
-        self.ignoredMobsPetsCsv = ttk.Entry(self._ignored_mobs_window, 
+            .grid(row=0, column=0, sticky=tk.W, padx=10, pady=(10, 0))
+        self.ignoredMobsPetsCsv = ttk.Entry(self._pet_or_mobs_display_settings_window, 
                                        textvariable=self.var_ignoredMobPetsCsv, 
                                        width=50)
-        self.ignoredMobsPetsCsv.grid(row=1, column=1, sticky=tk.W, padx=10, pady=10)
+        self.ignoredMobsPetsCsv.grid(row=0, column=1, sticky=tk.W, padx=10)
         # helpful lambda explanation: https://stackoverflow.com/a/55093731
         self.ignoredMobsPetsCsv.bind("<FocusOut>", # Without the lambda the function is never invoked.
                                 lambda e: self._controller.updateIgnoredMobsPets(self.var_ignoredMobPetsCsv.get()))
-        
+        ttk.Label(self._pet_or_mobs_display_settings_window,
+                  text="Include mobs in group window: ")\
+            .grid(row=1, column=0, sticky=tk.W, padx=10)
+        self.includeMobsInGroupCheckButton = ttk.Checkbutton(self._pet_or_mobs_display_settings_window, 
+                                                        variable=self.var_includePetsInGroup, 
+                                                        command=lambda: self.update_display_of_pets_in_group_window(self.var_includePetsInGroup.get()))
+        self.includeMobsInGroupCheckButton.grid(row=1, column=1, sticky=tk.W, padx=10, pady=(0, 10))
         
         self.mb_settings["menu"] = self.menu_settings
 
@@ -246,10 +253,7 @@ c = Controller.ForTesting()
         self.var_total_xp.set(f"Total XP: {current_xp:,}")
         now = time.time()
         if now - self.last_stat_update >= 1.0:
-            current_rate = self._controller.gameSession.get_xp_per_hour()
-            self.var_xp_hr.set(f"{current_rate:,} xp / hr")
-            self.var_duration.set(self._controller.gameSession.get_duration_str())
-            self.last_stat_update = now
+            self.updateTimeRelatedValues(now)
         
         match self._controller.model.isAfk:
             case True:
@@ -278,6 +282,11 @@ c = Controller.ForTesting()
         
         self.updateMobCountInRoom()
 
+    def updateTimeRelatedValues(self, currentTime: float):
+        current_rate = self._controller.gameSession.get_xp_per_hour()
+        self.var_xp_hr.set(f"{current_rate:,} xp / hr")
+        self.var_duration.set(self._controller.gameSession.get_duration_str())
+        self.last_stat_update = currentTime
 
     # 3. The Toggle Logic
     def toggle_topmost(self):
@@ -353,8 +362,11 @@ c = Controller.ForTesting()
         else:
             self.var_count_of_mobs_in_room.set(f"Mobs in Room: {len(self._controller.model.currentMobsInRoom)}")
 
-    def open_ignore_mobs_window(self):
-        self._ignored_mobs_window.deiconify()
+    def open_pet_or_mobs_display_settings_window(self):
+        self._pet_or_mobs_display_settings_window.deiconify()
 
-    def _withdraw_mob_settings_window_and_focus_on_main_window(self):
-         self._ignored_mobs_window.withdraw()
+    def _withdraw_pet_or_mobs_display_settings_window(self):
+         self._pet_or_mobs_display_settings_window.withdraw()
+    
+    def update_display_of_pets_in_group_window(self, displayMobsInGroupWindow: bool):
+        self._controller.update_display_of_pets_in_group_window(displayMobsInGroupWindow)

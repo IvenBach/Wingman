@@ -4,6 +4,9 @@ from unittest.mock import patch
 from pathlib import Path
 import sys
 import configparser
+import tkinter as tk
+
+from Wingman.core.model import Model
 if __name__ == "__main__":
     srcDirectory = Path(__file__).parent.parent.parent.resolve()
     sys.path.append(str(srcDirectory))
@@ -188,6 +191,21 @@ class TestGrouping():
         c.process_queue()
 
         assert initialGroupSize == 3
+        assert c.gameSession.group.Count == 2
+    
+    def test_IncludeMobsInGroup_MobsDisplayInGroupDisplay(self):
+        c = Controller.ForTesting()
+        c.model.includePetsInGroup = True
+        text = """Beautiful's group:
+
+[ Class      Lv] Status   Name              Hits            Fat             Power         
+[Sin         74]         Beautiful        500/500 (100%)  500/500 (100%)  687/731 ( 93%)  
+[mob         72]         angel of death   417/417 (100%)  417/417 (100%)  618/618 (100%)  """
+
+        c.receiver.receive(text)
+
+        c.process_queue()
+
         assert c.gameSession.group.Count == 2
 
 class TestDisplayingCentralColumnLabelInView():

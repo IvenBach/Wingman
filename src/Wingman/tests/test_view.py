@@ -9,6 +9,7 @@ if __name__ == "__main__":
 from Wingman.gui.view import View
 from Wingman.core.controller import Controller
 from Wingman.core.parser import Parser
+from Wingman.core.model import Model
 
 class TestView():
     def test_SettingController(self):
@@ -88,3 +89,25 @@ class TestView():
             
             mockedDisplay.assert_not_called()
             mockedHide.assert_not_called()
+
+    def test_ViewInitiallyIncludesPets_DeselectedFromView_WhenUpdateMethodInvokedPetsAreRemoved(self):
+        m = Model(Parser())
+        m.includePetsInGroup = True
+        v = View(tk.Toplevel())
+        v.var_includePetsInGroup.set(True)
+        c = Controller.ForTesting(m, v)
+        c.receiver.receive("""Beautiful's group:
+
+[ Class      Lv] Status   Name              Hits            Fat             Power         
+[Sin         74]         Beautiful        500/500 (100%)  500/500 (100%)  687/731 ( 93%)  
+[mob         72]         angel of death   417/417 (100%)  417/417 (100%)  618/618 (100%)  """)
+        c.process_queue()
+
+        groupCountWithPetsIncluded = c.gameSession.group.Count
+        #https://tkdocs.com/shipman/ttk-Checkbutton.html - Not supported are the following methods of the Tkinter Checkbutton widget: .deselect(), .flash(), .select(), and .toggle(). To change the state of a checkbutton through program control, use the .set() method of the associated control variable.
+        # Checking for change on button state is done directly on the backing `BooleanVar`.
+        v.var_includePetsInGroup.set(False) 
+        v.update_display_of_pets_in_group_window(v.var_includePetsInGroup.get())
+        
+        assert groupCountWithPetsIncluded == 2
+        assert c.gameSession.group.Count == 1
