@@ -1,5 +1,5 @@
 import pytest
-
+from typing import Callable, List
 from pathlib import Path
 import sys
 if __name__ == "__main__":
@@ -42,7 +42,7 @@ def groupParser():
 
 class TestGroupParser:
 
-    def test_parse_valid_group_block(self, groupParser):
+    def test_parse_valid_group_block(self, groupParser: Callable[[str], List[Character]]):
         """
         Tests that we can extract multiple members from a raw text block.
         """
@@ -70,7 +70,7 @@ class TestGroupParser:
         assert p2.Class_ == "Kenku"
         assert p2.Name == "Big"
 
-    def test_parse_single_line_update(self, groupParser):
+    def test_parse_single_line_update(self, groupParser: Callable[[str], List[Character]]):
         """
         Tests parsing a single line, which is how the session often processes data.
         """
@@ -93,13 +93,13 @@ class TestGroupParser:
                                             "Stun"
                                         ]
     )
-    def test_individual_status_flags(self, input, expected, groupParser):
+    def test_individual_status_flags(self, input, expected, groupParser: Callable[[str], List[Character]]):
         results = groupParser(input)
         actual = results[0].Status
 
         assert actual == expected
 
-    def test_ignores_headers_and_noise(self, groupParser):
+    def test_ignores_headers_and_noise(self, groupParser: Callable[[str], List[Character]]):
         """
         Ensures table headers don't crash the parser or create fake members.
         """
@@ -133,7 +133,7 @@ class TestGroupParser:
                                             "Bleed + Poison + Disease + Stun"
                                         ]
                                     )
-    def test_multiple_status_flags(self, input, expected: StatusIndicator, groupParser):
+    def test_multiple_status_flags(self, input, expected: StatusIndicator, groupParser: Callable[[str], List[Character]]):
         actual = groupParser(input)[0].Status
 
         assert actual == expected
@@ -148,14 +148,14 @@ class TestGroupParser:
                                                 "Disguised-Follower"
                                                 ]
     )
-    def test_new_follower_results_in_new_group_member(self, input, expected, groupParser):
+    def test_new_follower_results_in_new_group_member(self, input, expected, groupParser: Callable[[str], List[Character]]):
         results = groupParser(input)
 
         assert len(results) == 1
         assert results[0].Name == expected
 
 
-    def test_existingGroupFollowedByNewMember_IndicatesNewMemberWithoutUpdatesToExpected(self, groupParser):
+    def test_existingGroupFollowedByNewMember_IndicatesNewMemberWithoutUpdatesToExpected(self, groupParser: Callable[[str], List[Character]]):
         raw_input = """Beautiful's group:
 [ Class        Lvl] Status     Name                 Hits               Fat                Power
 [Sin            69]           Foo                  100/ 500 (100%)    474/ 500 ( 94%)    638/ 707 ( 90%)
@@ -171,7 +171,7 @@ A vapor-shrouded mistwolf follows you"""
         (False, 1),
         (True, 2)
     ])
-    def test_include_pets_in_group_parse(self, includePets: bool, expectedCount: int, groupParser):
+    def test_include_pets_in_group_parse(self, includePets: bool, expectedCount: int, groupParser: Callable[[str], List[Character]]):
         raw_input = """Beautiful's group:
 
 [ Class      Lv] Status   Name              Hits            Fat             Power
@@ -183,7 +183,7 @@ A vapor-shrouded mistwolf follows you"""
 
         assert len(groupMembers) == expectedCount
 
-    def test_InputPrefixedWithCharstateBeforeInput_IgnoresCharstateAndCorrectlyParsesMember(self, groupParser):
+    def test_InputPrefixedWithCharstateBeforeInput_IgnoresCharstateAndCorrectlyParsesMember(self, groupParser: Callable[[str], List[Character]]):
         raw_input = r'���charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}��\x009\x00\x00\x00\x00\\2\x00\x00\x00\x00���charvitals {"hp":500,"maxhp":500,"mana":436,"maxmana":731,"moves":500,"maxmoves":500,"poisoned":false,"bleeding":false,"diseased":false,"stunned":false}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}���,\x00\x00\x00\x00���comm.channel {"chan":"say","msg":"You say \'follow again\'","player":"Beautiful"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charvitals {"hp":500,"maxhp":500,"mana":438,"maxmana":731,"moves":500,"maxmoves":500,"poisoned":false,"bleeding":false,"diseased":false,"stunned":false}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}�����charstate {"combat":"NORMAL","currentWeight":83,"maxWeight":250,"pos":"Standing"}��AnonymizedName follows you'
 
         matches = groupParser(raw_input)
