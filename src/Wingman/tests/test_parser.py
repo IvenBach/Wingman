@@ -443,3 +443,74 @@ class TestMobParse:
         actual = Parser().ParseMovement().mobRelatedMovement(text, mobsInRoom)
 
         assert actual == (True, MobMovement.ENTERING, 'a windfang hatchling')
+
+class TestBuffOrShieldEndingParse:
+    @pytest.mark.parametrize("enumMember", [Parser.ParseBuffOrShieldText.ShieldEnds,
+                                            Parser.ParseBuffOrShieldText.BlurEnds,
+                                            Parser.ParseBuffOrShieldText.ProtectEnds,
+                                            Parser.ParseBuffOrShieldText.ToughSkinEnds,
+                                            #Chaos
+                                            Parser.ParseBuffOrShieldText.BleedResistEnds,
+                                            Parser.ParseBuffOrShieldText.ChaosFortitudeEnds,
+                                            Parser.ParseBuffOrShieldText.CombatEnds,
+                                            Parser.ParseBuffOrShieldText.DiseaseResistEnds,
+                                            Parser.ParseBuffOrShieldText.PoisonResistEnds,
+                                            #Good
+                                            Parser.ParseBuffOrShieldText.BlessEnds,
+                                            #Evil
+                                            Parser.ParseBuffOrShieldText.RegenerateEnds,
+                                            Parser.ParseBuffOrShieldText.VitalizeEnds,
+                                            ],
+                                        ids=["Shield Ends",
+                                            "Blur Ends",
+                                            "Protect Ends",
+                                            "Tough Skin Ends",
+                                            "Chaos - Bleed Resist Ends",
+                                            "Chaos - Chaos Fortitude Ends",
+                                            "Chaos - Combat Ends",
+                                            "Chaos - Disease Resist Ends",
+                                            "Chaos - Poison Resist Ends",
+                                            "Good - Bless Ends",
+                                            "Evil - Regenerate Ends",
+                                            "Evil - Vitalize Ends"
+                                        ])
+    def test_BuffOrShieldTextEndingOnly_ReturnsTrue(self, enumMember: Parser.ParseBuffOrShieldText):
+        isBuffOrShieldRefreshing, whatEnded = Parser().parseBuffOrShieldIsRefreshing(enumMember.value)
+
+        assert isBuffOrShieldRefreshing == False
+        assert whatEnded is not None
+        assert whatEnded == enumMember
+
+    @pytest.mark.parametrize("text", [Parser.ParseBuffOrShieldText.ShieldEnds.value + "\n" + Parser.ParseBuffOrShieldText.ShieldStarts.value,
+                                        Parser.ParseBuffOrShieldText.BlurEnds.value + "\n" + Parser.ParseBuffOrShieldText.BlurStarts.value,
+                                        Parser.ParseBuffOrShieldText.ProtectEnds.value + "\n" + Parser.ParseBuffOrShieldText.ProtectStarts.value,
+                                        Parser.ParseBuffOrShieldText.ToughSkinEnds.value + "\n" + Parser.ParseBuffOrShieldText.ToughSkinStarts.value,
+                                        #Chaos
+                                        Parser.ParseBuffOrShieldText.BleedResistEnds.value + "\n" + Parser.ParseBuffOrShieldText.BleedResistStarts.value,
+                                        Parser.ParseBuffOrShieldText.ChaosFortitudeEnds.value + "\n" + Parser.ParseBuffOrShieldText.ChaosFortitudeStarts.value,
+                                        Parser.ParseBuffOrShieldText.CombatEnds.value + "\n" + Parser.ParseBuffOrShieldText.CombatStarts.value,
+                                        Parser.ParseBuffOrShieldText.DiseaseResistEnds.value + "\n" + Parser.ParseBuffOrShieldText.DiseaseResistStarts.value,
+                                        Parser.ParseBuffOrShieldText.PoisonResistEnds.value + "\n" + Parser.ParseBuffOrShieldText.PoisonResistStarts.value,
+                                        #Good
+                                        Parser.ParseBuffOrShieldText.BlessEnds.value + "\n" + Parser.ParseBuffOrShieldText.BlessStarts.value,
+                                        #Evil
+                                        Parser.ParseBuffOrShieldText.RegenerateEnds.value + "\n" + Parser.ParseBuffOrShieldText.RegenerateStarts.value,
+                                        Parser.ParseBuffOrShieldText.VitalizeEnds.value + "\n" + Parser.ParseBuffOrShieldText.VitalizeStarts.value
+                                    ],
+                                    ids=["Shield Refresh",
+                                        "Blur Refresh",
+                                        "Protect Refresh",
+                                        "Tough Skin Refresh",
+                                        "Chaos - Bleed Resist Refresh",
+                                        "Chaos - Chaos Fortitude Refresh",
+                                        "Chaos - Combat Refresh",
+                                        "Chaos - Disease Resist Refresh",
+                                        "Chaos - Poison Resist Refresh",
+                                        "Good - Bless Refresh",
+                                        "Evil - Regenerate Refresh",
+                                        "Evil - Vitalize Refresh"
+                                        ])
+    def test_BuffOrShieldRefreshedBySpell_EndingTextAndApplyingTextInSameInput_ReturnsFalse(self, text):
+        isBuffOrShieldRefreshing, _ = Parser().parseBuffOrShieldIsRefreshing(text)
+
+        assert isBuffOrShieldRefreshing

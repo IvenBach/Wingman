@@ -147,3 +147,90 @@ class TestView():
             v.update_gui()
 
         mockedRefresh.assert_called_once()
+
+    class TestBuffOrShieldEnding:
+        @pytest.mark.parametrize("text,methodToBeCalled", [(Parser.ParseBuffOrShieldText.ShieldEnds.value, View.displayShieldEndedLabel),
+                                                            (Parser.ParseBuffOrShieldText.BlurEnds.value, View.displayBlurEndedLabel),
+                                                            (Parser.ParseBuffOrShieldText.ProtectEnds.value, View.displayProtectEndedLabel),
+                                                            (Parser.ParseBuffOrShieldText.ToughSkinEnds.value, View.displayToughSkinEndedLabel),
+                                                            #Chaos
+                                                            (Parser.ParseBuffOrShieldText.BleedResistEnds.value, View.displayBleedResistEndedLabel),
+                                                            (Parser.ParseBuffOrShieldText.ChaosFortitudeEnds.value, View.displayChaosFortitudeEndedLabel),
+                                                            (Parser.ParseBuffOrShieldText.CombatEnds.value, View.displayCombatEndedLabel),
+                                                            (Parser.ParseBuffOrShieldText.DiseaseResistEnds.value, View.displayDiseaseResistEndedLabel),
+                                                            (Parser.ParseBuffOrShieldText.PoisonResistEnds.value, View.displayPoisonResistEndedLabel),
+                                                            #Good
+                                                            (Parser.ParseBuffOrShieldText.BlessEnds.value, View.displayBlessEndedLabel),
+                                                            #Evil
+                                                            (Parser.ParseBuffOrShieldText.RegenerateEnds.value, View.displayRegenerateEndedLabel),
+                                                            (Parser.ParseBuffOrShieldText.VitalizeEnds.value, View.displayVitalizeEndedLabel)
+                                                        ],
+                                                        ids=["Shield refresh",
+                                                            "Blur refresh",
+                                                            "Protect refresh",
+                                                            "Tough Skin refresh",
+                                                            #Chaos
+                                                            "Chaos - Bleed Resist refresh",
+                                                            "Chaos - Chaos Fortitude refresh",
+                                                            "Chaos - Combat refresh",
+                                                            "Chaos - Disease Resist refresh",
+                                                            "Chaos - Poison Resist refresh",
+                                                            #Good
+                                                            "Good - Bless refresh",
+                                                            #Evil
+                                                            "Evil - Regenerate refresh",
+                                                            "Evil - Vitalize refresh"
+                                                        ]
+        )
+        def test_BuffOrShieldEnds_LabelDisplayed(self, text, methodToBeCalled):
+            c = Controller.ForTesting()
+            v = c.view
+            c.receiver.receive(text)
+
+            with patch.object(v, f'{methodToBeCalled.__name__}') as mockedDisplay:
+                v.update_gui()
+
+            mockedDisplay.assert_called_once_with()
+
+        @pytest.mark.parametrize("text,methodToBeCalled", [(Parser.ParseBuffOrShieldText.ShieldEnds.value + Parser.ParseBuffOrShieldText.ShieldStarts.value, View.displayShieldEndedLabel),
+                                                            (Parser.ParseBuffOrShieldText.BlurEnds.value + Parser.ParseBuffOrShieldText.BlurStarts.value, View.displayBlurEndedLabel),
+                                                            (Parser.ParseBuffOrShieldText.ProtectEnds.value + Parser.ParseBuffOrShieldText.ProtectStarts.value, View.displayProtectEndedLabel),
+                                                            (Parser.ParseBuffOrShieldText.ToughSkinEnds.value + Parser.ParseBuffOrShieldText.ToughSkinStarts.value, View.displayToughSkinEndedLabel),
+                                                            #Chaos
+                                                            (Parser.ParseBuffOrShieldText.BleedResistEnds.value + Parser.ParseBuffOrShieldText.BleedResistStarts.value, View.displayBleedResistEndedLabel),
+                                                            (Parser.ParseBuffOrShieldText.ChaosFortitudeEnds.value + Parser.ParseBuffOrShieldText.ChaosFortitudeStarts.value, View.displayChaosFortitudeEndedLabel),
+                                                            (Parser.ParseBuffOrShieldText.CombatEnds.value + Parser.ParseBuffOrShieldText.CombatStarts.value, View.displayCombatEndedLabel),
+                                                            (Parser.ParseBuffOrShieldText.DiseaseResistEnds.value + Parser.ParseBuffOrShieldText.DiseaseResistStarts.value, View.displayDiseaseResistEndedLabel),
+                                                            (Parser.ParseBuffOrShieldText.PoisonResistEnds.value + Parser.ParseBuffOrShieldText.PoisonResistStarts.value, View.displayPoisonResistEndedLabel),
+                                                            #Good
+                                                            (Parser.ParseBuffOrShieldText.BlessEnds.value + Parser.ParseBuffOrShieldText.BlessStarts.value, View.displayBlessEndedLabel),
+                                                            #Evil
+                                                            (Parser.ParseBuffOrShieldText.RegenerateEnds.value + Parser.ParseBuffOrShieldText.RegenerateStarts.value, View.displayRegenerateEndedLabel),
+                                                            (Parser.ParseBuffOrShieldText.VitalizeEnds.value + Parser.ParseBuffOrShieldText.VitalizeStarts.value, View.displayVitalizeEndedLabel)
+                                                        ],
+                                                        ids=["Shield refresh",
+                                                            "Blur refresh",
+                                                            "Protect refresh",
+                                                            "Tough Skin refresh",
+                                                            #Chaos
+                                                            "Chaos - Bleed Resist refresh",
+                                                            "Chaos - Fortitude refresh",
+                                                            "Chaos - Combat refresh",
+                                                            "Chaos - Disease Resist refresh",
+                                                            "Chaos - Poison Resist refresh",
+                                                            #Good
+                                                            "Good - Bless refresh",
+                                                            #Evil
+                                                            "Evil - Regenerate refresh",
+                                                            "Evil - Vitalize refresh"
+                                                        ]
+        )
+        def test_BuffOrShieldRefreshed_LabelNotDisplayed(self, text, methodToBeCalled):
+            c = Controller.ForTesting()
+            v = c.view
+            c.receiver.receive(text)
+
+            with patch.object(v, f'{methodToBeCalled.__name__}') as mockedDisplay:
+                v.update_gui()
+
+            mockedDisplay.assert_not_called()

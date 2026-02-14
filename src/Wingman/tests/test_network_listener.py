@@ -1,10 +1,11 @@
 import pytest
 from unittest.mock import MagicMock
 from scapy.all import IP, TCP
+from unittest.mock import patch, call
 from Wingman.core.network_listener import NetworkListener
 from Wingman.core.input_receiver import InputReceiver
 from Wingman.core.controller import Controller
-
+from Wingman.core.parser import Parser
 
 # Helper class to mock Scapy packet behavior cleanly
 class MockPacket:
@@ -81,3 +82,31 @@ def test_clean_payload_decoding(listener_stack):
     listener.packet_callback(pkt)
 
     assert receiver.dequeue() == "Testing output."
+
+def test_AnyInformationIncludedWithBuffOrShieldRefresh_BeforeSpellEndingValueAndAfterSpellStartsValue_ContinuesOnToReceiverForProcessing(listener_stack):
+    listener, receiver = listener_stack
+    listener.controller.receiver = receiver #Use same receiver
+    assert isinstance(receiver, InputReceiver)
+    target_ip = listener.target_ip
+    target_port = listener.target_port
+
+    text = f"""{Parser.AfkStatus.BeginAfk.value}
+{Parser.AfkStatus.EndAfk.value}
+You cast a Chaos.Fortitude.I spell!
+You invoke a prayer to Ra'Kur, filling you with an unnatural energy!
+{Parser.ParseBuffOrShieldText.ChaosFortitudeEnds.value}
+{Parser.ParseBuffOrShieldText.ChaosFortitudeStarts.value}
+Text that trails in case it too needs to be forwarded.\n""" #Lines before the buff/shield ending value are still forwarded on
+    payload = (text).encode('utf-8')
+    pkt = MockPacket(target_ip, target_port, payload)
+
+    #Testing a bit of implementation details. Not sure how else to test lines before the buff/shield ending value are still forwarded on without this.
+    with patch.object(receiver, receiver.receive.__name__) as mockedReceiveMethod:
+        listener.packet_callback(pkt)
+
+
+    assert mockedReceiveMethod.call_args_list == [call(Parser.AfkStatus.BeginAfk.value),
+                                                    call(Parser.AfkStatus.EndAfk.value),
+                                                    call("You cast a Chaos.Fortitude.I spell!"),
+                                                    call("You invoke a prayer to Ra'Kur, filling you with an unnatural energy!"),
+                                                    call("Text that trails in case it too needs to be forwarded.")]

@@ -316,3 +316,144 @@ Subsequent removal of mob from the model needs to be dealt with by the caller.''
                 return True, MobMovement.ENTERING, text[:index]
 
             return False, None, None
+
+    class ParseBuffOrShieldText(StrEnum):
+        NotApplicable = "Default value for `unassigned` values."
+
+        BlurEnds = "The blur about you stops."
+        BlurStarts = "You look very blurry!"
+        ProtectEnds = "The magical sheen about you fades."
+        ProtectStarts = "You are surrounded by a magical sheen!"
+        ShieldEnds = "The glowing shield in front of you disappears."
+        ShieldStarts = "You are fronted by a glowing shield!"
+        ToughSkinEnds = "Your skin softens."
+        ToughSkinStarts = "You get tougher skin!"
+
+        #Chaos
+        BleedResistEnds = "Your bleeding resistance fades."
+        BleedResistStarts = "You look resistant to bleeding."
+        ChaosFortitudeEnds = "The hale look about you fades."
+        ChaosFortitudeStarts = "You look hale."
+        CombatEnds = "The combat skill about you goes away."
+        CombatStarts = "You look adept at combat skills!"
+        DiseaseResistEnds = "Your disease resistance fades."
+        DiseaseResistStarts = "You look resistant to disease."
+        PoisonResistEnds = "Your poison resistance fades."
+        PoisonResistStarts = "You look resistant to poison."
+
+        #Good
+        BlessEnds = "The blessed look about you fades."
+        BlessStarts = "You look blessed!"
+
+        #Evil
+        RegenerateEnds = "The healthful glow surrounding you fades."
+        RegenerateStarts = "You look extremely healthy!"
+        VitalizeEnds = "The aura of vitality surrounding you fades."
+        VitalizeStarts = "You look extremely vital!"
+
+    def getEndBuffOrShieldValueFromStartValue(self, startingValue: ParseBuffOrShieldText) -> ParseBuffOrShieldText:
+        """Given a starting value for a buff or shield, return the corresponding ending value."""
+        if startingValue == self.ParseBuffOrShieldText.BlurStarts:
+            return self.ParseBuffOrShieldText.BlurEnds
+        if startingValue == self.ParseBuffOrShieldText.ProtectStarts:
+            return self.ParseBuffOrShieldText.ProtectEnds
+        if startingValue == self.ParseBuffOrShieldText.ShieldStarts:
+            return self.ParseBuffOrShieldText.ShieldEnds
+        if startingValue == self.ParseBuffOrShieldText.ToughSkinStarts:
+            return self.ParseBuffOrShieldText.ToughSkinEnds
+
+        #Chaos
+        if startingValue == self.ParseBuffOrShieldText.BleedResistStarts:
+            return self.ParseBuffOrShieldText.BleedResistEnds
+        if startingValue == self.ParseBuffOrShieldText.ChaosFortitudeStarts:
+            return self.ParseBuffOrShieldText.ChaosFortitudeEnds
+        if startingValue == self.ParseBuffOrShieldText.CombatStarts:
+            return self.ParseBuffOrShieldText.CombatEnds
+        if startingValue == self.ParseBuffOrShieldText.DiseaseResistStarts:
+            return self.ParseBuffOrShieldText.DiseaseResistEnds
+        if startingValue == self.ParseBuffOrShieldText.PoisonResistStarts:
+            return self.ParseBuffOrShieldText.PoisonResistEnds
+
+        #Good
+        if startingValue == self.ParseBuffOrShieldText.BlessStarts:
+            return self.ParseBuffOrShieldText.BlessEnds
+
+        #Evil
+        if startingValue == self.ParseBuffOrShieldText.RegenerateStarts:
+            return self.ParseBuffOrShieldText.RegenerateEnds
+        if startingValue == self.ParseBuffOrShieldText.VitalizeStarts:
+            return self.ParseBuffOrShieldText.VitalizeEnds
+
+        raise ValueError(f"Invalid starting value: {startingValue}")
+
+    def parseBuffOrShieldIsRefreshing(self, text: str) -> tuple[bool | None, ParseBuffOrShieldText | None]:
+        """Parse text to determine if a buff or shield has refreshed, and if so, which spell it is.
+
+If the text includes the ending and starting value for the spell, this is treated as a refresh of the buff/shield and results in a `True` return value.
+
+- First Tuple Part: `bool` - `True` = a buff or shield has refreshed, `False` = buff or shield has ended, `None` - non-buff/shield related.
+- Second Tuple Part: `ParseBuffOrShieldText` indicates which buff/shield has refreshed. `None` for non-buff/shield related."""
+        if self.ParseBuffOrShieldText.ShieldEnds.value in text:
+            if self.ParseBuffOrShieldText.ShieldStarts.value in text:
+                return True, self.ParseBuffOrShieldText.ShieldStarts
+            return False, self.ParseBuffOrShieldText.ShieldEnds
+
+        if self.ParseBuffOrShieldText.BlurEnds.value in text:
+            if self.ParseBuffOrShieldText.BlurStarts.value in text:
+                return True, self.ParseBuffOrShieldText.BlurStarts
+            return False, self.ParseBuffOrShieldText.BlurEnds
+
+        if self.ParseBuffOrShieldText.ProtectEnds.value in text:
+            if self.ParseBuffOrShieldText.ProtectStarts.value in text:
+                return True, self.ParseBuffOrShieldText.ProtectStarts
+            return False, self.ParseBuffOrShieldText.ProtectEnds
+
+        if self.ParseBuffOrShieldText.ToughSkinEnds.value in text:
+            if self.ParseBuffOrShieldText.ToughSkinStarts.value in text:
+                return True, self.ParseBuffOrShieldText.ToughSkinStarts
+            return False, self.ParseBuffOrShieldText.ToughSkinEnds
+
+        #Chaos
+        if self.ParseBuffOrShieldText.BleedResistEnds.value in text:
+            if self.ParseBuffOrShieldText.BleedResistStarts.value in text:
+                return True, self.ParseBuffOrShieldText.BleedResistStarts
+            return False, self.ParseBuffOrShieldText.BleedResistEnds
+
+        if self.ParseBuffOrShieldText.ChaosFortitudeEnds.value in text:
+            if self.ParseBuffOrShieldText.ChaosFortitudeStarts.value in text:
+                return True, self.ParseBuffOrShieldText.ChaosFortitudeStarts
+            return False, self.ParseBuffOrShieldText.ChaosFortitudeEnds
+
+        if self.ParseBuffOrShieldText.CombatEnds.value in text:
+            if self.ParseBuffOrShieldText.CombatStarts.value in text:
+                return True, self.ParseBuffOrShieldText.CombatStarts
+            return False, self.ParseBuffOrShieldText.CombatEnds
+
+        if self.ParseBuffOrShieldText.DiseaseResistEnds.value in text:
+            if self.ParseBuffOrShieldText.DiseaseResistStarts.value in text:
+                return True, self.ParseBuffOrShieldText.DiseaseResistStarts
+            return False, self.ParseBuffOrShieldText.DiseaseResistEnds
+
+        if self.ParseBuffOrShieldText.PoisonResistEnds.value in text:
+            if self.ParseBuffOrShieldText.PoisonResistStarts.value in text:
+                return True, self.ParseBuffOrShieldText.PoisonResistStarts
+            return False, self.ParseBuffOrShieldText.PoisonResistEnds
+
+        #Good
+        if self.ParseBuffOrShieldText.BlessEnds.value in text:
+            if self.ParseBuffOrShieldText.BlessStarts.value in text:
+                return True, self.ParseBuffOrShieldText.BlessStarts
+            return False, self.ParseBuffOrShieldText.BlessEnds
+
+        #Evil
+        if self.ParseBuffOrShieldText.RegenerateEnds.value in text:
+            if self.ParseBuffOrShieldText.RegenerateStarts.value in text:
+                return True, self.ParseBuffOrShieldText.RegenerateStarts
+            return False, self.ParseBuffOrShieldText.RegenerateEnds
+
+        if self.ParseBuffOrShieldText.VitalizeEnds.value in text:
+            if self.ParseBuffOrShieldText.VitalizeStarts.value in text:
+                return True, self.ParseBuffOrShieldText.VitalizeStarts
+            return False, self.ParseBuffOrShieldText.VitalizeEnds
+
+        return None, None

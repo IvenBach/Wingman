@@ -179,6 +179,10 @@ v.setup_ui()
                         self.model.currentMobsInRoom.remove(mobName)
                         self.updateMobCountInRoom()
             
+            isBuffOrShieldRefreshing, whatEnded = self.model.parser.parseBuffOrShieldIsRefreshing(line)
+            if isBuffOrShieldRefreshing == False:
+                self.model.BuffOrShieldEnding = whatEnded
+
         return logs
 
     def updateMeditationDisplayValue(self):

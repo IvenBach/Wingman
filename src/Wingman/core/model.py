@@ -10,3 +10,4 @@ class Model:
         self.currentMobsInRoom: list[str] = []
         self.ignoreTheseMobsInCurrentRoom: list[str] = []
         self.includePetsInGroup: bool = False
+        self.BuffOrShieldEnding: Parser.ParseBuffOrShieldText | None = None

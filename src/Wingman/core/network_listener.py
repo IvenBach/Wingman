@@ -5,8 +5,12 @@ from Wingman.core.input_receiver import InputReceiver
 from Wingman.core.parser import Parser
 from Wingman.core.mobs_in_room import MobsInRoom
 
+
 class NetworkListener:
     def __init__(self, input_receiver: InputReceiver, controller):
+        from Wingman.core.controller import Controller # Avoid circular import issues by importing here
+        assert isinstance(controller, Controller)
+
         self.receiver = input_receiver
         # Update this if your game server IP changes
         self.target_ip = '18.119.153.121'
@@ -33,6 +37,15 @@ class NetworkListener:
                     chunk = payload_bytes.decode('utf-8', errors='replace')
                     if Parser().ParseMobs().hasAnsiColorCodedMobs(chunk, predeterminedChunkMobList):
                         mobsInRoom = MobsInRoom(predeterminedChunkMobList)
+
+                    isBuffOrShieldRefreshing, whatIsRefreshing_StartText = Parser().parseBuffOrShieldIsRefreshing(chunk)
+                    if isBuffOrShieldRefreshing:
+                        assert whatIsRefreshing_StartText is not None
+                        endText = Parser().getEndBuffOrShieldValueFromStartValue(whatIsRefreshing_StartText)
+                        indexBeforeEndText = chunk.find(endText.value)
+                        indexAfterStartTextAndNewlineCharacter = chunk.find(whatIsRefreshing_StartText.value) + len(whatIsRefreshing_StartText.value) + 1
+
+                        chunk = chunk[:indexBeforeEndText] + chunk[indexAfterStartTextAndNewlineCharacter:] #Discard between end spell text to start spell text, inclusive of both.
 
                     self._buffer += self.receiver.remove_ANSI_color_codes(chunk)
 
