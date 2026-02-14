@@ -6,14 +6,13 @@ import sys
 import configparser
 import tkinter as tk
 
-from Wingman.core.model import Model
 if __name__ == "__main__":
     srcDirectory = Path(__file__).parent.parent.parent.resolve()
     sys.path.append(str(srcDirectory))
 
 from Wingman.core.controller import Controller
-from Wingman.gui.view import View
 from Wingman.core.parser import Parser
+from Wingman.core.health_Tagger import HealthTagger
 
 class TestProcessQueue():
     def test_process_queue_calculates_xp(self):
@@ -125,6 +124,125 @@ class TestProcessQueue():
             mockedUpdate.assert_called_once_with()
 
 class TestGrouping():
+    def test_GainNewFollower_NewFollowerAddedToGroupForDisplay(self):
+        c = Controller.ForTesting()
+        c.receiver.receive("""Beautiful's group:
+
+[ Class        Lvl] Status     Name                 Hits               Fat                Power            
+[Sin            69]           Beautiful            500/ 500 (100%)    497/ 500 ( 99%)    592/ 707 ( 83%)   
+[Skelton        50]           Skeletor             396/ 396 (100%)    396/ 396 (100%)    554/ 554 (100%) """)
+        c.view.update_gui()
+        groupCountBeforeNewFollower = len(c.view.groupTreeview.get_children())
+
+        c.receiver.receive("FooBar follows you")
+        c.view.update_gui()
+        groupCountAfterNewFollower = len(c.view.groupTreeview.get_children())
+        assert groupCountBeforeNewFollower == 2
+        assert groupCountAfterNewFollower == 3
+    
+    def test_LoseFollower_FollowerRemovedFromGroupForDisplay(self):
+        c = Controller.ForTesting()
+        c.receiver.receive("""Beautiful's group:
+
+[ Class        Lvl] Status     Name                 Hits               Fat                Power            
+[Sin            69]           Beautiful            500/ 500 (100%)    497/ 500 ( 99%)    592/ 707 ( 83%)   
+[Apple           1]           Foo                  100/ 200 (100%)    150/ 300 ( 50%)    250/ 500 ( 50%)   
+[Skelton        50]           Skeletor             396/ 396 (100%)    396/ 396 (100%)    554/ 554 (100%) """)
+        c.view.update_gui()
+        groupCountBeforeLosingFollower = len(c.view.groupTreeview.get_children())
+
+        c.receiver.receive("Foo disbands from the group.")
+        c.view.update_gui()
+        groupCountAfterLosingFollower = len(c.view.groupTreeview.get_children())
+
+        assert groupCountBeforeLosingFollower == 3
+        assert groupCountAfterLosingFollower == 2
+    
+    def test_GainNewFollowerAndLoseFollower_WithoutInvokingGroupCommand_CountsCorrectlyForAdditionAndRemoval(self):        
+        c = Controller.ForTesting()
+        c.receiver.receive("""Beautiful's group:
+
+[ Class        Lvl] Status     Name                 Hits               Fat                Power            
+[Sin            69]           Beautiful            500/ 500 (100%)    497/ 500 ( 99%)    592/ 707 ( 83%)   
+[Skelton        50]           Skeletor             396/ 396 (100%)    396/ 396 (100%)    554/ 554 (100%) """)
+        c.view.update_gui()
+        groupCountInitial = len(c.view.groupTreeview.get_children())
+
+        c.receiver.receive("NewFollower follows you")
+        c.view.update_gui()
+        groupCountAfterNewFollower = len(c.view.groupTreeview.get_children())
+
+        c.receiver.receive("NewFollower disbands from the group.")
+        c.view.update_gui()
+        groupCountAfterLosingFollower = len(c.view.groupTreeview.get_children())
+
+        assert groupCountInitial == 2
+        assert groupCountAfterNewFollower == 3
+        assert groupCountAfterLosingFollower == 2
+
+    def test_FollowedByTwoIdenticallyDisguisedCharacters_BothAddedToGroupForDisplay(self):
+        c = Controller.ForTesting()
+        c.receiver.receive("""Beautiful's group:
+
+[ Class        Lvl] Status     Name                 Hits               Fat                Power            
+[Sin            69]           Beautiful            500/ 500 (100%)    497/ 500 ( 99%)    592/ 707 ( 83%)   """)
+        c.view.update_gui()
+        unfollowedGroupCount = len(c.view.groupTreeview.get_children())
+
+        c.receiver.receive("A primeval eldritch voidwolf follows you")
+        c.view.update_gui()
+        groupCountAfterFirstFollower = len(c.view.groupTreeview.get_children())
+
+        c.receiver.receive("A primeval eldritch voidwolf follows you")
+        c.view.update_gui()
+        groupCountAfterSecondFollower = len(c.view.groupTreeview.get_children())
+
+        assert unfollowedGroupCount == 1
+        assert groupCountAfterFirstFollower == 2
+        assert groupCountAfterSecondFollower == 3    
+
+    def test_GroupMemberZeroed_DisplaysZeroedFormatting(self):
+        c = Controller.ForTesting()
+        c.receiver.receive("""Foo's group:
+[ Class        Lvl] Status     Name                 Hits               Fat                Power            
+[Bar            01]            Foo                 1/ 500 (  0%)      497/ 500 ( 99%)    592/ 707 ( 83%)   """)
+        
+        c.view.update_gui()
+        member = c.view.groupTreeview.get_children()[0]
+        healthTags = c.view.groupTreeview.item(member, 'tags')
+
+        assert HealthTagger.HealthLevels.ZEROED.value in healthTags
+    
+    def test_GroupMemberInRedHealth_DisplaysRedHealthFormatting(self):
+        c = Controller.ForTesting()
+        c.receiver.receive("[Bar            01]            Foo                 25/ 100 (  0%)      497/ 500 ( 99%)    592/ 707 ( 83%)   """)
+        c.view.update_gui()
+        member = c.view.groupTreeview.get_children()[0]
+
+        healthTags = c.view.groupTreeview.item(member, 'tags')
+
+        assert HealthTagger.HealthLevels.AT_OR_BELOW_25.value in healthTags
+
+    def test_GroupMemberInYellowHealth_DisplaysYellowHealthFormatting(self):
+        c = Controller.ForTesting()
+        c.receiver.receive("[Bar            01]            Foo                 50/ 100 (  0%)      497/ 500 ( 99%)    592/ 707 ( 83%)   ")
+        c.view.update_gui()
+        member = c.view.groupTreeview.get_children()[0]
+
+        healthTags = c.view.groupTreeview.item(member, 'tags')
+
+        assert HealthTagger.HealthLevels.AT_OR_BELOW_50.value in healthTags
+    
+    def test_GroupMemberInGoodHealth_DisplaysNoHealthFormatting(self):
+        c = Controller.ForTesting()
+        c.receiver.receive("[Bar            01]            Foo                 51/ 100 (  0%)      497/ 500 ( 99%)    592/ 707 ( 83%)   ")
+        c.view.update_gui()
+        member = c.view.groupTreeview.get_children()[0]
+
+        healthTags = c.view.groupTreeview.item(member, 'tags')
+
+        assert HealthTagger.HealthLevels.HEALTHY.value in healthTags
+
     def test_UngroupedCharacterGainsNewFollower_NewFollowerAddedToLatestGroupData(self):
         c = Controller.ForTesting()
 
