@@ -36,6 +36,8 @@ class View(tk.Frame):
         self.var_includePetsInGroup = tk.BooleanVar(value=False)
         self._cachedGroup: Group = Group([])
         self._buffOrShieldEndingDisplayTime = 2000 #ms
+        self.var_buffOrShieldEndingText = tk.StringVar(value="")
+        self.var_spellMitigatesAffectText = tk.StringVar(value="")
 
         self.style = ttk.Style()
         self.style.theme_use('clam')
@@ -199,62 +201,26 @@ c = Controller.ForTesting()
         self.groupTreeview.grid(row=2, column=0, pady=5, sticky=tk.NSEW)
 
         #region Shield/Buff Ending Labels
+        _statusFooter = ttk.Frame(main_frame, name="statusFooter")
+        _statusFooter.grid(row=3, column=0, sticky=tk.EW)
+        _statusFooter.grid_columnconfigure(0, weight=1)
+        _statusFooter.grid_columnconfigure(1, weight=1)
+        _statusFooter.grid_columnconfigure(2, weight=1)
         #Common labels
-        shieldBuffStyleName = 'shieldBuff.TLabel'
-        shieldBuffStyle = ttk.Style().configure(shieldBuffStyleName,
+        statusFooterStyleName = 'statusFooter.TLabel'
+        statusFooterStyle = ttk.Style().configure(statusFooterStyleName,
                                                 font=("Segoe UI", 8, "bold"),
                                                 padding=5)
-        self.shieldEndedLabel = ttk.Label(main_frame, text="Shield - ended", style=shieldBuffStyleName)
-        self.shieldEndedLabel.grid(row=3, column=0, sticky=tk.W)
-        self.shieldEndedLabel.grid_remove()
+        self.buffOrShieldEndedLabel = ttk.Label(_statusFooter,
+                                                textvariable=self.var_buffOrShieldEndingText,
+                                                style=statusFooterStyleName)
+        self.buffOrShieldEndedLabel.grid(row=0, column=0, sticky=tk.W)
+        self.buffOrShieldEndedLabel.grid_remove()
 
-        self.blurEndedLabel = ttk.Label(main_frame, text="Blur - ended", style=shieldBuffStyleName)
-        self.blurEndedLabel.grid(row=3, column=0, sticky=tk.W)
-        self.blurEndedLabel.grid_remove()
-
-        self.protectEndedLabel = ttk.Label(main_frame, text="Protect - ended", style=shieldBuffStyleName)
-        self.protectEndedLabel.grid(row=3, column=0, sticky=tk.W)
-        self.protectEndedLabel.grid_remove()
-
-        self.toughSkinEndedLabel = ttk.Label(main_frame, text="Tough.Skin - ended", style=shieldBuffStyleName)
-        self.toughSkinEndedLabel.grid(row=3, column=0, sticky=tk.W)
-        self.toughSkinEndedLabel.grid_remove()
-
-        #Chaos
-        self.bleedResistEndedLabel = ttk.Label(main_frame, text="Bleed Resist - ended", style=shieldBuffStyleName)
-        self.bleedResistEndedLabel.grid(row=3, column=0, sticky=tk.W)
-        self.bleedResistEndedLabel.grid_remove()
-
-        self.chaosFortitudeEndedLabel = ttk.Label(main_frame, text="Chaos Fortitude - ended", style=shieldBuffStyleName)
-        self.chaosFortitudeEndedLabel.grid(row=3, column=0, sticky=tk.W)
-        self.chaosFortitudeEndedLabel.grid_remove()
-
-        self.combatEndedLabel = ttk.Label(main_frame, text="Combat - ended", style=shieldBuffStyleName)
-        self.combatEndedLabel.grid(row=3, column=0, sticky=tk.W)
-        self.combatEndedLabel.grid_remove()
-
-        self.diseaseResistEndedLabel = ttk.Label(main_frame, text="Disease Resist - ended", style=shieldBuffStyleName)
-        self.diseaseResistEndedLabel.grid(row=3, column=0, sticky=tk.W)
-        self.diseaseResistEndedLabel.grid_remove()
-
-        self.poisonResistEndedLabel = ttk.Label(main_frame, text="Poison Resist - ended", style=shieldBuffStyleName)
-        self.poisonResistEndedLabel.grid(row=3, column=0, sticky=tk.W)
-        self.poisonResistEndedLabel.grid_remove()
-
-        #Good
-        self.blessEndedLabel = ttk.Label(main_frame, text="Bless - ended", style=shieldBuffStyleName)
-        self.blessEndedLabel.grid(row=3, column=0, sticky=tk.W)
-        self.blessEndedLabel.grid_remove()
-
-        #Evil
-        self.regenerateEndedLabel = ttk.Label(main_frame, text="Regenerate - ended", style=shieldBuffStyleName)
-        self.regenerateEndedLabel.grid(row=3, column=0, sticky=tk.W)
-        self.regenerateEndedLabel.grid_remove()
-
-        self.vitalizeEndedLabel = ttk.Label(main_frame, text="Vitalize - ended", style=shieldBuffStyleName)
-        self.vitalizeEndedLabel.grid(row=3, column=0, sticky=tk.W)
-        self.vitalizeEndedLabel.grid_remove()
-        #endregion
+        self.spellMitigatesAffectsLabel = ttk.Label(_statusFooter, 
+                                           textvariable=self.var_spellMitigatesAffectText, 
+                                           style=statusFooterStyleName)
+        self.spellMitigatesAffectsLabel.grid(row=3, column=1)
 
 
     def apply_theme(self):
@@ -344,37 +310,7 @@ c = Controller.ForTesting()
                 pass
         
         if self._controller.model.BuffOrShieldEnding is not None:
-            match self._controller.model.BuffOrShieldEnding:
-                case Parser.ParseBuffOrShieldText.ShieldEnds:
-                    self.displayShieldEndedLabel()
-                case Parser.ParseBuffOrShieldText.BlurEnds:
-                    self.displayBlurEndedLabel()
-                case Parser.ParseBuffOrShieldText.ProtectEnds:
-                    self.displayProtectEndedLabel()
-                case Parser.ParseBuffOrShieldText.ToughSkinEnds:
-                    self.displayToughSkinEndedLabel()
-                #Chaos
-                case Parser.ParseBuffOrShieldText.BleedResistEnds:
-                    self.displayBleedResistEndedLabel()
-                case Parser.ParseBuffOrShieldText.ChaosFortitudeEnds:
-                    self.displayChaosFortitudeEndedLabel()
-                case Parser.ParseBuffOrShieldText.CombatEnds:
-                    self.displayCombatEndedLabel()
-                case Parser.ParseBuffOrShieldText.DiseaseResistEnds:
-                    self.displayDiseaseResistEndedLabel()
-                case Parser.ParseBuffOrShieldText.PoisonResistEnds:
-                    self.displayPoisonResistEndedLabel()
-                #Good
-                case Parser.ParseBuffOrShieldText.BlessEnds:
-                    self.displayBlessEndedLabel()
-                #Evil
-                case Parser.ParseBuffOrShieldText.RegenerateEnds:
-                    self.displayRegenerateEndedLabel()
-                case Parser.ParseBuffOrShieldText.VitalizeEnds:
-                    self.displayVitalizeEndedLabel()
-                #Fall through case
-                case _:
-                    pass
+            self.displayBuffOrShieldEndedLabel(self._controller.model.BuffOrShieldEnding)
 
             # Reset the value after handling to avoid repeated removal calls.
             self._controller.model.BuffOrShieldEnding = None
@@ -470,77 +406,16 @@ c = Controller.ForTesting()
     def update_display_of_pets_in_group_window(self, displayMobsInGroupWindow: bool):
         self._controller.update_display_of_pets_in_group_window(displayMobsInGroupWindow)
 
-    def displayShieldEndedLabel(self):
-        self.shieldEndedLabel.grid()
-        self.after(self._buffOrShieldEndingDisplayTime, self.hideShieldEndedLabel)
-    def hideShieldEndedLabel(self):
-        self.shieldEndedLabel.grid_remove()
+    def displayBuffOrShieldEndedLabel(self, endingBuffOrShield :Parser.ParseBuffOrShieldText):
+        self.var_buffOrShieldEndingText.set(endingBuffOrShield.name.replace("Ended", " Ended"))
+        self.buffOrShieldEndedLabel.grid()
+        self.after(self._buffOrShieldEndingDisplayTime, self.hideBuffOrShieldEndedLabel)
+    def hideBuffOrShieldEndedLabel(self):
+        self.buffOrShieldEndedLabel.grid_remove()
 
-    def displayBlurEndedLabel(self):
-        self.blurEndedLabel.grid()
-        self.after(self._buffOrShieldEndingDisplayTime, self.hideBlurEndedLabel)
-    def hideBlurEndedLabel(self):
-        self.blurEndedLabel.grid_remove()
-
-    def displayProtectEndedLabel(self):
-        self.protectEndedLabel.grid()
-        self.after(self._buffOrShieldEndingDisplayTime, self.hideProtectEndedLabel)
-    def hideProtectEndedLabel(self):
-        self.protectEndedLabel.grid_remove()
-
-    def displayToughSkinEndedLabel(self):
-        self.toughSkinEndedLabel.grid()
-        self.after(self._buffOrShieldEndingDisplayTime, self.hideToughSkinEndedLabel)
-    def hideToughSkinEndedLabel(self):
-        self.toughSkinEndedLabel.grid_remove()
-
-    #Chaos
-    def displayBleedResistEndedLabel(self):
-        self.bleedResistEndedLabel.grid()
-        self.after(self._buffOrShieldEndingDisplayTime, self.hideBleedResistEndedLabel)
-    def hideBleedResistEndedLabel(self):
-        self.bleedResistEndedLabel.grid_remove()
-
-    def displayChaosFortitudeEndedLabel(self):
-        self.chaosFortitudeEndedLabel.grid()
-        self.after(self._buffOrShieldEndingDisplayTime, self.hideChaosFortitudeEndedLabel)
-    def hideChaosFortitudeEndedLabel(self):
-        self.chaosFortitudeEndedLabel.grid_remove()
-
-    def displayCombatEndedLabel(self):
-        self.combatEndedLabel.grid()
-        self.after(self._buffOrShieldEndingDisplayTime, self.hideCombatEndedLabel)
-    def hideCombatEndedLabel(self):
-        self.combatEndedLabel.grid_remove()
-
-    def displayDiseaseResistEndedLabel(self):
-        self.diseaseResistEndedLabel.grid()
-        self.after(self._buffOrShieldEndingDisplayTime, self.hideDiseaseResistEndedLabel)
-    def hideDiseaseResistEndedLabel(self):
-        self.diseaseResistEndedLabel.grid_remove()
-
-    def displayPoisonResistEndedLabel(self):
-        self.poisonResistEndedLabel.grid()
-        self.after(self._buffOrShieldEndingDisplayTime, self.hidePoisonResistEndedLabel)
-    def hidePoisonResistEndedLabel(self):
-        self.poisonResistEndedLabel.grid_remove()
-
-    #Good
-    def displayBlessEndedLabel(self):
-        self.blessEndedLabel.grid()
-        self.after(self._buffOrShieldEndingDisplayTime, self.hideBlessEndedLabel)
-    def hideBlessEndedLabel(self):
-        self.blessEndedLabel.grid_remove()
-
-    #Evil
-    def displayRegenerateEndedLabel(self):
-        self.regenerateEndedLabel.grid()
-        self.after(self._buffOrShieldEndingDisplayTime, self.hideRegenerateEndedLabel)
-    def hideRegenerateEndedLabel(self):
-        self.regenerateEndedLabel.grid_remove()
-
-    def displayVitalizeEndedLabel(self):
-        self.vitalizeEndedLabel.grid()
-        self.after(self._buffOrShieldEndingDisplayTime, self.hideVitalizeEndedLabel)
-    def hideVitalizeEndedLabel(self):
-        self.vitalizeEndedLabel.grid_remove()
+    def displaySpellMitigatesAffectLabel(self, affectText: str):
+        self.var_spellMitigatesAffectText.set(affectText)
+        self.spellMitigatesAffectsLabel.grid()
+        self.after(self._buffOrShieldEndingDisplayTime, self.hideSpellMitigatesAffect)
+    def hideSpellMitigatesAffect(self):
+        self.spellMitigatesAffectsLabel.grid_remove()

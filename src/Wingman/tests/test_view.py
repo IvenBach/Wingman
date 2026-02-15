@@ -149,88 +149,100 @@ class TestView():
         mockedRefresh.assert_called_once()
 
     class TestBuffOrShieldEnding:
-        @pytest.mark.parametrize("text,methodToBeCalled", [(Parser.ParseBuffOrShieldText.ShieldEnds.value, View.displayShieldEndedLabel),
-                                                            (Parser.ParseBuffOrShieldText.BlurEnds.value, View.displayBlurEndedLabel),
-                                                            (Parser.ParseBuffOrShieldText.ProtectEnds.value, View.displayProtectEndedLabel),
-                                                            (Parser.ParseBuffOrShieldText.ToughSkinEnds.value, View.displayToughSkinEndedLabel),
-                                                            #Chaos
-                                                            (Parser.ParseBuffOrShieldText.BleedResistEnds.value, View.displayBleedResistEndedLabel),
-                                                            (Parser.ParseBuffOrShieldText.ChaosFortitudeEnds.value, View.displayChaosFortitudeEndedLabel),
-                                                            (Parser.ParseBuffOrShieldText.CombatEnds.value, View.displayCombatEndedLabel),
-                                                            (Parser.ParseBuffOrShieldText.DiseaseResistEnds.value, View.displayDiseaseResistEndedLabel),
-                                                            (Parser.ParseBuffOrShieldText.PoisonResistEnds.value, View.displayPoisonResistEndedLabel),
-                                                            #Good
-                                                            (Parser.ParseBuffOrShieldText.BlessEnds.value, View.displayBlessEndedLabel),
-                                                            #Evil
-                                                            (Parser.ParseBuffOrShieldText.RegenerateEnds.value, View.displayRegenerateEndedLabel),
-                                                            (Parser.ParseBuffOrShieldText.VitalizeEnds.value, View.displayVitalizeEndedLabel)
-                                                        ],
-                                                        ids=["Shield refresh",
-                                                            "Blur refresh",
-                                                            "Protect refresh",
-                                                            "Tough Skin refresh",
-                                                            #Chaos
-                                                            "Chaos - Bleed Resist refresh",
-                                                            "Chaos - Chaos Fortitude refresh",
-                                                            "Chaos - Combat refresh",
-                                                            "Chaos - Disease Resist refresh",
-                                                            "Chaos - Poison Resist refresh",
-                                                            #Good
-                                                            "Good - Bless refresh",
-                                                            #Evil
-                                                            "Evil - Regenerate refresh",
-                                                            "Evil - Vitalize refresh"
-                                                        ]
+        @pytest.mark.parametrize("endingEnumMember", [Parser.ParseBuffOrShieldText.ShieldEnded,
+                                                        Parser.ParseBuffOrShieldText.BlurEnded,
+                                                        Parser.ParseBuffOrShieldText.ProtectEnded,
+                                                        Parser.ParseBuffOrShieldText.ToughSkinEnded,
+                                                        #Chaos
+                                                        Parser.ParseBuffOrShieldText.BleedResistEnded,
+                                                        Parser.ParseBuffOrShieldText.ChaosFortitudeEnded,
+                                                        Parser.ParseBuffOrShieldText.CombatEnded,
+                                                        Parser.ParseBuffOrShieldText.DiseaseResistEnded,
+                                                        Parser.ParseBuffOrShieldText.PoisonResistEnded,
+                                                        #Good
+                                                        Parser.ParseBuffOrShieldText.BlessEnded,
+                                                        #Evil
+                                                        Parser.ParseBuffOrShieldText.RegenerateEnded,
+                                                        Parser.ParseBuffOrShieldText.VitalizeEnded
+                                                    ],
+                                                    ids=["Shield refresh",
+                                                        "Blur refresh",
+                                                        "Protect refresh",
+                                                        "Tough Skin refresh",
+                                                        #Chaos
+                                                        "Chaos - Bleed Resist refresh",
+                                                        "Chaos - Chaos Fortitude refresh",
+                                                        "Chaos - Combat refresh",
+                                                        "Chaos - Disease Resist refresh",
+                                                        "Chaos - Poison Resist refresh",
+                                                        #Good
+                                                        "Good - Bless refresh",
+                                                        #Evil
+                                                        "Evil - Regenerate refresh",
+                                                        "Evil - Vitalize refresh"
+                                                    ]
         )
-        def test_BuffOrShieldEnds_LabelDisplayed(self, text, methodToBeCalled):
+        def test_BuffOrShieldEnds_LabelDisplayed(self, endingEnumMember: Parser.ParseBuffOrShieldText):
             c = Controller.ForTesting()
             v = c.view
-            c.receiver.receive(text)
+            c.receiver.receive(endingEnumMember.value)
 
-            with patch.object(v, f'{methodToBeCalled.__name__}') as mockedDisplay:
+            with patch.object(v, f'{v.displayBuffOrShieldEndedLabel.__name__}') as mockedDisplay:
                 v.update_gui()
 
-            mockedDisplay.assert_called_once_with()
+            mockedDisplay.assert_called_once_with(endingEnumMember)
 
-        @pytest.mark.parametrize("text,methodToBeCalled", [(Parser.ParseBuffOrShieldText.ShieldEnds.value + Parser.ParseBuffOrShieldText.ShieldStarts.value, View.displayShieldEndedLabel),
-                                                            (Parser.ParseBuffOrShieldText.BlurEnds.value + Parser.ParseBuffOrShieldText.BlurStarts.value, View.displayBlurEndedLabel),
-                                                            (Parser.ParseBuffOrShieldText.ProtectEnds.value + Parser.ParseBuffOrShieldText.ProtectStarts.value, View.displayProtectEndedLabel),
-                                                            (Parser.ParseBuffOrShieldText.ToughSkinEnds.value + Parser.ParseBuffOrShieldText.ToughSkinStarts.value, View.displayToughSkinEndedLabel),
-                                                            #Chaos
-                                                            (Parser.ParseBuffOrShieldText.BleedResistEnds.value + Parser.ParseBuffOrShieldText.BleedResistStarts.value, View.displayBleedResistEndedLabel),
-                                                            (Parser.ParseBuffOrShieldText.ChaosFortitudeEnds.value + Parser.ParseBuffOrShieldText.ChaosFortitudeStarts.value, View.displayChaosFortitudeEndedLabel),
-                                                            (Parser.ParseBuffOrShieldText.CombatEnds.value + Parser.ParseBuffOrShieldText.CombatStarts.value, View.displayCombatEndedLabel),
-                                                            (Parser.ParseBuffOrShieldText.DiseaseResistEnds.value + Parser.ParseBuffOrShieldText.DiseaseResistStarts.value, View.displayDiseaseResistEndedLabel),
-                                                            (Parser.ParseBuffOrShieldText.PoisonResistEnds.value + Parser.ParseBuffOrShieldText.PoisonResistStarts.value, View.displayPoisonResistEndedLabel),
-                                                            #Good
-                                                            (Parser.ParseBuffOrShieldText.BlessEnds.value + Parser.ParseBuffOrShieldText.BlessStarts.value, View.displayBlessEndedLabel),
-                                                            #Evil
-                                                            (Parser.ParseBuffOrShieldText.RegenerateEnds.value + Parser.ParseBuffOrShieldText.RegenerateStarts.value, View.displayRegenerateEndedLabel),
-                                                            (Parser.ParseBuffOrShieldText.VitalizeEnds.value + Parser.ParseBuffOrShieldText.VitalizeStarts.value, View.displayVitalizeEndedLabel)
-                                                        ],
-                                                        ids=["Shield refresh",
-                                                            "Blur refresh",
-                                                            "Protect refresh",
-                                                            "Tough Skin refresh",
-                                                            #Chaos
-                                                            "Chaos - Bleed Resist refresh",
-                                                            "Chaos - Fortitude refresh",
-                                                            "Chaos - Combat refresh",
-                                                            "Chaos - Disease Resist refresh",
-                                                            "Chaos - Poison Resist refresh",
-                                                            #Good
-                                                            "Good - Bless refresh",
-                                                            #Evil
-                                                            "Evil - Regenerate refresh",
-                                                            "Evil - Vitalize refresh"
-                                                        ]
+        @pytest.mark.parametrize("text", [Parser.ParseBuffOrShieldText.ShieldEnded.value + Parser.ParseBuffOrShieldText.ShieldStarts.value,
+                                            Parser.ParseBuffOrShieldText.BlurEnded.value + Parser.ParseBuffOrShieldText.BlurStarts.value,
+                                            Parser.ParseBuffOrShieldText.ProtectEnded.value + Parser.ParseBuffOrShieldText.ProtectStarts.value,
+                                            Parser.ParseBuffOrShieldText.ToughSkinEnded.value + Parser.ParseBuffOrShieldText.ToughSkinStarts.value,
+                                            #Chaos
+                                            Parser.ParseBuffOrShieldText.BleedResistEnded.value + Parser.ParseBuffOrShieldText.BleedResistStarts.value,
+                                            Parser.ParseBuffOrShieldText.ChaosFortitudeEnded.value + Parser.ParseBuffOrShieldText.ChaosFortitudeStarts.value,
+                                            Parser.ParseBuffOrShieldText.CombatEnded.value + Parser.ParseBuffOrShieldText.CombatStarts.value,
+                                            Parser.ParseBuffOrShieldText.DiseaseResistEnded.value + Parser.ParseBuffOrShieldText.DiseaseResistStarts.value,
+                                            Parser.ParseBuffOrShieldText.PoisonResistEnded.value + Parser.ParseBuffOrShieldText.PoisonResistStarts.value,
+                                            #Good
+                                            Parser.ParseBuffOrShieldText.BlessEnded.value + Parser.ParseBuffOrShieldText.BlessStarts.value,
+                                            #Evil
+                                            Parser.ParseBuffOrShieldText.RegenerateEnded.value + Parser.ParseBuffOrShieldText.RegenerateStarts.value,
+                                            Parser.ParseBuffOrShieldText.VitalizeEnded.value + Parser.ParseBuffOrShieldText.VitalizeStarts.value
+                                        ],
+                                        ids=["Shield refresh",
+                                            "Blur refresh",
+                                            "Protect refresh",
+                                            "Tough Skin refresh",
+                                            #Chaos
+                                            "Chaos - Bleed Resist refresh",
+                                            "Chaos - Fortitude refresh",
+                                            "Chaos - Combat refresh",
+                                            "Chaos - Disease Resist refresh",
+                                            "Chaos - Poison Resist refresh",
+                                            #Good
+                                            "Good - Bless refresh",
+                                            #Evil
+                                            "Evil - Regenerate refresh",
+                                            "Evil - Vitalize refresh"
+                                        ]
         )
-        def test_BuffOrShieldRefreshed_LabelNotDisplayed(self, text, methodToBeCalled):
+        def test_BuffOrShieldRefreshed_LabelNotDisplayed(self, text):
             c = Controller.ForTesting()
             v = c.view
             c.receiver.receive(text)
 
-            with patch.object(v, f'{methodToBeCalled.__name__}') as mockedDisplay:
+            with patch.object(v, f'{v.displayBuffOrShieldEndedLabel.__name__}') as mockedDisplay:
                 v.update_gui()
 
             mockedDisplay.assert_not_called()
+
+        def test_NonBuffOrShieldText_LabelNeitherDisplayedNorHidden(self):
+            c = Controller.ForTesting()
+            v = c.view
+            c.receiver.receive("Text not related to buff or shield ending.")
+
+            with patch.object(v, f'{v.displayBuffOrShieldEndedLabel.__name__}') as mockedDisplay:
+                with patch.object(v, f'{v.hideBuffOrShieldEndedLabel.__name__}') as mockedHide:
+                    v.update_gui()
+
+            mockedDisplay.assert_not_called()
+            mockedHide.assert_not_called()

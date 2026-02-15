@@ -183,6 +183,9 @@ v.setup_ui()
             if isBuffOrShieldRefreshing == False:
                 self.model.BuffOrShieldEnding = whatEnded
 
+            isSpellMitigationAffect, affectText = self.model.parser.parseSpellMitigationAffect(line)
+            if isSpellMitigationAffect:
+                self.view.displaySpellMitigatesAffectLabel(affectText)
         return logs
 
     def updateMeditationDisplayValue(self):

@@ -41,8 +41,9 @@ class NetworkListener:
                     isBuffOrShieldRefreshing, whatIsRefreshing_StartText = Parser().parseBuffOrShieldIsRefreshing(chunk)
                     if isBuffOrShieldRefreshing:
                         assert whatIsRefreshing_StartText is not None
-                        endText = Parser().getEndBuffOrShieldValueFromStartValue(whatIsRefreshing_StartText)
-                        indexBeforeEndText = chunk.find(endText.value)
+                        endMember = Parser.ParseBuffOrShieldText.mapOfStartingToEndingEnumMembers()[whatIsRefreshing_StartText]
+
+                        indexBeforeEndText = chunk.find(endMember.value)
                         indexAfterStartTextAndNewlineCharacter = chunk.find(whatIsRefreshing_StartText.value) + len(whatIsRefreshing_StartText.value) + 1
 
                         chunk = chunk[:indexBeforeEndText] + chunk[indexAfterStartTextAndNewlineCharacter:] #Discard between end spell text to start spell text, inclusive of both.

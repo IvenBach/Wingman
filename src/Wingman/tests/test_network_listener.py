@@ -94,7 +94,7 @@ def test_AnyInformationIncludedWithBuffOrShieldRefresh_BeforeSpellEndingValueAnd
 {Parser.AfkStatus.EndAfk.value}
 You cast a Chaos.Fortitude.I spell!
 You invoke a prayer to Ra'Kur, filling you with an unnatural energy!
-{Parser.ParseBuffOrShieldText.ChaosFortitudeEnds.value}
+{Parser.ParseBuffOrShieldText.ChaosFortitudeEnded.value}
 {Parser.ParseBuffOrShieldText.ChaosFortitudeStarts.value}
 Text that trails in case it too needs to be forwarded.\n""" #Lines before the buff/shield ending value are still forwarded on
     payload = (text).encode('utf-8')

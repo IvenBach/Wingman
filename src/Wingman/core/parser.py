@@ -320,71 +320,62 @@ Subsequent removal of mob from the model needs to be dealt with by the caller.''
     class ParseBuffOrShieldText(StrEnum):
         NotApplicable = "Default value for `unassigned` values."
 
-        BlurEnds = "The blur about you stops."
+        BlurEnded = "The blur about you stops."
         BlurStarts = "You look very blurry!"
-        ProtectEnds = "The magical sheen about you fades."
+        ProtectEnded = "The magical sheen about you fades."
         ProtectStarts = "You are surrounded by a magical sheen!"
-        ShieldEnds = "The glowing shield in front of you disappears."
+        ShieldEnded = "The glowing shield in front of you disappears."
         ShieldStarts = "You are fronted by a glowing shield!"
-        ToughSkinEnds = "Your skin softens."
+        ToughSkinEnded = "Your skin softens."
         ToughSkinStarts = "You get tougher skin!"
 
         #Chaos
-        BleedResistEnds = "Your bleeding resistance fades."
+        BleedResistEnded = "Your bleeding resistance fades."
         BleedResistStarts = "You look resistant to bleeding."
-        ChaosFortitudeEnds = "The hale look about you fades."
+        ChaosFortitudeEnded = "The hale look about you fades."
         ChaosFortitudeStarts = "You look hale."
-        CombatEnds = "The combat skill about you goes away."
+        CombatEnded = "The combat skill about you goes away."
         CombatStarts = "You look adept at combat skills!"
-        DiseaseResistEnds = "Your disease resistance fades."
+        DiseaseResistEnded = "Your disease resistance fades."
         DiseaseResistStarts = "You look resistant to disease."
-        PoisonResistEnds = "Your poison resistance fades."
+        PoisonResistEnded = "Your poison resistance fades."
         PoisonResistStarts = "You look resistant to poison."
 
         #Good
-        BlessEnds = "The blessed look about you fades."
+        BlessEnded = "The blessed look about you fades."
         BlessStarts = "You look blessed!"
 
         #Evil
-        RegenerateEnds = "The healthful glow surrounding you fades."
+        RegenerateEnded = "The healthful glow surrounding you fades."
         RegenerateStarts = "You look extremely healthy!"
-        VitalizeEnds = "The aura of vitality surrounding you fades."
+        VitalizeEnded = "The aura of vitality surrounding you fades."
         VitalizeStarts = "You look extremely vital!"
 
-    def getEndBuffOrShieldValueFromStartValue(self, startingValue: ParseBuffOrShieldText) -> ParseBuffOrShieldText:
-        """Given a starting value for a buff or shield, return the corresponding ending value."""
-        if startingValue == self.ParseBuffOrShieldText.BlurStarts:
-            return self.ParseBuffOrShieldText.BlurEnds
-        if startingValue == self.ParseBuffOrShieldText.ProtectStarts:
-            return self.ParseBuffOrShieldText.ProtectEnds
-        if startingValue == self.ParseBuffOrShieldText.ShieldStarts:
-            return self.ParseBuffOrShieldText.ShieldEnds
-        if startingValue == self.ParseBuffOrShieldText.ToughSkinStarts:
-            return self.ParseBuffOrShieldText.ToughSkinEnds
+        @staticmethod
+        def mapOfStartingToEndingEnumMembers() -> dict['Parser.ParseBuffOrShieldText', 'Parser.ParseBuffOrShieldText']:
+            """Given a starting value for a buff or shield, return the corresponding ending value."""
+            map = {
+                Parser.ParseBuffOrShieldText.BlurStarts: Parser.ParseBuffOrShieldText.BlurEnded,
+                Parser.ParseBuffOrShieldText.ProtectStarts: Parser.ParseBuffOrShieldText.ProtectEnded,
+                Parser.ParseBuffOrShieldText.ShieldStarts: Parser.ParseBuffOrShieldText.ShieldEnded,
+                Parser.ParseBuffOrShieldText.ToughSkinStarts: Parser.ParseBuffOrShieldText.ToughSkinEnded,
 
-        #Chaos
-        if startingValue == self.ParseBuffOrShieldText.BleedResistStarts:
-            return self.ParseBuffOrShieldText.BleedResistEnds
-        if startingValue == self.ParseBuffOrShieldText.ChaosFortitudeStarts:
-            return self.ParseBuffOrShieldText.ChaosFortitudeEnds
-        if startingValue == self.ParseBuffOrShieldText.CombatStarts:
-            return self.ParseBuffOrShieldText.CombatEnds
-        if startingValue == self.ParseBuffOrShieldText.DiseaseResistStarts:
-            return self.ParseBuffOrShieldText.DiseaseResistEnds
-        if startingValue == self.ParseBuffOrShieldText.PoisonResistStarts:
-            return self.ParseBuffOrShieldText.PoisonResistEnds
+                #Chaos
+                Parser.ParseBuffOrShieldText.BleedResistStarts: Parser.ParseBuffOrShieldText.BleedResistEnded,
+                Parser.ParseBuffOrShieldText.ChaosFortitudeStarts: Parser.ParseBuffOrShieldText.ChaosFortitudeEnded,
+                Parser.ParseBuffOrShieldText.CombatStarts: Parser.ParseBuffOrShieldText.CombatEnded,
+                Parser.ParseBuffOrShieldText.DiseaseResistStarts: Parser.ParseBuffOrShieldText.DiseaseResistEnded,
+                Parser.ParseBuffOrShieldText.PoisonResistStarts: Parser.ParseBuffOrShieldText.PoisonResistEnded,
 
-        #Good
-        if startingValue == self.ParseBuffOrShieldText.BlessStarts:
-            return self.ParseBuffOrShieldText.BlessEnds
+                #Good
+                Parser.ParseBuffOrShieldText.BlessStarts: Parser.ParseBuffOrShieldText.BlessEnded,
 
-        #Evil
-        if startingValue == self.ParseBuffOrShieldText.RegenerateStarts:
-            return self.ParseBuffOrShieldText.RegenerateEnds
-        if startingValue == self.ParseBuffOrShieldText.VitalizeStarts:
-            return self.ParseBuffOrShieldText.VitalizeEnds
+                #Evil
+                Parser.ParseBuffOrShieldText.RegenerateStarts: Parser.ParseBuffOrShieldText.RegenerateEnded,
+                Parser.ParseBuffOrShieldText.VitalizeStarts: Parser.ParseBuffOrShieldText.VitalizeEnded
+            }
 
-        raise ValueError(f"Invalid starting value: {startingValue}")
+            return map
 
     def parseBuffOrShieldIsRefreshing(self, text: str) -> tuple[bool | None, ParseBuffOrShieldText | None]:
         """Parse text to determine if a buff or shield has refreshed, and if so, which spell it is.
@@ -393,67 +384,80 @@ If the text includes the ending and starting value for the spell, this is treate
 
 - First Tuple Part: `bool` - `True` = a buff or shield has refreshed, `False` = buff or shield has ended, `None` - non-buff/shield related.
 - Second Tuple Part: `ParseBuffOrShieldText` indicates which buff/shield has refreshed. `None` for non-buff/shield related."""
-        if self.ParseBuffOrShieldText.ShieldEnds.value in text:
+        if self.ParseBuffOrShieldText.ShieldEnded.value in text:
             if self.ParseBuffOrShieldText.ShieldStarts.value in text:
                 return True, self.ParseBuffOrShieldText.ShieldStarts
-            return False, self.ParseBuffOrShieldText.ShieldEnds
+            return False, self.ParseBuffOrShieldText.ShieldEnded
 
-        if self.ParseBuffOrShieldText.BlurEnds.value in text:
+        if self.ParseBuffOrShieldText.BlurEnded.value in text:
             if self.ParseBuffOrShieldText.BlurStarts.value in text:
                 return True, self.ParseBuffOrShieldText.BlurStarts
-            return False, self.ParseBuffOrShieldText.BlurEnds
+            return False, self.ParseBuffOrShieldText.BlurEnded
 
-        if self.ParseBuffOrShieldText.ProtectEnds.value in text:
+        if self.ParseBuffOrShieldText.ProtectEnded.value in text:
             if self.ParseBuffOrShieldText.ProtectStarts.value in text:
                 return True, self.ParseBuffOrShieldText.ProtectStarts
-            return False, self.ParseBuffOrShieldText.ProtectEnds
+            return False, self.ParseBuffOrShieldText.ProtectEnded
 
-        if self.ParseBuffOrShieldText.ToughSkinEnds.value in text:
+        if self.ParseBuffOrShieldText.ToughSkinEnded.value in text:
             if self.ParseBuffOrShieldText.ToughSkinStarts.value in text:
                 return True, self.ParseBuffOrShieldText.ToughSkinStarts
-            return False, self.ParseBuffOrShieldText.ToughSkinEnds
+            return False, self.ParseBuffOrShieldText.ToughSkinEnded
 
         #Chaos
-        if self.ParseBuffOrShieldText.BleedResistEnds.value in text:
+        if self.ParseBuffOrShieldText.BleedResistEnded.value in text:
             if self.ParseBuffOrShieldText.BleedResistStarts.value in text:
                 return True, self.ParseBuffOrShieldText.BleedResistStarts
-            return False, self.ParseBuffOrShieldText.BleedResistEnds
+            return False, self.ParseBuffOrShieldText.BleedResistEnded
 
-        if self.ParseBuffOrShieldText.ChaosFortitudeEnds.value in text:
+        if self.ParseBuffOrShieldText.ChaosFortitudeEnded.value in text:
             if self.ParseBuffOrShieldText.ChaosFortitudeStarts.value in text:
                 return True, self.ParseBuffOrShieldText.ChaosFortitudeStarts
-            return False, self.ParseBuffOrShieldText.ChaosFortitudeEnds
+            return False, self.ParseBuffOrShieldText.ChaosFortitudeEnded
 
-        if self.ParseBuffOrShieldText.CombatEnds.value in text:
+        if self.ParseBuffOrShieldText.CombatEnded.value in text:
             if self.ParseBuffOrShieldText.CombatStarts.value in text:
                 return True, self.ParseBuffOrShieldText.CombatStarts
-            return False, self.ParseBuffOrShieldText.CombatEnds
+            return False, self.ParseBuffOrShieldText.CombatEnded
 
-        if self.ParseBuffOrShieldText.DiseaseResistEnds.value in text:
+        if self.ParseBuffOrShieldText.DiseaseResistEnded.value in text:
             if self.ParseBuffOrShieldText.DiseaseResistStarts.value in text:
                 return True, self.ParseBuffOrShieldText.DiseaseResistStarts
-            return False, self.ParseBuffOrShieldText.DiseaseResistEnds
+            return False, self.ParseBuffOrShieldText.DiseaseResistEnded
 
-        if self.ParseBuffOrShieldText.PoisonResistEnds.value in text:
+        if self.ParseBuffOrShieldText.PoisonResistEnded.value in text:
             if self.ParseBuffOrShieldText.PoisonResistStarts.value in text:
                 return True, self.ParseBuffOrShieldText.PoisonResistStarts
-            return False, self.ParseBuffOrShieldText.PoisonResistEnds
+            return False, self.ParseBuffOrShieldText.PoisonResistEnded
 
         #Good
-        if self.ParseBuffOrShieldText.BlessEnds.value in text:
+        if self.ParseBuffOrShieldText.BlessEnded.value in text:
             if self.ParseBuffOrShieldText.BlessStarts.value in text:
                 return True, self.ParseBuffOrShieldText.BlessStarts
-            return False, self.ParseBuffOrShieldText.BlessEnds
+            return False, self.ParseBuffOrShieldText.BlessEnded
 
         #Evil
-        if self.ParseBuffOrShieldText.RegenerateEnds.value in text:
+        if self.ParseBuffOrShieldText.RegenerateEnded.value in text:
             if self.ParseBuffOrShieldText.RegenerateStarts.value in text:
                 return True, self.ParseBuffOrShieldText.RegenerateStarts
-            return False, self.ParseBuffOrShieldText.RegenerateEnds
+            return False, self.ParseBuffOrShieldText.RegenerateEnded
 
-        if self.ParseBuffOrShieldText.VitalizeEnds.value in text:
+        if self.ParseBuffOrShieldText.VitalizeEnded.value in text:
             if self.ParseBuffOrShieldText.VitalizeStarts.value in text:
                 return True, self.ParseBuffOrShieldText.VitalizeStarts
-            return False, self.ParseBuffOrShieldText.VitalizeEnds
+            return False, self.ParseBuffOrShieldText.VitalizeEnded
 
         return None, None
+    
+    class ParseSpellMitigationAffect(StrEnum):
+        ToughSkin = "Your hardened skin tempers the impact!"
+        BleedResist = "You start to bleed, but you are resistant!"
+        DiseaseResist = "Disease starts to enter your system, but you are resistant!"
+        PoisonResist = "Poison starts to enter your system, but you are resistant!"
+
+    def parseSpellMitigationAffect(self, text: str) -> tuple[bool, str | None]:
+        map = self.ParseSpellMitigationAffect._value2member_map_
+        if map.__contains__(text):
+            return True, map[text].name
+        
+        return False, None
