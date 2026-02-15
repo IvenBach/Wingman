@@ -101,7 +101,6 @@ c = Controller.ForTesting()
         
         centralLabelStyleName = 'centralLabel.TLabel'
         self._afkImageLabel = ttk.Label(centerFrame, name='afkStatusLabel', text="AFK", style=centralLabelStyleName)
-        afkStyle = ttk.Style().configure(centralLabelStyleName, font=("Segoe UI", 30, "bold"))
         self._afkImageLabel.grid(row=0, column=0)
         self._afkImageLabel.grid_remove()
 
@@ -359,14 +358,14 @@ c = Controller.ForTesting()
                 
                 healthTag = HealthTagger.HealthTag(m)
                 
-                item_id = self.groupTreeview.insert('', tk.END, iid=m.Name, values=values, tags=(healthTag))
+                self.groupTreeview.insert('', tk.END, iid=m.Name, values=values, tags=(healthTag))
             elif isNewlyJoinedPartyMember(m):
                 suffixToMakeUnique = ''
                 while self.groupTreeview.exists(m.Name + suffixToMakeUnique):
                     suffixToMakeUnique += '+'
 
                 values = ('__', "__", "__", m.Name, '__', '__', '__')
-                item_id = self.groupTreeview.insert('', tk.END, iid=m.Name + suffixToMakeUnique, values=values)
+                self.groupTreeview.insert('', tk.END, iid=m.Name + suffixToMakeUnique, values=values)
         
         
         if group.DisplayHealingIcon:

@@ -1,5 +1,4 @@
 import threading
-import re
 from scapy.all import sniff, IP, TCP
 from Wingman.core.input_receiver import InputReceiver
 from Wingman.core.parser import Parser

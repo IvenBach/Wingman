@@ -41,7 +41,6 @@ class TestView():
             c.receiver.receive("""Fuzz's group:
     [Baz            01]            Fuzz                 2/ 50  (  0%)       50/  50 (100%)     50/ 50  (100%)""")
 
-            path = f'{View.hideHealGroupImage.__name__}'
             with patch.object(v, f'{View.hideHealGroupImage.__name__}') as mockedMethod:
                 v.update_gui()
 
