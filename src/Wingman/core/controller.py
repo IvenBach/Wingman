@@ -32,6 +32,7 @@ class Controller:
         self._APP_SETTINGS = 'AppSettings'
         self._IGNORED_MOB_PETS_CSV__OPTION = 'IgnoredMobsPetsCsv'
         self._DISPLAY_PETS_IN_GROUP__OPTION = 'DisplayPetsInGroup'
+        self._ALWAYS_ON_TOP__OPTION = 'AlwaysOnTop'
         self._DARK_MODE__OPTION = 'DarkMode'
         self._ROOT_WINDOW_POSITION__OPTION = 'RootWindowPosition'
         self._IGNORED_MOBS_WINDOW_POSITION__OPTION = 'IgnoredMobsWindowPosition'
@@ -221,6 +222,7 @@ v.setup_ui()
     def saveSettings(self):
         cp = configparser.ConfigParser()
         cp[self._VIEW_SETTINGS] = {
+            self._ALWAYS_ON_TOP__OPTION: str(self.view.var_always_on_top.get()),
             self._DARK_MODE__OPTION: str(self.view.dark_mode),
             self._IGNORED_MOB_PETS_CSV__OPTION: self.view.ignoredMobsPetsCsv.get(),
             self._DISPLAY_PETS_IN_GROUP__OPTION: str(self.model.includePetsInGroup)
@@ -256,12 +258,17 @@ v.setup_ui()
                 ignoredMobsPetsCsv = configParser.get(self._VIEW_SETTINGS, self._IGNORED_MOB_PETS_CSV__OPTION, fallback='')
                 self.view.var_ignoredMobPetsCsv.set(ignoredMobsPetsCsv)
                 self.updateIgnoredMobsPets(ignoredMobsPetsCsv)
+
                 darkModeSavedSetting = configParser.getboolean(self._VIEW_SETTINGS, self._DARK_MODE__OPTION, fallback=False)
                 if darkModeSavedSetting != False:
                     self.view.toggle_theme()
+
                 displayPetsInGroup = configParser.getboolean(self._VIEW_SETTINGS, self._DISPLAY_PETS_IN_GROUP__OPTION, fallback=False)
                 self.view.var_includePetsInGroup.set(displayPetsInGroup)
                 self.model.includePetsInGroup = displayPetsInGroup
+
+                isAlwaysOnTop = configParser.getboolean(self._VIEW_SETTINGS, self._ALWAYS_ON_TOP__OPTION, fallback=False)
+                self.view.apply_topmost(isAlwaysOnTop)
 
             if configParser.has_section(self._APP_SETTINGS):
                 rootWindowSize = self.view.parent.geometry().split('+')[0]

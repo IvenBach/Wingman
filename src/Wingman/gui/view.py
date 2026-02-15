@@ -137,7 +137,7 @@ c = Controller.ForTesting()
         self.menu_settings.add_checkbutton(
             label="Always on Top",
             variable=self.var_always_on_top,
-            command=self.toggle_topmost
+            command=lambda: self.apply_topmost(self.var_always_on_top.get())
         )
         self.menu_settings.add_separator()
 
@@ -324,10 +324,10 @@ c = Controller.ForTesting()
         self.last_stat_update = currentTime
 
     # 3. The Toggle Logic
-    def toggle_topmost(self):
+    def apply_topmost(self, value: bool):
         """Applies the current state of the BooleanVar to the window."""
-        is_top = self.var_always_on_top.get()
-        self.parent.attributes("-topmost", is_top)
+        self.var_always_on_top.set(value)
+        self.parent.attributes("-topmost", value)
 
     def toggle_theme(self):
         self.dark_mode = not self.dark_mode
