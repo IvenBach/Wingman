@@ -147,22 +147,22 @@ class TestView():
 
         mockedRefresh.assert_called_once()
 
-    class TestBuffOrShieldEnding:
-        @pytest.mark.parametrize("endingEnumMember", [Parser.ParseBuffOrShieldText.ShieldEnded,
-                                                        Parser.ParseBuffOrShieldText.BlurEnded,
-                                                        Parser.ParseBuffOrShieldText.ProtectEnded,
-                                                        Parser.ParseBuffOrShieldText.ToughSkinEnded,
+    class TestBuffOrShieldEndingDisplay:
+        @pytest.mark.parametrize("endingEnumMember", [Parser.ParseBuffOrShieldText.Shield_Ended,
+                                                        Parser.ParseBuffOrShieldText.Blur_Ended,
+                                                        Parser.ParseBuffOrShieldText.Protect_Ended,
+                                                        Parser.ParseBuffOrShieldText.ToughDotSkin_Ended,
                                                         #Chaos
-                                                        Parser.ParseBuffOrShieldText.BleedResistEnded,
-                                                        Parser.ParseBuffOrShieldText.ChaosFortitudeEnded,
-                                                        Parser.ParseBuffOrShieldText.CombatEnded,
-                                                        Parser.ParseBuffOrShieldText.DiseaseResistEnded,
-                                                        Parser.ParseBuffOrShieldText.PoisonResistEnded,
+                                                        Parser.ParseBuffOrShieldText.BleedDotResist_Ended,
+                                                        Parser.ParseBuffOrShieldText.ChaosDotFortitude_Ended,
+                                                        Parser.ParseBuffOrShieldText.Combat_Ended,
+                                                        Parser.ParseBuffOrShieldText.DiseaseDotResist_Ended,
+                                                        Parser.ParseBuffOrShieldText.PoisonDotResist_Ended,
                                                         #Good
-                                                        Parser.ParseBuffOrShieldText.BlessEnded,
+                                                        Parser.ParseBuffOrShieldText.Bless_Ended,
                                                         #Evil
-                                                        Parser.ParseBuffOrShieldText.RegenerateEnded,
-                                                        Parser.ParseBuffOrShieldText.VitalizeEnded
+                                                        Parser.ParseBuffOrShieldText.Regenerate_Ended,
+                                                        Parser.ParseBuffOrShieldText.Vitalize_Ended
                                                     ],
                                                     ids=["Shield refresh",
                                                         "Blur refresh",
@@ -191,21 +191,21 @@ class TestView():
 
             mockedDisplay.assert_called_once_with(endingEnumMember)
 
-        @pytest.mark.parametrize("text", [Parser.ParseBuffOrShieldText.ShieldEnded.value + Parser.ParseBuffOrShieldText.ShieldStarts.value,
-                                            Parser.ParseBuffOrShieldText.BlurEnded.value + Parser.ParseBuffOrShieldText.BlurStarts.value,
-                                            Parser.ParseBuffOrShieldText.ProtectEnded.value + Parser.ParseBuffOrShieldText.ProtectStarts.value,
-                                            Parser.ParseBuffOrShieldText.ToughSkinEnded.value + Parser.ParseBuffOrShieldText.ToughSkinStarts.value,
+        @pytest.mark.parametrize("text", [Parser.ParseBuffOrShieldText.Shield_Ended.value + Parser.ParseBuffOrShieldText.ShieldStarts.value,
+                                            Parser.ParseBuffOrShieldText.Blur_Ended.value + Parser.ParseBuffOrShieldText.BlurStarts.value,
+                                            Parser.ParseBuffOrShieldText.Protect_Ended.value + Parser.ParseBuffOrShieldText.ProtectStarts.value,
+                                            Parser.ParseBuffOrShieldText.ToughDotSkin_Ended.value + Parser.ParseBuffOrShieldText.ToughDotSkinStarts.value,
                                             #Chaos
-                                            Parser.ParseBuffOrShieldText.BleedResistEnded.value + Parser.ParseBuffOrShieldText.BleedResistStarts.value,
-                                            Parser.ParseBuffOrShieldText.ChaosFortitudeEnded.value + Parser.ParseBuffOrShieldText.ChaosFortitudeStarts.value,
-                                            Parser.ParseBuffOrShieldText.CombatEnded.value + Parser.ParseBuffOrShieldText.CombatStarts.value,
-                                            Parser.ParseBuffOrShieldText.DiseaseResistEnded.value + Parser.ParseBuffOrShieldText.DiseaseResistStarts.value,
-                                            Parser.ParseBuffOrShieldText.PoisonResistEnded.value + Parser.ParseBuffOrShieldText.PoisonResistStarts.value,
+                                            Parser.ParseBuffOrShieldText.BleedDotResist_Ended.value + Parser.ParseBuffOrShieldText.BleedDotResistStarts.value,
+                                            Parser.ParseBuffOrShieldText.ChaosDotFortitude_Ended.value + Parser.ParseBuffOrShieldText.ChaosDotFortitudeStarts.value,
+                                            Parser.ParseBuffOrShieldText.Combat_Ended.value + Parser.ParseBuffOrShieldText.CombatStarts.value,
+                                            Parser.ParseBuffOrShieldText.DiseaseDotResist_Ended.value + Parser.ParseBuffOrShieldText.DiseaseDotResistStarts.value,
+                                            Parser.ParseBuffOrShieldText.PoisonDotResist_Ended.value + Parser.ParseBuffOrShieldText.PoisonDotResistStarts.value,
                                             #Good
-                                            Parser.ParseBuffOrShieldText.BlessEnded.value + Parser.ParseBuffOrShieldText.BlessStarts.value,
+                                            Parser.ParseBuffOrShieldText.Bless_Ended.value + Parser.ParseBuffOrShieldText.BlessStarts.value,
                                             #Evil
-                                            Parser.ParseBuffOrShieldText.RegenerateEnded.value + Parser.ParseBuffOrShieldText.RegenerateStarts.value,
-                                            Parser.ParseBuffOrShieldText.VitalizeEnded.value + Parser.ParseBuffOrShieldText.VitalizeStarts.value
+                                            Parser.ParseBuffOrShieldText.Regenerate_Ended.value + Parser.ParseBuffOrShieldText.RegenerateStarts.value,
+                                            Parser.ParseBuffOrShieldText.Vitalize_Ended.value + Parser.ParseBuffOrShieldText.VitalizeStarts.value
                                         ],
                                         ids=["Shield refresh",
                                             "Blur refresh",
@@ -245,3 +245,38 @@ class TestView():
 
             mockedDisplay.assert_not_called()
             mockedHide.assert_not_called()
+
+        @pytest.mark.parametrize("input,expectedToContain", [(Parser.ParseBuffOrShieldText.BleedDotResist_Ended.value, "Bleed.Resist"),
+                                                             (Parser.ParseBuffOrShieldText.Bless_Ended.value, "Bless Ended")],
+                                            ids=["`Dot` in name replaced with `.` (period) character.",
+                                                 "`_` (underscore) in name replaced with ` ` (space) character."])
+        def test_BuffOrShieldEnded_LabelToBeUpdatedWithEnumMemberValueContaining__SpecificString__ReplacedWith__ExpectedCharacter(self, input, expectedToContain):
+            c = Controller.ForTesting()
+            v = c.view
+            c.receiver.receive(input)
+
+            v.update_gui()
+            actualText = v.var_buffOrShieldEndingText.get()
+
+            assert actualText.__contains__(expectedToContain)
+
+    class TestSpellMitigationDisplay:
+        def test_SpellMitigationInputReceived_LabelDisplayed(self):
+            c = Controller.ForTesting()
+            v = c.view
+            c.receiver.receive(Parser.ParseSpellMitigationAffect.Bleed_Resist.value)
+
+            with patch.object(v, f'{v.displaySpellMitigatesAffectLabel.__name__}') as mockedDisplay:
+                v.update_gui()
+
+            mockedDisplay.assert_called_once_with(Parser.ParseSpellMitigationAffect.Bleed_Resist)
+
+        def test_NonSpellMitigationText_LabelNotDisplayed(self):
+            c = Controller.ForTesting()
+            v = c.view
+            c.receiver.receive("Text not related to spell mitigation.")
+
+            with patch.object(v, f'{v.displaySpellMitigatesAffectLabel.__name__}') as mockedDisplay:
+                v.update_gui()
+
+            mockedDisplay.assert_not_called()

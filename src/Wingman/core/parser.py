@@ -320,59 +320,59 @@ Subsequent removal of mob from the model needs to be dealt with by the caller.''
     class ParseBuffOrShieldText(StrEnum):
         NotApplicable = "Default value for `unassigned` values."
 
-        BlurEnded = "The blur about you stops."
+        Blur_Ended = "The blur about you stops."
         BlurStarts = "You look very blurry!"
-        ProtectEnded = "The magical sheen about you fades."
+        Protect_Ended = "The magical sheen about you fades."
         ProtectStarts = "You are surrounded by a magical sheen!"
-        ShieldEnded = "The glowing shield in front of you disappears."
+        Shield_Ended = "The glowing shield in front of you disappears."
         ShieldStarts = "You are fronted by a glowing shield!"
-        ToughSkinEnded = "Your skin softens."
-        ToughSkinStarts = "You get tougher skin!"
+        ToughDotSkin_Ended = "Your skin softens."
+        ToughDotSkinStarts = "You get tougher skin!"
 
         #Chaos
-        BleedResistEnded = "Your bleeding resistance fades."
-        BleedResistStarts = "You look resistant to bleeding."
-        ChaosFortitudeEnded = "The hale look about you fades."
-        ChaosFortitudeStarts = "You look hale."
-        CombatEnded = "The combat skill about you goes away."
+        BleedDotResist_Ended = "Your bleeding resistance fades."
+        BleedDotResistStarts = "You look resistant to bleeding."
+        ChaosDotFortitude_Ended = "The hale look about you fades."
+        ChaosDotFortitudeStarts = "You look hale."
+        Combat_Ended = "The combat skill about you goes away."
         CombatStarts = "You look adept at combat skills!"
-        DiseaseResistEnded = "Your disease resistance fades."
-        DiseaseResistStarts = "You look resistant to disease."
-        PoisonResistEnded = "Your poison resistance fades."
-        PoisonResistStarts = "You look resistant to poison."
+        DiseaseDotResist_Ended = "Your disease resistance fades."
+        DiseaseDotResistStarts = "You look resistant to disease."
+        PoisonDotResist_Ended = "Your poison resistance fades."
+        PoisonDotResistStarts = "You look resistant to poison."
 
         #Good
-        BlessEnded = "The blessed look about you fades."
+        Bless_Ended = "The blessed look about you fades."
         BlessStarts = "You look blessed!"
 
         #Evil
-        RegenerateEnded = "The healthful glow surrounding you fades."
+        Regenerate_Ended = "The healthful glow surrounding you fades."
         RegenerateStarts = "You look extremely healthy!"
-        VitalizeEnded = "The aura of vitality surrounding you fades."
+        Vitalize_Ended = "The aura of vitality surrounding you fades."
         VitalizeStarts = "You look extremely vital!"
 
         @staticmethod
         def mapOfStartingToEndingEnumMembers() -> dict['Parser.ParseBuffOrShieldText', 'Parser.ParseBuffOrShieldText']:
             """Given a starting value for a buff or shield, return the corresponding ending value."""
             map = {
-                Parser.ParseBuffOrShieldText.BlurStarts: Parser.ParseBuffOrShieldText.BlurEnded,
-                Parser.ParseBuffOrShieldText.ProtectStarts: Parser.ParseBuffOrShieldText.ProtectEnded,
-                Parser.ParseBuffOrShieldText.ShieldStarts: Parser.ParseBuffOrShieldText.ShieldEnded,
-                Parser.ParseBuffOrShieldText.ToughSkinStarts: Parser.ParseBuffOrShieldText.ToughSkinEnded,
+                Parser.ParseBuffOrShieldText.BlurStarts: Parser.ParseBuffOrShieldText.Blur_Ended,
+                Parser.ParseBuffOrShieldText.ProtectStarts: Parser.ParseBuffOrShieldText.Protect_Ended,
+                Parser.ParseBuffOrShieldText.ShieldStarts: Parser.ParseBuffOrShieldText.Shield_Ended,
+                Parser.ParseBuffOrShieldText.ToughDotSkinStarts: Parser.ParseBuffOrShieldText.ToughDotSkin_Ended,
 
                 #Chaos
-                Parser.ParseBuffOrShieldText.BleedResistStarts: Parser.ParseBuffOrShieldText.BleedResistEnded,
-                Parser.ParseBuffOrShieldText.ChaosFortitudeStarts: Parser.ParseBuffOrShieldText.ChaosFortitudeEnded,
-                Parser.ParseBuffOrShieldText.CombatStarts: Parser.ParseBuffOrShieldText.CombatEnded,
-                Parser.ParseBuffOrShieldText.DiseaseResistStarts: Parser.ParseBuffOrShieldText.DiseaseResistEnded,
-                Parser.ParseBuffOrShieldText.PoisonResistStarts: Parser.ParseBuffOrShieldText.PoisonResistEnded,
+                Parser.ParseBuffOrShieldText.BleedDotResistStarts: Parser.ParseBuffOrShieldText.BleedDotResist_Ended,
+                Parser.ParseBuffOrShieldText.ChaosDotFortitudeStarts: Parser.ParseBuffOrShieldText.ChaosDotFortitude_Ended,
+                Parser.ParseBuffOrShieldText.CombatStarts: Parser.ParseBuffOrShieldText.Combat_Ended,
+                Parser.ParseBuffOrShieldText.DiseaseDotResistStarts: Parser.ParseBuffOrShieldText.DiseaseDotResist_Ended,
+                Parser.ParseBuffOrShieldText.PoisonDotResistStarts: Parser.ParseBuffOrShieldText.PoisonDotResist_Ended,
 
                 #Good
-                Parser.ParseBuffOrShieldText.BlessStarts: Parser.ParseBuffOrShieldText.BlessEnded,
+                Parser.ParseBuffOrShieldText.BlessStarts: Parser.ParseBuffOrShieldText.Bless_Ended,
 
                 #Evil
-                Parser.ParseBuffOrShieldText.RegenerateStarts: Parser.ParseBuffOrShieldText.RegenerateEnded,
-                Parser.ParseBuffOrShieldText.VitalizeStarts: Parser.ParseBuffOrShieldText.VitalizeEnded
+                Parser.ParseBuffOrShieldText.RegenerateStarts: Parser.ParseBuffOrShieldText.Regenerate_Ended,
+                Parser.ParseBuffOrShieldText.VitalizeStarts: Parser.ParseBuffOrShieldText.Vitalize_Ended
             }
 
             return map
@@ -384,80 +384,85 @@ If the text includes the ending and starting value for the spell, this is treate
 
 - First Tuple Part: `bool` - `True` = a buff or shield has refreshed, `False` = buff or shield has ended, `None` - non-buff/shield related.
 - Second Tuple Part: `ParseBuffOrShieldText` indicates which buff/shield has refreshed. `None` for non-buff/shield related."""
-        if self.ParseBuffOrShieldText.ShieldEnded.value in text:
+        if self.ParseBuffOrShieldText.Shield_Ended.value in text:
             if self.ParseBuffOrShieldText.ShieldStarts.value in text:
                 return True, self.ParseBuffOrShieldText.ShieldStarts
-            return False, self.ParseBuffOrShieldText.ShieldEnded
+            return False, self.ParseBuffOrShieldText.Shield_Ended
 
-        if self.ParseBuffOrShieldText.BlurEnded.value in text:
+        if self.ParseBuffOrShieldText.Blur_Ended.value in text:
             if self.ParseBuffOrShieldText.BlurStarts.value in text:
                 return True, self.ParseBuffOrShieldText.BlurStarts
-            return False, self.ParseBuffOrShieldText.BlurEnded
+            return False, self.ParseBuffOrShieldText.Blur_Ended
 
-        if self.ParseBuffOrShieldText.ProtectEnded.value in text:
+        if self.ParseBuffOrShieldText.Protect_Ended.value in text:
             if self.ParseBuffOrShieldText.ProtectStarts.value in text:
                 return True, self.ParseBuffOrShieldText.ProtectStarts
-            return False, self.ParseBuffOrShieldText.ProtectEnded
+            return False, self.ParseBuffOrShieldText.Protect_Ended
 
-        if self.ParseBuffOrShieldText.ToughSkinEnded.value in text:
-            if self.ParseBuffOrShieldText.ToughSkinStarts.value in text:
-                return True, self.ParseBuffOrShieldText.ToughSkinStarts
-            return False, self.ParseBuffOrShieldText.ToughSkinEnded
+        if self.ParseBuffOrShieldText.ToughDotSkin_Ended.value in text:
+            if self.ParseBuffOrShieldText.ToughDotSkinStarts.value in text:
+                return True, self.ParseBuffOrShieldText.ToughDotSkinStarts
+            return False, self.ParseBuffOrShieldText.ToughDotSkin_Ended
 
         #Chaos
-        if self.ParseBuffOrShieldText.BleedResistEnded.value in text:
-            if self.ParseBuffOrShieldText.BleedResistStarts.value in text:
-                return True, self.ParseBuffOrShieldText.BleedResistStarts
-            return False, self.ParseBuffOrShieldText.BleedResistEnded
+        if self.ParseBuffOrShieldText.BleedDotResist_Ended.value in text:
+            if self.ParseBuffOrShieldText.BleedDotResistStarts.value in text:
+                return True, self.ParseBuffOrShieldText.BleedDotResistStarts
+            return False, self.ParseBuffOrShieldText.BleedDotResist_Ended
 
-        if self.ParseBuffOrShieldText.ChaosFortitudeEnded.value in text:
-            if self.ParseBuffOrShieldText.ChaosFortitudeStarts.value in text:
-                return True, self.ParseBuffOrShieldText.ChaosFortitudeStarts
-            return False, self.ParseBuffOrShieldText.ChaosFortitudeEnded
+        if self.ParseBuffOrShieldText.ChaosDotFortitude_Ended.value in text:
+            if self.ParseBuffOrShieldText.ChaosDotFortitudeStarts.value in text:
+                return True, self.ParseBuffOrShieldText.ChaosDotFortitudeStarts
+            return False, self.ParseBuffOrShieldText.ChaosDotFortitude_Ended
 
-        if self.ParseBuffOrShieldText.CombatEnded.value in text:
+        if self.ParseBuffOrShieldText.Combat_Ended.value in text:
             if self.ParseBuffOrShieldText.CombatStarts.value in text:
                 return True, self.ParseBuffOrShieldText.CombatStarts
-            return False, self.ParseBuffOrShieldText.CombatEnded
+            return False, self.ParseBuffOrShieldText.Combat_Ended
 
-        if self.ParseBuffOrShieldText.DiseaseResistEnded.value in text:
-            if self.ParseBuffOrShieldText.DiseaseResistStarts.value in text:
-                return True, self.ParseBuffOrShieldText.DiseaseResistStarts
-            return False, self.ParseBuffOrShieldText.DiseaseResistEnded
+        if self.ParseBuffOrShieldText.DiseaseDotResist_Ended.value in text:
+            if self.ParseBuffOrShieldText.DiseaseDotResistStarts.value in text:
+                return True, self.ParseBuffOrShieldText.DiseaseDotResistStarts
+            return False, self.ParseBuffOrShieldText.DiseaseDotResist_Ended
 
-        if self.ParseBuffOrShieldText.PoisonResistEnded.value in text:
-            if self.ParseBuffOrShieldText.PoisonResistStarts.value in text:
-                return True, self.ParseBuffOrShieldText.PoisonResistStarts
-            return False, self.ParseBuffOrShieldText.PoisonResistEnded
+        if self.ParseBuffOrShieldText.PoisonDotResist_Ended.value in text:
+            if self.ParseBuffOrShieldText.PoisonDotResistStarts.value in text:
+                return True, self.ParseBuffOrShieldText.PoisonDotResistStarts
+            return False, self.ParseBuffOrShieldText.PoisonDotResist_Ended
 
         #Good
-        if self.ParseBuffOrShieldText.BlessEnded.value in text:
+        if self.ParseBuffOrShieldText.Bless_Ended.value in text:
             if self.ParseBuffOrShieldText.BlessStarts.value in text:
                 return True, self.ParseBuffOrShieldText.BlessStarts
-            return False, self.ParseBuffOrShieldText.BlessEnded
+            return False, self.ParseBuffOrShieldText.Bless_Ended
 
         #Evil
-        if self.ParseBuffOrShieldText.RegenerateEnded.value in text:
+        if self.ParseBuffOrShieldText.Regenerate_Ended.value in text:
             if self.ParseBuffOrShieldText.RegenerateStarts.value in text:
                 return True, self.ParseBuffOrShieldText.RegenerateStarts
-            return False, self.ParseBuffOrShieldText.RegenerateEnded
+            return False, self.ParseBuffOrShieldText.Regenerate_Ended
 
-        if self.ParseBuffOrShieldText.VitalizeEnded.value in text:
+        if self.ParseBuffOrShieldText.Vitalize_Ended.value in text:
             if self.ParseBuffOrShieldText.VitalizeStarts.value in text:
                 return True, self.ParseBuffOrShieldText.VitalizeStarts
-            return False, self.ParseBuffOrShieldText.VitalizeEnded
+            return False, self.ParseBuffOrShieldText.Vitalize_Ended
 
         return None, None
     
     class ParseSpellMitigationAffect(StrEnum):
-        ToughSkin = "Your hardened skin tempers the impact!"
-        BleedResist = "You start to bleed, but you are resistant!"
-        DiseaseResist = "Disease starts to enter your system, but you are resistant!"
-        PoisonResist = "Poison starts to enter your system, but you are resistant!"
+        Tough_Skin = "Your hardened skin tempers the impact!"
+        Bleed_Resist = "You start to bleed, but you are resistant!"
+        Disease_Resist = "Disease starts to enter your system, but you are resistant!"
+        Poison_Resist = "Poison starts to enter your system, but you are resistant!"
 
-    def parseSpellMitigationAffect(self, text: str) -> tuple[bool, str | None]:
+    def parseSpellMitigationAffect(self, text: str) -> tuple[bool, ParseSpellMitigationAffect | None]:
+        '''Parses text for a mitigating affect related to a spell.
+
+- First Tuple Part: `bool` - `True` = pertains to spell mitigation, `False` otherwise.
+- Second Tuple Part: The enum member indicating the reason for the mitigation. `None` if the text does not pertain to spell mitigation.'''
+
         map = self.ParseSpellMitigationAffect._value2member_map_
         if map.__contains__(text):
-            return True, map[text].name
-        
+            return True, map[text]
+
         return False, None

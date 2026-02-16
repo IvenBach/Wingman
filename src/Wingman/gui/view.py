@@ -400,20 +400,23 @@ c = Controller.ForTesting()
         self._pet_or_mobs_display_settings_window.deiconify()
 
     def _withdraw_pet_or_mobs_display_settings_window(self):
-         self._pet_or_mobs_display_settings_window.withdraw()
+        self._pet_or_mobs_display_settings_window.withdraw()
     
     def update_display_of_pets_in_group_window(self, displayMobsInGroupWindow: bool):
         self._controller.update_display_of_pets_in_group_window(displayMobsInGroupWindow)
 
     def displayBuffOrShieldEndedLabel(self, endingBuffOrShield :Parser.ParseBuffOrShieldText):
-        self.var_buffOrShieldEndingText.set(endingBuffOrShield.name.replace("Ended", " Ended"))
+        self.var_buffOrShieldEndingText.set(endingBuffOrShield.name
+                                            .replace("Dot", ".")
+                                            .replace("_", " "))
         self.buffOrShieldEndedLabel.grid()
         self.after(self._buffOrShieldEndingDisplayTime, self.hideBuffOrShieldEndedLabel)
     def hideBuffOrShieldEndedLabel(self):
         self.buffOrShieldEndedLabel.grid_remove()
 
-    def displaySpellMitigatesAffectLabel(self, affectText: str):
-        self.var_spellMitigatesAffectText.set(affectText)
+    def displaySpellMitigatesAffectLabel(self, spellMitigationAffectMember: Parser.ParseSpellMitigationAffect):
+        self.var_spellMitigatesAffectText.set(spellMitigationAffectMember.name
+                                              .replace("_", " "))
         self.spellMitigatesAffectsLabel.grid()
         self.after(self._buffOrShieldEndingDisplayTime, self.hideSpellMitigatesAffect)
     def hideSpellMitigatesAffect(self):
