@@ -517,7 +517,7 @@ class TestBuffOrShieldEndingParse:
 
 class TestSpellMitigationAffectParse:
     def test_SpellMitigationText_IndicatesSpell(self):
-        isMitigatingText, mitigatingSpell = Parser().parseSpellMitigationAffect(Parser.ParseSpellMitigationAffect.Bleed_Resist)
+        isMitigatingText, mitigatingSpell = Parser().parseSpellMitigationAffect(Parser.ParseSpellMitigationAffect.BleedDotResist)
 
         assert isMitigatingText
-        assert mitigatingSpell == Parser.ParseSpellMitigationAffect.Bleed_Resist
+        assert mitigatingSpell == Parser.ParseSpellMitigationAffect.BleedDotResist

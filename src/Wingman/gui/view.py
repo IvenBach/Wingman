@@ -416,7 +416,7 @@ c = Controller.ForTesting()
 
     def displaySpellMitigatesAffectLabel(self, spellMitigationAffectMember: Parser.ParseSpellMitigationAffect):
         self.var_spellMitigatesAffectText.set(spellMitigationAffectMember.name
-                                              .replace("_", " "))
+                                              .replace("Dot", "."))
         self.spellMitigatesAffectsLabel.grid()
         self.after(self._buffOrShieldEndingDisplayTime, self.hideSpellMitigatesAffect)
     def hideSpellMitigatesAffect(self):

@@ -318,8 +318,6 @@ Subsequent removal of mob from the model needs to be dealt with by the caller.''
             return False, None, None
 
     class ParseBuffOrShieldText(StrEnum):
-        NotApplicable = "Default value for `unassigned` values."
-
         Blur_Ended = "The blur about you stops."
         BlurStarts = "You look very blurry!"
         Protect_Ended = "The magical sheen about you fades."
@@ -450,10 +448,10 @@ If the text includes the ending and starting value for the spell, this is treate
         return None, None
     
     class ParseSpellMitigationAffect(StrEnum):
-        Tough_Skin = "Your hardened skin tempers the impact!"
-        Bleed_Resist = "You start to bleed, but you are resistant!"
-        Disease_Resist = "Disease starts to enter your system, but you are resistant!"
-        Poison_Resist = "Poison starts to enter your system, but you are resistant!"
+        ToughDotSkin = "Your hardened skin tempers the impact!"
+        BleedDotResist = "You start to bleed, but you are resistant!"
+        DiseaseDotResist = "Disease starts to enter your system, but you are resistant!"
+        PoisonDotResist = "Poison starts to enter your system, but you are resistant!"
 
     def parseSpellMitigationAffect(self, text: str) -> tuple[bool, ParseSpellMitigationAffect | None]:
         '''Parses text for a mitigating affect related to a spell.

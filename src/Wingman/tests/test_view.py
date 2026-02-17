@@ -264,12 +264,12 @@ class TestView():
         def test_SpellMitigationInputReceived_LabelDisplayed(self):
             c = Controller.ForTesting()
             v = c.view
-            c.receiver.receive(Parser.ParseSpellMitigationAffect.Bleed_Resist.value)
+            c.receiver.receive(Parser.ParseSpellMitigationAffect.BleedDotResist.value)
 
-            with patch.object(v, f'{v.displaySpellMitigatesAffectLabel.__name__}') as mockedDisplay:
-                v.update_gui()
+            v.update_gui()
+            actualText = v.var_spellMitigatesAffectText.get()
 
-            mockedDisplay.assert_called_once_with(Parser.ParseSpellMitigationAffect.Bleed_Resist)
+            assert actualText.__contains__("Bleed.Resist")
 
         def test_NonSpellMitigationText_LabelNotDisplayed(self):
             c = Controller.ForTesting()
