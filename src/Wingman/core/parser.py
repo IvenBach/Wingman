@@ -381,7 +381,7 @@ Subsequent removal of mob from the model needs to be dealt with by the caller.''
 If the text includes the ending and starting value for the spell, this is treated as a refresh of the buff/shield and results in a `True` return value.
 
 - First Tuple Part: `bool` - `True` = a buff or shield has refreshed, `False` = buff or shield has ended, `None` - non-buff/shield related.
-- Second Tuple Part: `ParseBuffOrShieldText` indicates which buff/shield has refreshed. `None` for non-buff/shield related."""
+- Second Tuple Part: `ParseBuffOrShieldText` indicates which buff/shield has started/ended. `None` for non-buff/shield related."""
         if self.ParseBuffOrShieldText.Shield_Ended.value in text:
             if self.ParseBuffOrShieldText.ShieldStarts.value in text:
                 return True, self.ParseBuffOrShieldText.ShieldStarts
