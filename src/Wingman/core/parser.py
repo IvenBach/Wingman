@@ -448,6 +448,7 @@ If the text includes the ending and starting value for the spell, this is treate
         return None, None
     
     class ParseSpellMitigationAffect(StrEnum):
+        '''Spells that provide a mitigating affect. Whether reduced damage or preventing a status affect like Bleed, Poison, or Disease (BPD).'''
         ToughDotSkin = "Your hardened skin tempers the impact!"
         BleedDotResist = "You start to bleed, but you are resistant!"
         DiseaseDotResist = "Disease starts to enter your system, but you are resistant!"
