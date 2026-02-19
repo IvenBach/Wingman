@@ -264,7 +264,7 @@ class TestView():
         def test_SpellMitigationInputReceived_LabelDisplayed(self):
             c = Controller.ForTesting()
             v = c.view
-            c.receiver.receive(Parser.ParseSpellMitigationAffect.BleedDotResist.value)
+            c.receiver.receive(Parser.SpellMitigationAffect.BleedDotResist.value)
 
             v.update_gui()
             actualText = v.var_spellMitigatesAffectText.get()

@@ -414,7 +414,7 @@ c = Controller.ForTesting()
     def hideBuffOrShieldEndedLabel(self):
         self.buffOrShieldEndedLabel.grid_remove()
 
-    def displaySpellMitigatesAffectLabel(self, spellMitigationAffectMember: Parser.ParseSpellMitigationAffect):
+    def displaySpellMitigatesAffectLabel(self, spellMitigationAffectMember: Parser.SpellMitigationAffect):
         self.var_spellMitigatesAffectText.set(spellMitigationAffectMember.name
                                               .replace("Dot", "."))
         self.spellMitigatesAffectsLabel.grid()

@@ -447,20 +447,20 @@ If the text includes the ending and starting value for the spell, this is treate
 
         return None, None
     
-    class ParseSpellMitigationAffect(StrEnum):
+    class SpellMitigationAffect(StrEnum):
         '''Spells that provide a mitigating affect. Whether reduced damage or preventing a status affect like Bleed, Poison, or Disease (BPD).'''
         ToughDotSkin = "Your hardened skin tempers the impact!"
         BleedDotResist = "You start to bleed, but you are resistant!"
         DiseaseDotResist = "Disease starts to enter your system, but you are resistant!"
         PoisonDotResist = "Poison starts to enter your system, but you are resistant!"
 
-    def parseSpellMitigationAffect(self, text: str) -> tuple[bool, ParseSpellMitigationAffect | None]:
+    def parseSpellMitigationAffect(self, text: str) -> tuple[bool, SpellMitigationAffect | None]:
         '''Parses text for a mitigating affect related to a spell.
 
 - First Tuple Part: `bool` - `True` = pertains to spell mitigation, `False` otherwise.
 - Second Tuple Part: The enum member indicating the reason for the mitigation. `None` if the text does not pertain to spell mitigation.'''
 
-        map = self.ParseSpellMitigationAffect._value2member_map_
+        map = self.SpellMitigationAffect._value2member_map_
         if map.__contains__(text):
             return True, map[text]
 
