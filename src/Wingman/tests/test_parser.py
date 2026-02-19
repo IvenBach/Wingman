@@ -191,6 +191,13 @@ A vapor-shrouded mistwolf follows you"""
         assert len(matches) == 1
         assert matches[0].Name == 'AnonymizedName'
 
+    def test_DraggingCorpse_AddsToGroup(self):
+        text = "You drag FooBar's corpse."
+        chars = Parser().parse_group_status(text)
+
+        assert len(chars) == 1
+        assert chars[0].Name == "FooBar"
+
 class TestLeavingGroupParser:
     @pytest.fixture
     def leaveGroupParser(self):

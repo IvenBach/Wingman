@@ -49,8 +49,9 @@ class Parser():
 
         newFollowersName = r"(?P<NewGroupMember>[A-Za-z -]+)"
         newFollower = f"{newFollowersName} follows you"
+        isBeingDragged = r"You drag (?P<draggedCorpse>[A-Za-z]+)'s corpse."
 
-        groupParserString = f"({currentPartyMember}|{newFollower})"
+        groupParserString = f"({currentPartyMember}|{newFollower}|{isBeingDragged})"
 
         pattern = re.compile(groupParserString,
             re.DOTALL
@@ -62,12 +63,15 @@ class Parser():
         def isNewFollower(line: str) -> bool:
             return 'follows you' in line
 
+        def isACorpseBeingDragged(line: str) -> bool:
+            return "You drag " in line and "'s corpse." in line
+
         for line in text_block.splitlines():
             if isCurrentPartyMember(line):
                 match = pattern.search(line)
                 if match:
                     data = match.groupdict()
-                    
+
                     # NEW: Exclude pets/mobs immediately
                     if not includePets and data['cls'] == 'mob':
                         continue
@@ -87,6 +91,14 @@ class Parser():
                 if match:
                     data = match.groupdict()
                     c = Character(data['NewGroupMember'],
+                                isNewFollower=True)
+                    members.append(c)
+
+            elif isACorpseBeingDragged(line):
+                match = pattern.search(line)
+                if match:
+                    data = match.groupdict()
+                    c = Character(data['draggedCorpse'],
                                 isNewFollower=True)
                     members.append(c)
 
