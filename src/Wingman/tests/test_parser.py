@@ -163,7 +163,7 @@ class TestGroupParser:
 
 A vapor-shrouded mistwolf follows you"""
 
-        matches = groupParser(raw_input) #  pattern.findall(raw_input)
+        matches = groupParser(raw_input)
 
         assert len(matches) == 3
 
@@ -171,7 +171,7 @@ A vapor-shrouded mistwolf follows you"""
         (False, 1),
         (True, 2)
     ])
-    def test_include_pets_in_group_parse(self, includePets: bool, expectedCount: int, groupParser: Callable[[str], List[Character]]):
+    def test_include_pets_in_group_parse(self, includePets: bool, expectedCount: int, groupParser: Callable[[str, bool], List[Character]]):
         raw_input = """Beautiful's group:
 
 [ Class      Lv] Status   Name              Hits            Fat             Power
@@ -179,7 +179,7 @@ A vapor-shrouded mistwolf follows you"""
 
 [mob         72]         angel of death   445/445 (100%)  445/445 (100%)  547/547 (100%)  """
 
-        groupMembers = groupParser(raw_input, includePets=includePets)
+        groupMembers = groupParser(raw_input, includePets)
 
         assert len(groupMembers) == expectedCount
 
