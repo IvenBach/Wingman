@@ -280,3 +280,46 @@ class TestView():
                 v.update_gui()
 
             mockedDisplay.assert_not_called()
+
+    class TestMeditationDisplayLabels:
+        def test_MeditationEndsByStanding_FullPowerLabelNotDisplayed(self):
+            c = Controller.ForTesting()
+            v = c.view
+            c.receiver.receive(Parser.MeditationState.Termination_ByStanding.value)
+
+            with patch.object(v, f'{v.displayFullPowerLabel.__name__}') as mockedDisplay:
+                v.update_gui()
+
+            mockedDisplay.assert_not_called()
+        
+        def test_MeditationEndsByStanding_MeditationLabelHidden(self):
+            c = Controller.ForTesting()
+            v = c.view
+            c.receiver.receive(Parser.MeditationState.Begin.value)
+            c.receiver.receive(Parser.MeditationState.Termination_ByStanding.value)
+
+            with patch.object(v, f'{v.hideMeditationLabel.__name__}') as mockedHide:
+                v.update_gui()
+
+            mockedHide.assert_called_once_with()
+
+        def test_MeditationEndsOnItsOwn_FullPowerLabelDisplayed(self):
+            c = Controller.ForTesting()
+            v = c.view
+            c.receiver.receive(Parser.MeditationState.Termination_ByFullPower.value)
+
+            with patch.object(v, f'{v.displayFullPowerLabel.__name__}') as mockedDisplay:
+                v.update_gui()
+
+            mockedDisplay.assert_called_once_with()
+
+        def test_MeditationEndsOnItsOwn_MeditationLabelHidden(self):
+            c = Controller.ForTesting()
+            v = c.view
+            c.receiver.receive(Parser.MeditationState.Begin.value)
+            c.receiver.receive(Parser.MeditationState.Termination_ByFullPower.value)
+
+            with patch.object(v, f'{v.hideMeditationLabel.__name__}') as mockedHide:
+                v.update_gui()
+
+            mockedHide.assert_called_once_with()

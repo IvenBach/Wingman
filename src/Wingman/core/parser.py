@@ -165,35 +165,29 @@ class Parser():
         
         return None
     
-    class Meditation(StrEnum):
+    class MeditationState(StrEnum):
         Begin = "You slip into a meditative trance..."
-        Termination_Voluntary = "You end your meditation."
-        Termination_NonVoluntary = "Your meditation is interrupted."
-    def parseMeditation(self, text: str) -> bool | None:
+        Termination_ByStanding = "You stand up.\nYou end your meditation."
+        Termination_ByFullPower = "You end your meditation."
+        Termination_ByInterruption = "Your meditation is interrupted."
+    def parseMeditation(self, text: str) -> tuple[bool | None, MeditationState | None]:
         """
         Parse line of text to determine if it indicates meditation status.
 
-- True = `You slip into a meditative trance...`
-- False = `You end your meditation.` or `Your meditation is interrupted.`
-- None = Anything non-meditation-related.
+- First Tuple Part: `True` = meditation has begun, `False` = meditation has ended, `None` = non-meditation related.
+- Second Tuple Part: The enum member indicating the meditation status. `None` for non-meditation related.
+"""
+        if self.MeditationState.Begin.value in text:
+                return True, self.MeditationState.Begin
+        if self.MeditationState.Termination_ByStanding.value in text:
+                return False, self.MeditationState.Termination_ByStanding
+        if self.MeditationState.Termination_ByFullPower.value in text:
+                return False, self.MeditationState.Termination_ByFullPower
+        if self.MeditationState.Termination_ByInterruption.value in text:
+                return False, self.MeditationState.Termination_ByInterruption
 
-        :param text: line of text to parse
-        :type text: str
-        :return: True for meditation-related, False for non-meditation-related, None if it doesn't deal with meditation status
-        :rtype: bool | None
-        """
-        if self.Meditation.Begin.value in text:
-            return True
-        
-        voluntaryTermination = self.Meditation.Termination_Voluntary.value
-        nonVoluntaryTermination = self.Meditation.Termination_NonVoluntary.value
-        meditatingEndPattern = re.compile(f"({voluntaryTermination}|{nonVoluntaryTermination})", re.IGNORECASE)
-        hasMeditationEnded = meditatingEndPattern.findall(text)
-        if len(hasMeditationEnded) > 0:
-            return False
-        
-        return None
-    
+        return None, None
+
     class HideStatus(StrEnum):
         Begin = "You're hidden."
         AlreadyHidden = "You are already hiding."

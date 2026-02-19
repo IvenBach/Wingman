@@ -301,30 +301,35 @@ class TestAfkParser:
         assert actual is None
 
 class TestMeditationParse:
-    def test_StartedMeditating_ReturnsTrue(self):
-        isMeditating = Parser().parseMeditation(Parser.Meditation.Begin.value)
+    def test_StartedMeditating(self):
+        isMeditating, meditationState = Parser().parseMeditation(Parser.MeditationState.Begin.value)
 
         assert isMeditating
+        assert meditationState == Parser.MeditationState.Begin
     
-    def test_EndedMeditatingVoluntarily_ReturnsFalse(self):
-        isMeditating = Parser().parseMeditation(Parser.Meditation.Termination_Voluntary.value)
+    def test_EndedMeditating_ByStandingUp(self):
+        isMeditating, meditationState = Parser().parseMeditation(Parser.MeditationState.Termination_ByStanding.value)
 
         assert isMeditating == False
+        assert meditationState == Parser.MeditationState.Termination_ByStanding
     
-    def test_EndedMeditationNonVoluntarily_ReturnsFalse(self):
-        isMeditating = Parser().parseMeditation(Parser.Meditation.Termination_NonVoluntary.value)
+    def test_EndedMeditating_ByNotStandingUp_ExpectedFullPower(self):
+        isMeditating, meditationState = Parser().parseMeditation(Parser.MeditationState.Termination_ByFullPower.value)
 
         assert isMeditating == False
+        assert meditationState == Parser.MeditationState.Termination_ByFullPower
+
+    def test_EndedMeditation_ByInterruption(self):
+        isMeditating, meditationState = Parser().parseMeditation(Parser.MeditationState.Termination_ByInterruption.value)
+
+        assert isMeditating == False
+        assert meditationState == Parser.MeditationState.Termination_ByInterruption
     
-    def test_NonMeditationRelatedLine_CurrentlyMeditating_ReturnsNone(self):
-        isMeditating = Parser().parseMeditation("Some other line unrelated to meditation.")
+    def test_NonMeditationRelatedLine_ReturnsNone(self):
+        isMeditating, meditationState = Parser().parseMeditation("Some other line unrelated to meditation.")
 
         assert isMeditating == None
-    
-    def test_NonMeditationRelatedLine_NotCurrentlyMeditating_ReturnsNone(self):
-        isMeditating = Parser().parseMeditation("Some other line unrelated to meditation.")
-
-        assert isMeditating == None
+        assert meditationState == None
 
 class TestHidingParse:
     def test_StartHiding_ReturnsTrue(self):

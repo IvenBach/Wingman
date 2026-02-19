@@ -35,7 +35,7 @@ class View(tk.Frame):
         self._pet_or_mobs_display_settings_window = tk.Toplevel(parent)
         self.var_includePetsInGroup = tk.BooleanVar(value=False)
         self._cachedGroup: Group = Group([])
-        self._buffOrShieldEndingDisplayTime = 2000 #ms
+        self._hideDisplayedLabelCallbackTimer = 2000 #ms
         self.var_buffOrShieldEndingText = tk.StringVar(value="")
         self.var_spellMitigatesAffectText = tk.StringVar(value="")
 
@@ -109,6 +109,12 @@ c = Controller.ForTesting()
                                           style=centralLabelStyleName)
         self._meditatingLabel.grid(row=0, column=0)
         self._meditatingLabel.grid_remove()
+
+        self._fullPowerLabel = ttk.Label(centerFrame, name='fullPowerStatusLabel', 
+                                         text="Full Power!", 
+                                         style=centralLabelStyleName)
+        self._fullPowerLabel.grid(row=0, column=0)
+        self._fullPowerLabel.grid_remove()
 
         self._hidingLabel = ttk.Label(main_frame, text="Hiding", anchor=tk.CENTER)
         self._hidingLabel.grid(row=1, column=0, sticky=tk.EW)
@@ -384,6 +390,12 @@ c = Controller.ForTesting()
     def hideMeditationLabel(self):
         self._meditatingLabel.grid_remove()
 
+    def displayFullPowerLabel(self):
+        self._fullPowerLabel.grid()
+        self.after(self._hideDisplayedLabelCallbackTimer, self.hideFullPowerLabel)
+    def hideFullPowerLabel(self):
+        self._fullPowerLabel.grid_remove()
+
     def displayHidingLabel(self):
         self._hidingLabel.grid()
     def hideHidingLabel(self):
@@ -410,7 +422,7 @@ c = Controller.ForTesting()
                                             .replace("Dot", ".")
                                             .replace("_", " "))
         self.buffOrShieldEndedLabel.grid()
-        self.after(self._buffOrShieldEndingDisplayTime, self.hideBuffOrShieldEndedLabel)
+        self.after(self._hideDisplayedLabelCallbackTimer, self.hideBuffOrShieldEndedLabel)
     def hideBuffOrShieldEndedLabel(self):
         self.buffOrShieldEndedLabel.grid_remove()
 
@@ -418,6 +430,6 @@ c = Controller.ForTesting()
         self.var_spellMitigatesAffectText.set(spellMitigationAffectMember.name
                                               .replace("Dot", "."))
         self.spellMitigatesAffectsLabel.grid()
-        self.after(self._buffOrShieldEndingDisplayTime, self.hideSpellMitigatesAffect)
+        self.after(self._hideDisplayedLabelCallbackTimer, self.hideSpellMitigatesAffect)
     def hideSpellMitigatesAffect(self):
         self.spellMitigatesAffectsLabel.grid_remove()

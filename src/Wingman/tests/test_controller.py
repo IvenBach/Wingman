@@ -352,7 +352,7 @@ class TestDisplayingCentralColumnLabelInView():
     def test_BeginMeditating_MeditationLabelDisplayedInView(self):
         c = Controller.ForTesting()
         v = c.view
-        c.receiver.receive(Parser.Meditation.Begin.value)
+        c.receiver.receive(Parser.MeditationState.Begin.value)
         c.process_queue()
 
         with patch.object(v, v.displayMeditationLabel.__name__) as mockedMethod:
@@ -360,7 +360,7 @@ class TestDisplayingCentralColumnLabelInView():
 
         mockedMethod.assert_called_once_with()
 
-    @pytest.mark.parametrize("input_line", [Parser.Meditation.Termination_Voluntary.value, Parser.Meditation.Termination_NonVoluntary.value],
+    @pytest.mark.parametrize("input_line", [Parser.MeditationState.Termination_ByStanding.value, Parser.MeditationState.Termination_ByInterruption.value],
                                         ids=['VoluntaryTermination', 'NonVoluntaryTermination'])
     def test_StopMeditating_MeditationLabelHiddenInView(self, input_line):
         c = Controller.ForTesting()
@@ -389,7 +389,7 @@ class TestDisplayingCentralColumnLabelInView():
 
     def test_MeditationRegenValueChanges_ObserverNotified(self):
         c = Controller.ForTesting()
-        c.receiver.receive(Parser.Meditation.Begin.value)
+        c.receiver.receive(Parser.MeditationState.Begin.value)
         c.process_queue()
         md = c.model.meditationDisplay
         with patch.object(md, md.meditationDurationInSeconds.__name__) as mockedDuration:

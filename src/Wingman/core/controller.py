@@ -109,6 +109,7 @@ v.setup_ui()
                 self.updateMobCountInRoom()
                 continue
 
+            assert isinstance(line, str)
             if needToClearGroupData(line, self.gameSession.group):
                 self.gameSession.group.Disband()
 
@@ -143,16 +144,18 @@ v.setup_ui()
                 case _:
                     self.model.isAfk = None
 
-            isMeditationRelated  = self.model.parser.parseMeditation(line)
+            isMeditationRelated, meditationState  = self.model.parser.parseMeditation(line)
             match isMeditationRelated:
                 case True:
                     self.model.isMeditating = True
                     self.model.meditationDisplay.resetMeditationStartTime()
                 case False:
                     self.model.isMeditating = False
+
+                    if meditationState == Parser.MeditationState.Termination_ByFullPower:
+                        self.displayFullPowerLabel()
                 case None:
                     pass
-
 
             hidingRelated = self.model.parser.parseHideStatus(line)
             match hidingRelated:
@@ -192,6 +195,11 @@ v.setup_ui()
     def updateMeditationDisplayValue(self):
         '''Method used to inform subscribers of `MeditationDisplay.attach(...)` that a change has occurred.'''
         self.view.var_meditationRegenDisplay.set(self.model.meditationDisplay.displayValue())
+
+    def displayFullPowerLabel(self):
+        self.view.displayFullPowerLabel()
+    def hideFullPowerLabel(self):
+        self.view.hideFullPowerLabel()
 
     def clearCountOfMobsInRoom(self):
         self.model.currentMobsInRoom.clear()

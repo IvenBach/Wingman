@@ -110,3 +110,24 @@ Text that trails in case it too needs to be forwarded.\n""" #Lines before the bu
                                                     call("You cast a Chaos.Fortitude.I spell!"),
                                                     call("You invoke a prayer to Ra'Kur, filling you with an unnatural energy!"),
                                                     call("Text that trails in case it too needs to be forwarded.")]
+
+def test_MeditationWithTrailingCharStateInfo_ExpectedMeditationStateIsReceived_TrailingContinuesOnToReceiver(listener_stack):
+    listener, receiver = listener_stack
+    listener.controller.receiver = receiver #Use same receiver
+    assert isinstance(receiver, InputReceiver)
+    target_ip = listener.target_ip
+    target_port = listener.target_port
+
+    postFixedCharState = '\n\n\x1b[8m���charstate {"combat":"AGGRESSIVE","currentWeight":67,"maxWeight":230,"pos":"Standing"}\n'
+    text = Parser.MeditationState.Begin.value + postFixedCharState
+    payload = (text).encode('utf-8')
+    pkt = MockPacket(target_ip, target_port, payload)
+
+    with patch.object(receiver, receiver.receive.__name__) as mockedReceiveMethod:
+        listener.packet_callback(pkt)
+
+    mockedReceiveMethod.assert_has_calls([call(Parser.MeditationState.Begin),
+                                          call(''), #These zero-length strings aren't dealt with in the non-mocked receiver
+                                          call(''),
+                                          call('���charstate {"combat":"AGGRESSIVE","currentWeight":67,"maxWeight":230,"pos":"Standing"}')],
+                                        any_order=False)

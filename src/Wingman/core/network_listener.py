@@ -47,6 +47,11 @@ class NetworkListener:
 
                         chunk = chunk[:indexBeforeEndText] + chunk[indexAfterStartTextAndNewlineCharacter:] #Discard between end spell text to start spell text, inclusive of both.
 
+                    isMeditationRelated, meditationState = Parser().parseMeditation(chunk)
+                    if not isMeditationRelated is None and meditationState is not None:
+                        self.receiver.receive(meditationState)
+                        chunk = chunk.replace(meditationState.value, '')
+
                     self._buffer += self.receiver.remove_ANSI_color_codes(chunk)
 
                     # Process buffer: extract complete lines only
