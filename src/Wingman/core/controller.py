@@ -4,7 +4,6 @@ import time
 import configparser
 from pathlib import Path
 from Wingman.core.group import Group
-from Wingman.core.input_receiver import InputReceiver
 from Wingman.core.session import GameSession
 from Wingman.core.network_listener import NetworkListener
 from Wingman.core.model import Model
@@ -12,16 +11,17 @@ from Wingman.core.parser import Parser, MobMovement
 from Wingman.core.mobs_in_room import MobsInRoom
 
 class Controller:
-    def __init__(self, model: Model, view):
-        from Wingman.gui.view import View #TODO: Confirm whether valid workaround for circular import
+    def __init__(self, model: Model, view, listener_target_ip='18.119.153.121', listener_target_port=4000):
+        from Wingman.gui.view import View # Avoid circular import issues by importing here
         assert isinstance(view, View)
         self.model = model
         self.model.meditationDisplay.attach(self)
         self.view = view
         
         # Create the SHARED receiver
-        self.receiver = InputReceiver()
-        self.listener = NetworkListener(self.receiver, self) # Pass it to both
+        from Wingman.core.input_receiver import InputReceiver # Avoid circular import issues by importing here
+        self.receiver = InputReceiver(self)
+        self.listener = NetworkListener(self.receiver, self, listener_target_ip, listener_target_port) # Pass it to both
         
         self.gameSession = GameSession(self.receiver)
 
@@ -38,12 +38,12 @@ class Controller:
         self._IGNORED_MOBS_WINDOW_POSITION__OPTION = 'IgnoredMobsWindowPosition'
 
     @classmethod
-    def ForTesting(cls, m: Model | None = None, view = None) -> 'Controller':
+    def ForTesting(cls, m: Model | None = None, view = None, listener_target_ip='1.2.3.4', listener_target_port=1234) -> 'Controller':
         """Instantiates all the dependency prerequisites, in the proper order to avoid `AttributeError`s from occurring.
 ```
 m = Model(Parser())
 v = View(tk.Toplevel())
-c = Controller(m, v)
+c = Controller(m, v, listener_target_ip, listener_target_port)
 
 v.set_controller(c)
 v.setup_ui()
@@ -58,7 +58,7 @@ v.setup_ui()
         # `tk.Toplevel()` is used instead of `tk.Tk()` to prevent multiple root windows
         # from being created during tests, which leads to `TclError`s.
         v = view or View(tk.Toplevel()) # https://tkdocs.com/shipman/toplevel.html
-        c = Controller(m, v)
+        c = Controller(m, v, listener_target_ip, listener_target_port)
         
         v.set_controller(c)
         v.setup_ui()

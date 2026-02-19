@@ -6,14 +6,14 @@ from Wingman.core.mobs_in_room import MobsInRoom
 
 
 class NetworkListener:
-    def __init__(self, input_receiver: InputReceiver, controller):
+    def __init__(self, input_receiver: InputReceiver, controller, target_ip='18.119.153.121', target_port=4000):
         from Wingman.core.controller import Controller # Avoid circular import issues by importing here
         assert isinstance(controller, Controller)
 
         self.receiver = input_receiver
         # Update this if your game server IP changes
-        self.target_ip = '18.119.153.121'
-        self.target_port = 4000
+        self.target_ip = target_ip
+        self.target_port = target_port
         self.is_running = False
 
         # Persistent buffer to hold split packet data
@@ -28,7 +28,7 @@ class NetworkListener:
             if packet[IP].src == self.target_ip and packet[TCP].sport == self.target_port:
                 if len(packet[TCP].payload) <= 0:
                     return 
-                
+
                 try:
                     payload_bytes = bytes(packet[TCP].payload)
 

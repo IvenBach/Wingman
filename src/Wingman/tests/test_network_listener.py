@@ -33,9 +33,9 @@ class MockPacket:
 @pytest.fixture
 def listener_stack() -> tuple[NetworkListener, InputReceiver]:
     receiver = InputReceiver()
-    listener = NetworkListener(receiver, Controller.ForTesting())
-    # Ensure buffer is empty
-    listener._buffer = ""
+    c = Controller.ForTesting()
+    listener = NetworkListener(receiver, c, target_ip=c.listener.target_ip, target_port=c.listener.target_port)
+    listener._buffer = "" # Ensure buffer is empty
     return listener, receiver
 
 
