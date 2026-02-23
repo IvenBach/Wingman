@@ -33,13 +33,13 @@ class TestProcessQueue():
             c = Controller.ForTesting()
             c.model.currentMobsInRoom = []
             v = c.view
-            
+
             c.receiver.receive("A windfang hatchling enters the room.")
             c.process_queue()
 
             with patch.object(v, v.updateMobCountDisplay.__name__) as mockedDisplay:
                 v.update_gui()
-            
+
             mockedDisplay.assert_called_once_with()
             assert c.model.currentMobsInRoom == ['a windfang hatchling']
 
@@ -47,13 +47,13 @@ class TestProcessQueue():
             c = Controller.ForTesting()
             c.model.currentMobsInRoom = ['a foo bar', 'a bar foo']
             v = c.view
-            
+
             c.receiver.receive("A windfang hatchling arrives from the east.")
             c.process_queue()
 
             with patch.object(v, v.updateMobCountDisplay.__name__) as mockedDisplay:
                 v.update_gui()
-            
+
             mockedDisplay.assert_called_once_with()
             assert c.model.currentMobsInRoom == ['a foo bar', 'a bar foo', 'a windfang hatchling']
 
@@ -61,13 +61,13 @@ class TestProcessQueue():
             c = Controller.ForTesting()
             c.model.currentMobsInRoom = ['a foo bar']
             v = c.view
-            
+
             c.receiver.receive("A windfang hatchling chases Foo into the room.")
             c.process_queue()
 
             with patch.object(v, v.updateMobCountDisplay.__name__) as mockedDisplay:
                 v.update_gui()
-            
+
             mockedDisplay.assert_called_once_with()
             assert c.model.currentMobsInRoom == ['a foo bar', 'a windfang hatchling']
 
@@ -75,13 +75,13 @@ class TestProcessQueue():
             c = Controller.ForTesting()
             c.model.currentMobsInRoom = ['a foo bar', 'a windfang hatchling']
             v = c.view
-            
+
             c.receiver.receive("A windfang hatchling dies.")
             c.process_queue()
 
             with patch.object(v, v.updateMobCountDisplay.__name__) as mockedDisplay:
                 v.update_gui()
-            
+
             mockedDisplay.assert_called_once_with()
             assert c.model.currentMobsInRoom == ['a foo bar']
 
@@ -89,13 +89,13 @@ class TestProcessQueue():
             c = Controller.ForTesting()
             c.model.currentMobsInRoom = ['a foo bar', 'a bar foo', 'a dog', 'a cat', 'a windfang hatchling']
             v = c.view
-            
+
             c.receiver.receive("A cat leaves North.")
             c.process_queue()
 
             with patch.object(v, v.updateMobCountDisplay.__name__) as mockedDisplay:
                 v.update_gui()
-            
+
             mockedDisplay.assert_called_once_with()
             assert c.model.currentMobsInRoom == ['a foo bar', 'a bar foo', 'a dog', 'a windfang hatchling']
 
@@ -103,13 +103,13 @@ class TestProcessQueue():
             c = Controller.ForTesting()
             c.model.currentMobsInRoom = ['a windfang hatchling']
             v = c.view
-            
+
             c.receiver.receive("A windfang hatchling chases Foo out of the room.")
             c.process_queue()
 
             with patch.object(v, v.updateMobCountDisplay.__name__) as mockedDisplay:
                 v.update_gui()
-            
+
             mockedDisplay.assert_called_once_with()
             assert c.model.currentMobsInRoom == []
 

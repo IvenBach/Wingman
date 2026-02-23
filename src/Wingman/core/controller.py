@@ -19,12 +19,12 @@ class Controller:
         self.model = model
         self.model.meditationDisplay.attach(self)
         self.view = view
-        
+
         # Create the SHARED receiver
         from Wingman.core.input_receiver import InputReceiver # Avoid circular import issues by importing here
         self.receiver = InputReceiver(self)
         self.listener = NetworkListener(self.receiver, self, listener_target_ip, listener_target_port) # Pass it to both
-        
+
         self.gameSession = GameSession(self.receiver)
 
         self.listener.start()
@@ -63,15 +63,15 @@ v.setup_ui()
         # from being created during tests, which leads to `TclError`s.
         v = view or View(tk.Toplevel()) # https://tkdocs.com/shipman/toplevel.html
         c = Controller(m, v, listener_target_ip, listener_target_port)
-        
+
         v.set_controller(c)
         v.setup_ui()
-        
+
         return c
-        
+
     def reset_stats(self):
         self.view.reset_stats()
-    
+
     def process_queue(self):
         """
         Dequeues items (alters state as needed), calculates XP, and parses Group stats.

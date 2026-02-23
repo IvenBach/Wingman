@@ -61,15 +61,37 @@ def test_packet_callback_buffers_split_lines(listener_stack):
     assert listener._buffer == ""  # Buffer should be cleared
 
 
-def test_ignores_wrong_ip(listener_stack):
+def test_ignores_wrong_port(listener_stack):
     listener, receiver = listener_stack
 
-    # Packet from wrong IP
+    # Packet from wrong Port
     pkt = MockPacket("1.2.3.4", 4000, b"You gain 100 XP.\n")
     listener.packet_callback(pkt)
 
     assert receiver.dequeue() is None
 
+def test_ignores_wrong_ip(listener_stack):
+    listener, receiver = listener_stack
+
+    # Packet from wrong server address
+    pkt = MockPacket("2.3.4.5", 1234, b"Text that won't be received.\n")
+    listener.packet_callback(pkt)
+
+    assert receiver.dequeue() is None
+
+def test_MatchingIpAddressAndPort_DequeuesPayload(listener_stack):
+    listener, receiver = listener_stack
+    pkt = MockPacket(listener.target_ip, listener.target_port, b"Queued and dequeued just fine.\n")
+    listener.packet_callback(pkt)
+
+    assert receiver.dequeue() == "Queued and dequeued just fine."
+
+def test_PayloadWithoutNewline_NotAddedToReceiver(listener_stack):
+    listener, receiver = listener_stack
+    pkt = MockPacket(listener.target_ip, listener.target_port, b"Line without newline character *shouldn't* occur, but testing for safety.")
+    listener.packet_callback(pkt)
+
+    assert receiver.dequeue() is None
 
 def test_clean_payload_decoding(listener_stack):
     listener, receiver = listener_stack

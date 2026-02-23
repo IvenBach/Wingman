@@ -1,7 +1,8 @@
 import re
-from typing import Any
+from typing import Any, overload
 from collections import deque
 from Wingman.core.mobs_in_room import MobsInRoom
+from Wingman.core.inventory import Inventory, EquippedGear
 
 class InputReceiver:
     '''Accepts input lines and queues them for processing.'''
@@ -9,7 +10,7 @@ class InputReceiver:
 
     def __init__(self, on_new_line_callback=None):
         self.last_received = ""
-        self._queue: deque[str | Any | None] = deque()
+        self._queue: deque[str | Any] = deque()
         self.on_new_line_callback = on_new_line_callback  # Optional callback function
 
         # Clear the log file when the instance is initialized
@@ -28,22 +29,31 @@ class InputReceiver:
         ansi_code_pattern = re.compile(r'\x1b\[\d+(?:;\d+)*m')
         return ansi_code_pattern.sub('', input_line)
 
-    def receive(self, input_line: str | Any):
+    @overload
+    def receive(self, input_line: str) -> None: ...
+    @overload
+    def receive(self, mobInRoom: MobsInRoom) -> None: ...
+    @overload
+    def receive(self, inventory: Inventory) -> None: ...
+    @overload
+    def receive(self, equippedGear: EquippedGear) -> None: ...
+
+    def receive(self, input):
         '''
         Receives an input line, and adds it to the processing queue.
 
         Empty lines are ignored.
         '''
-        if isinstance(input_line, str) and not input_line.strip():
+        if isinstance(input, str) and not input.strip():
             return
 
-        self.last_received = input_line
-        self._add_to_queue(input_line)
+        self.last_received = input
+        self._add_to_queue(input)
 
     def _add_to_queue(self, cleaned_input: str | Any):
         self._queue.append(cleaned_input)
 
-    def dequeue(self) -> str | Any | None:
+    def dequeue(self) -> str | Any:
         removed = self._queue.popleft() if self._queue else None
         return removed
     

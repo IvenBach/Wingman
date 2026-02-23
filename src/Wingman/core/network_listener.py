@@ -6,7 +6,7 @@ from Wingman.core.mobs_in_room import MobsInRoom
 
 
 class NetworkListener:
-    def __init__(self, input_receiver: InputReceiver, controller, target_ip='18.119.153.121', target_port=4000):
+    def __init__(self, input_receiver: InputReceiver, controller, target_ip, target_port):
         from Wingman.core.controller import Controller # Avoid circular import issues by importing here
         assert isinstance(controller, Controller)
 
