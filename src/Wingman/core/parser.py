@@ -141,10 +141,10 @@ class Parser():
 
         if ' disbanded their group.' not in text:
             return False
-        
+
         groupLeaderName = r"(?P<leaderName>[A-Za-z -']+)"
         pattern = re.compile(f'{groupLeaderName} disbanded their group.', re.IGNORECASE)
-        
+
         disbandingGroup = pattern.findall(text)
         return disbandingGroup[0] == group.Leader.Name
 
@@ -278,7 +278,7 @@ BG	FC	Color			Color
             if "Also there is " not in text:
                 return []
 
-            mobIndicator = r"(?P<subMob>\x1b\[1;31m(?P<name>[a-zA-Z '-,]+))+"
+            mobIndicator = r"(?P<subMob>\x1b\[1;31m(?P<name>[a-zA-Z ',\-]+))+"
             searchPattern = re.compile(mobIndicator)
             foundMobs = searchPattern.findall(text)
 
@@ -293,7 +293,7 @@ BG	FC	Color			Color
     class ParseMovement:
         def playerMovement(self, text: str) -> bool:
             return "Obvious exits:" in text
-            
+
         def mobRelatedMovement(self, text: str, mobsInRoom: list[str]) -> tuple[bool, MobMovement | None, str | None]:
             '''Parse text for mob related movement. Assumes `mobsInRoom` have their indefinite-articles (a, an) lower cased as part of `Also there is `.
 
@@ -302,25 +302,21 @@ BG	FC	Color			Color
 - Last Tuple Part: `str` - the mob that moved.
 
 Subsequent removal of mob from the model needs to be dealt with by the caller.'''
-            text = text[:1].lower() + text[1:]
-            isDeathMovement = "dies" in text
-            isExitingRoom = 'leaves' in text or ('chases' in text and 'out of the room' in text)            
-            if isDeathMovement or isExitingRoom:
-                for mob in mobsInRoom:
-                    if mob in text:
-                        return True, MobMovement.LEAVING, mob
+            mobName = r"(?P<mobName>(A|An) [a-zA-Z '-]+)"
 
-            if (text.startswith("A ") or text.startswith("An ")) and ' arrives from ' in text:
-                index = text.find(' arrives from ')
-                return True, MobMovement.ENTERING, text[:index]
+            exitType = r"(?P<exitType>leaves|dies|chases [a-zA-Z '\-]+ out of the room)"
+            exitPattern = re.compile(f'{mobName} {exitType}', re.IGNORECASE)
+            mobExiting = exitPattern.findall(text)
+            if mobExiting:
+                name: str = mobExiting[0][0]
+                return True, MobMovement.LEAVING, name[:1].lower() + name[1:]
 
-            if ' enters the room' in text:
-                index = text.find(' enters the room')
-                return True, MobMovement.ENTERING, text[:index]
-
-            if ' chases ' in text and ' into the room' in text:
-                index = text.find(' chases ')
-                return True, MobMovement.ENTERING, text[:index]
+            entryType = r"(?P<entryType>arrives from|enters the room|chases [a-zA-Z '\-]+ into the room)"
+            pattern = re.compile(f'{mobName} {entryType}', re.IGNORECASE)
+            mobEntering = pattern.findall(text)
+            if mobEntering:
+                name: str = mobEntering[0][0]
+                return True, MobMovement.ENTERING, name[:1].lower() + name[1:]
 
             return False, None, None
 

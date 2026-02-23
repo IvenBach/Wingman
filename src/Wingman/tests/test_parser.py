@@ -405,64 +405,87 @@ class TestMobParse:
         assert actual
         assert list == ["a mithril dealer"]
 
-    @pytest.mark.parametrize("text", ["A Kaidite zombie general dies!",
-                                      "a Kaidite zombie general dies!"],
-                                      ids=["Indefinite article capitalized",
-                                           "Indefinite article lowercase"])
-    def test_MobRelatedMovement_LeavingBy_Death_UnaffectedByIndefiniteArticleCasing(self, text):
+    def test_MobRelatedMovement_LeavingByDeath(self):
+        text = "A Kaidite zombie general dies!"
         mobsInRoom = ['a Kaidite zombie general', 'a Kaidite lady']
 
-        actual = Parser().ParseMovement().mobRelatedMovement(text, mobsInRoom)
+        isMobMovement, movementType, mobName = Parser().ParseMovement().mobRelatedMovement(text, mobsInRoom)
 
-        assert actual == (True, MobMovement.LEAVING, 'a Kaidite zombie general')
-    
-    def test_MobRelatedMovement_LeavingBy_RoomMovement(self):
-        text = "A windfang hatchling leaves West"
+        assert isMobMovement == True
+        assert movementType == MobMovement.LEAVING
+        assert mobName == 'a Kaidite zombie general'
+
+    @pytest.mark.parametrize("text", ["A windfang hatchling dies!",
+                                      "��X�\x00\x00\x00\x00Hc\x00\x00\x00\x00A windfang hatchling dies!"],
+                                    ids=["Only mob text",
+                                         "Prefixed with extraneous sequence"])
+    def test_MobRelatedMovement_LeavingBy_RoomMovement(self, text):
         mobsInRoom = ['a razor-backed windfang', 'a windfang hatchling', 'a guardian of the nameless']
 
-        actual = Parser().ParseMovement().mobRelatedMovement(text, mobsInRoom)
+        isMobMovement, movementType, mobName = Parser().ParseMovement().mobRelatedMovement(text, mobsInRoom)
 
-        assert actual == (True, MobMovement.LEAVING, 'a windfang hatchling')
-    
+        assert isMobMovement == True
+        assert movementType == MobMovement.LEAVING
+        assert mobName == 'a windfang hatchling'
+
     def test_MobRelatedMovement_LeavingBy_Chasing(self):
-        text = 'A windfang hatchling chases Foo out of the room.'
+        text = "A windfang hatchling chases Foo out of the room."
         mobsInRoom = ['a windfang hatchling']
 
-        actual = Parser().ParseMovement().mobRelatedMovement(text, mobsInRoom)
+        isMobMovement, movementType, mobName = Parser().ParseMovement().mobRelatedMovement(text, mobsInRoom)
 
-        assert actual == (True, MobMovement.LEAVING, 'a windfang hatchling')
+        assert isMobMovement == True
+        assert movementType == MobMovement.LEAVING
+        assert mobName == 'a windfang hatchling'
 
     def test_MobRelatedMovement_EnteringBy_RoomMovement(self):
         text = 'A windfang hatchling arrives from the north.'
         mobsInRoom = ['a windfang hatchling']
 
-        actual = Parser().ParseMovement().mobRelatedMovement(text, mobsInRoom)
+        isMobMovement, movementType, mobName = Parser().ParseMovement().mobRelatedMovement(text, mobsInRoom)
 
-        assert actual == (True, MobMovement.ENTERING, 'a windfang hatchling')
+        assert isMobMovement == True
+        assert movementType == MobMovement.ENTERING
+        assert mobName == 'a windfang hatchling'
 
     def test_MobRelatedMovement_EnteringBy_SpawningInRoom(self):
         text = 'A mermaid temptress enters the room.'
         mobsInRoom = ['a mermaid temptress']
 
-        actual = Parser().ParseMovement().mobRelatedMovement(text, mobsInRoom)
+        isMobMovement, movementType, mobName = Parser().ParseMovement().mobRelatedMovement(text, mobsInRoom)
 
-        assert actual == (True, MobMovement.ENTERING, 'a mermaid temptress')
+        assert isMobMovement == True
+        assert movementType == MobMovement.ENTERING
+        assert mobName == 'a mermaid temptress'
 
     def test_MobRelatedMovement_EnteringBy_ChasingIntoRoom(self):
         text = 'A windfang hatchling chases Foo into the room.'
         mobsInRoom = ['a windfang hatchling']
 
-        actual = Parser().ParseMovement().mobRelatedMovement(text, mobsInRoom)
+        isMobMovement, movementType, mobName = Parser().ParseMovement().mobRelatedMovement(text, mobsInRoom)
 
-        assert actual == (True, MobMovement.ENTERING, 'a windfang hatchling')
+        assert isMobMovement == True
+        assert movementType == MobMovement.ENTERING
+        assert mobName == 'a windfang hatchling'
 
     def test_PlayerMovement_EnteringBy_RoomMovement_NotConsideredMobRelatedMovement(self):
         text = 'Foo arrives from the north.'
         mobsInRoom = ['a windfang hatchling']
 
-        actual = Parser().ParseMovement().mobRelatedMovement(text, mobsInRoom)
+        isMobMovement, movementType, mobName = Parser().ParseMovement().mobRelatedMovement(text, mobsInRoom)
 
-        assert actual == (False, None, None)
+        assert isMobMovement == False
+        assert movementType == None
+        assert mobName == None
+
+    def test_MobWithDashInName_IsCorrectlyParsed(self):
+        text = "\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31ma brilliant bronze-scaled dragon\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\nAn angel of death follows Beautiful in.\n\n\x1b[8m"
+        mobList: list[str] = []
+        result = Parser().ParseMobs().hasAnsiColorCodedMobs(text, mobList)
+
+        assert result
+        assert mobList == ["a brilliant bronze-scaled dragon"]
+
 class TestBuffOrShieldEndingParse:
     @pytest.mark.parametrize("enumMember", [Parser.ParseBuffOrShieldText.Shield_Ended,
                                             Parser.ParseBuffOrShieldText.Blur_Ended,

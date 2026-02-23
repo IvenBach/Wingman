@@ -110,7 +110,7 @@ v.setup_ui()
             
             if isinstance(line, MobsInRoom):
                 self.model.currentMobsInRoom = line.mobs_in_room
-                self.updateMobCountInRoom()
+                self.updateMobCountDisplay()
                 continue
 
             if isinstance(line, Inventory):
@@ -182,7 +182,7 @@ v.setup_ui()
 
             if self.model.parser.ParseMovement().playerMovement(line):
                 self.clearCountOfMobsInRoom()
-                self.updateMobCountInRoom()
+                self.updateMobCountDisplay()
 
             mobMovementRelated, movement, mobName = self.model.parser.ParseMovement().mobRelatedMovement(line, self.model.currentMobsInRoom)
             if mobMovementRelated:
@@ -190,10 +190,10 @@ v.setup_ui()
                 match movement:
                     case MobMovement.ENTERING:
                         self.model.currentMobsInRoom.append(mobName)
-                        self.updateMobCountInRoom()
+                        self.updateMobCountDisplay()
                     case MobMovement.LEAVING:
                         self.model.currentMobsInRoom.remove(mobName)
-                        self.updateMobCountInRoom()
+                        self.updateMobCountDisplay()
             
             isBuffOrShieldRefreshing, whatEnded = self.model.parser.parseBuffOrShieldIsRefreshing(line)
             if isBuffOrShieldRefreshing == False:
@@ -231,13 +231,13 @@ v.setup_ui()
     def clearIgnoredMobsPets(self):
         self.model.ignoreTheseMobsInCurrentRoom.clear()
     
-    def updateMobsInCurrentRoom(self):
-        for mob in self.model.ignoreTheseMobsInCurrentRoom:
-            if mob in self.model.currentMobsInRoom:
-                self.model.currentMobsInRoom.remove(mob)
+    def removedIgnoredMobsFromCurrentRoom(self):
+        for ignoreMob in self.model.ignoreTheseMobsInCurrentRoom:
+            if ignoreMob in self.model.currentMobsInRoom:
+                self.model.currentMobsInRoom.remove(ignoreMob)
     
-    def updateMobCountInRoom(self):
-        self.view.updateMobCountInRoom()
+    def updateMobCountDisplay(self):
+        self.view.updateMobCountDisplay()
     
     def saveSettings(self):
         cp = configparser.ConfigParser()

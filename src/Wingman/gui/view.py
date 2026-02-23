@@ -361,7 +361,7 @@ c = Controller.ForTesting()
             # Reset the value after handling to avoid repeated removal calls.
             self._controller.model.BuffOrShieldEnding = None
 
-        self.updateMobCountInRoom()
+        self.updateMobCountDisplay()
 
     def updateTimeRelatedValues(self, currentTime: float):
         current_rate = self._controller.gameSession.get_xp_per_hour()
@@ -444,8 +444,8 @@ c = Controller.ForTesting()
     def hideHidingLabel(self):
         self._hidingLabel.grid_remove()
 
-    def updateMobCountInRoom(self):
-        self._controller.updateMobsInCurrentRoom()
+    def updateMobCountDisplay(self):
+        self._controller.removedIgnoredMobsFromCurrentRoom()
         if len(self._controller.model.currentMobsInRoom) == 0:
             self.var_count_of_mobs_in_room.set("")
         else:

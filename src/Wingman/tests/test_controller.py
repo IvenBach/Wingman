@@ -37,12 +37,12 @@ class TestProcessQueue():
             c.receiver.receive("A windfang hatchling enters the room.")
             c.process_queue()
 
-            with patch.object(v, v.updateMobCountInRoom.__name__) as mockedDisplay:
+            with patch.object(v, v.updateMobCountDisplay.__name__) as mockedDisplay:
                 v.update_gui()
             
             mockedDisplay.assert_called_once_with()
             assert c.model.currentMobsInRoom == ['a windfang hatchling']
-        
+
         def test_MobMovement_ArrivesFrom_With2Mobs_DisplayUpdatesAndMobsInRoomMatchesExpected(self):
             c = Controller.ForTesting()
             c.model.currentMobsInRoom = ['a foo bar', 'a bar foo']
@@ -51,7 +51,7 @@ class TestProcessQueue():
             c.receiver.receive("A windfang hatchling arrives from the east.")
             c.process_queue()
 
-            with patch.object(v, v.updateMobCountInRoom.__name__) as mockedDisplay:
+            with patch.object(v, v.updateMobCountDisplay.__name__) as mockedDisplay:
                 v.update_gui()
             
             mockedDisplay.assert_called_once_with()
@@ -65,7 +65,7 @@ class TestProcessQueue():
             c.receiver.receive("A windfang hatchling chases Foo into the room.")
             c.process_queue()
 
-            with patch.object(v, v.updateMobCountInRoom.__name__) as mockedDisplay:
+            with patch.object(v, v.updateMobCountDisplay.__name__) as mockedDisplay:
                 v.update_gui()
             
             mockedDisplay.assert_called_once_with()
@@ -79,12 +79,12 @@ class TestProcessQueue():
             c.receiver.receive("A windfang hatchling dies.")
             c.process_queue()
 
-            with patch.object(v, v.updateMobCountInRoom.__name__) as mockedDisplay:
+            with patch.object(v, v.updateMobCountDisplay.__name__) as mockedDisplay:
                 v.update_gui()
             
             mockedDisplay.assert_called_once_with()
             assert c.model.currentMobsInRoom == ['a foo bar']
-        
+
         def test_MobMovement_Leaves_With5MobsInRoom_DisplayUpdatesAndMobsInRoomMatchesExpected(self):
             c = Controller.ForTesting()
             c.model.currentMobsInRoom = ['a foo bar', 'a bar foo', 'a dog', 'a cat', 'a windfang hatchling']
@@ -93,12 +93,12 @@ class TestProcessQueue():
             c.receiver.receive("A cat leaves North.")
             c.process_queue()
 
-            with patch.object(v, v.updateMobCountInRoom.__name__) as mockedDisplay:
+            with patch.object(v, v.updateMobCountDisplay.__name__) as mockedDisplay:
                 v.update_gui()
             
             mockedDisplay.assert_called_once_with()
             assert c.model.currentMobsInRoom == ['a foo bar', 'a bar foo', 'a dog', 'a windfang hatchling']
-        
+
         def test_MobMovement_ChasesOut_AsOnlyMobInTheRoom_DisplayUpdatesAndMobsInRoomMatchesExpected(self):
             c = Controller.ForTesting()
             c.model.currentMobsInRoom = ['a windfang hatchling']
@@ -107,7 +107,7 @@ class TestProcessQueue():
             c.receiver.receive("A windfang hatchling chases Foo out of the room.")
             c.process_queue()
 
-            with patch.object(v, v.updateMobCountInRoom.__name__) as mockedDisplay:
+            with patch.object(v, v.updateMobCountDisplay.__name__) as mockedDisplay:
                 v.update_gui()
             
             mockedDisplay.assert_called_once_with()
@@ -119,7 +119,7 @@ class TestProcessQueue():
             
             c.receiver.receive("Obvious exits: east, northwest, and a small, smelly hut.")
             with patch.object(c, c.clearCountOfMobsInRoom.__name__) as mockedClear:
-                with patch.object(c, c.updateMobCountInRoom.__name__) as mockedUpdate:
+                with patch.object(c, c.updateMobCountDisplay.__name__) as mockedUpdate:
                     c.process_queue()
             
             mockedClear.assert_called_once_with()
@@ -517,13 +517,13 @@ class TestIgnoredMobsInRoom:
         c.updateIgnoredMobsPets('a, b, c, d')
 
         assert c.model.ignoreTheseMobsInCurrentRoom == ['a', 'b', 'c', 'd']
-    
+
     def test_InvokingUpdateMobsInRoom_WhenCurrentRoomHasMobListedInIgnoredMobs__RemovesMobFromCurrentRoomMobsOnModel(self):
         c = Controller.ForTesting()
         c.model.currentMobsInRoom = ['a foo', 'a bar', 'a baz']
         c.updateIgnoredMobsPets('a foo')
 
-        c.updateMobsInCurrentRoom()
+        c.removedIgnoredMobsFromCurrentRoom()
 
         assert c.model.currentMobsInRoom == ['a bar', 'a baz']
 
