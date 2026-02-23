@@ -456,6 +456,13 @@ class TestMobParse:
 
         assert actual == (True, MobMovement.ENTERING, 'a windfang hatchling')
 
+    def test_PlayerMovement_EnteringBy_RoomMovement_NotConsideredMobRelatedMovement(self):
+        text = 'Foo arrives from the north.'
+        mobsInRoom = ['a windfang hatchling']
+
+        actual = Parser().ParseMovement().mobRelatedMovement(text, mobsInRoom)
+
+        assert actual == (False, None, None)
 class TestBuffOrShieldEndingParse:
     @pytest.mark.parametrize("enumMember", [Parser.ParseBuffOrShieldText.Shield_Ended,
                                             Parser.ParseBuffOrShieldText.Blur_Ended,

@@ -309,12 +309,11 @@ Subsequent removal of mob from the model needs to be dealt with by the caller.''
                 for mob in mobsInRoom:
                     if mob in text:
                         return True, MobMovement.LEAVING, mob
-            
-            if ' arrives from ' in text:
+
+            if (text.startswith("A ") or text.startswith("An ")) and ' arrives from ' in text:
                 index = text.find(' arrives from ')
                 return True, MobMovement.ENTERING, text[:index]
-            
-            
+
             if ' enters the room' in text:
                 index = text.find(' enters the room')
                 return True, MobMovement.ENTERING, text[:index]
