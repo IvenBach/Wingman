@@ -127,25 +127,25 @@ class TestProcessQueue():
 
     class TestModelUpdates:
         def test_InventoryCommand__THEN__EquipmentCommand_EquippedGearCorrectlyOverwritesAssumedInventoryPositions(self):
-            expectedEG = EquippedGear(Head=Item("A WISPWEAVE spellbinder's crown"),
-                                        Jewel1=Item("A mark of vigilance"),
-                                        Jewel2=Item("A twisted gold torc"),
-                                        Cloak=Item("A GLOWING worldwalker's cloak"),
-                                        Body=None,
-                                        Hands=Item("A GOSSAMER noble's gleaming gloves of intelligence"),
-                                        Legs=Item("A GLOWING GOSSAMER hierophant's legwraps"),
-                                        Feet=Item("A GLOWING WISPWEAVE dragon-wing boots"),
-                                        Held_Right=Item("A bright jeweled greatsword of the phoenix"),
-                                        Held_Left=Item("A bright jeweled greatsword of the phoenix"))
+            expectedEG = EquippedGear(head=Item("A WISPWEAVE spellbinder's crown"),
+                                        jewel1=Item("A mark of vigilance"),
+                                        jewel2=Item("A twisted gold torc"),
+                                        cloak=Item("A GLOWING worldwalker's cloak"),
+                                        body=None,
+                                        hands=Item("A GOSSAMER noble's gleaming gloves of intelligence"),
+                                        legs=Item("A GLOWING GOSSAMER hierophant's legwraps"),
+                                        feet=Item("A GLOWING WISPWEAVE dragon-wing boots"),
+                                        held_right=Item("A bright jeweled greatsword of the phoenix"),
+                                        held_left=Item("A bright jeweled greatsword of the phoenix"))
             expectedBackpack = [Item("Glowing Ahrimal's shielding scale"),
                         Item("A GLOWING rod of endless repentance"),
-                        Item("A goblet of zombie blood", Quantity=4),
-                        Item("A darkspawned blackened fish fillet", Quantity=9),
-                        Item("A bunch of restorative roots", Quantity=10),
+                        Item("A goblet of zombie blood", quantity=4),
+                        Item("A darkspawned blackened fish fillet", quantity=9),
+                        Item("A bunch of restorative roots", quantity=10),
                         Item("A Lucifer's Pride ticket"),
-                        Item("A ticket to Arnak's Plague", Quantity=2),
-                        Item("A scroll of minor resurrection", Quantity=6),
-                        Item("A scroll of lesser resurrection", Quantity=2)]
+                        Item("A ticket to Arnak's Plague", quantity=2),
+                        Item("A scroll of minor resurrection", quantity=6),
+                        Item("A scroll of lesser resurrection", quantity=2)]
             expectedInv = Inventory(expectedEG, expectedBackpack)
 
             c = Controller.ForTesting()

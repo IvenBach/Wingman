@@ -490,29 +490,29 @@ That parse is intended to overwrite with the correct worn gear.'''
         for wornCounter, line in enumerate(equippedText):
             match wornCounter:
                 case 0:
-                    eg.Head = Item(line, Slot=ItemSlot.HEAD)
+                    eg.Head = Item(line, slot=ItemSlot.HEAD)
                 case 1:
-                    eg.Jewel1 = Item(line, Slot=ItemSlot.JEWEL)
+                    eg.Jewel1 = Item(line, slot=ItemSlot.JEWEL)
                 case 2:
-                    eg.Jewel2 = Item(line, Slot=ItemSlot.JEWEL)
+                    eg.Jewel2 = Item(line, slot=ItemSlot.JEWEL)
                 case 3:
-                    eg.Cloak = Item(line, Slot=ItemSlot.CLOAK)
+                    eg.Cloak = Item(line, slot=ItemSlot.CLOAK)
                 case 4:
-                    eg.Body = Item(line, Slot=ItemSlot.BODY)
+                    eg.Body = Item(line, slot=ItemSlot.BODY)
                 case 5:
-                    eg.Hands = Item(line, Slot=ItemSlot.HANDS)
+                    eg.Hands = Item(line, slot=ItemSlot.HANDS)
                 case 6:
-                    eg.Legs = Item(line, Slot=ItemSlot.LEGS)
+                    eg.Legs = Item(line, slot=ItemSlot.LEGS)
                 case 7:
-                    eg.Feet = Item(line, Slot=ItemSlot.FEET)
+                    eg.Feet = Item(line, slot=ItemSlot.FEET)
         
         heldText = [line[6:] for line in lines if line.startswith("  (h) ")]
         for heldCounter, line in enumerate(heldText):
             match heldCounter:
                 case 0:
-                    eg.Held_Right = Item(line, Slot=ItemSlot.WIELDED)
+                    eg.Held_Right = Item(line, slot=ItemSlot.WIELDED)
                 case 1:
-                    eg.Held_Left = Item(line, Slot=ItemSlot.WIELDED)
+                    eg.Held_Left = Item(line, slot=ItemSlot.WIELDED)
 
         backpackStartIndex = len(equippedText) + len(heldText) + 1
 
@@ -555,26 +555,26 @@ That parse is intended to overwrite with the correct worn gear.'''
 
             match prefix:
                 case "     On Head:  ":
-                    eg.Head = Item(name, Slot=  ItemSlot.HEAD)
+                    eg.Head = Item(name, slot=ItemSlot.HEAD)
                 case "    On Jewel:  ":
                     if eg.Jewel1 is None:
-                        eg.Jewel1 = Item(name, Slot=ItemSlot.JEWEL)
+                        eg.Jewel1 = Item(name, slot=ItemSlot.JEWEL)
                     else:
-                        eg.Jewel2 = Item(name, Slot=ItemSlot.JEWEL)
+                        eg.Jewel2 = Item(name, slot=ItemSlot.JEWEL)
                 case "    On Cloak:  ":
-                    eg.Cloak = Item(name, Slot=ItemSlot.CLOAK)
+                    eg.Cloak = Item(name, slot=ItemSlot.CLOAK)
                 case "     On Body:  ":
-                    eg.Body = Item(name, Slot=ItemSlot.BODY)
+                    eg.Body = Item(name, slot=ItemSlot.BODY)
                 case "    On Hands:  ":
-                    eg.Hands = Item(name, Slot=ItemSlot.HANDS)
+                    eg.Hands = Item(name, slot=ItemSlot.HANDS)
                 case "     On Legs:  ":
-                    eg.Legs = Item(name, Slot=ItemSlot.LEGS)
+                    eg.Legs = Item(name, slot=ItemSlot.LEGS)
                 case "     On Feet:  ":
-                    eg.Feet = Item(name, Slot=ItemSlot.FEET)
+                    eg.Feet = Item(name, slot=ItemSlot.FEET)
                 case "  Held Right:  ":
-                    eg.Held_Right = Item(name, Slot=ItemSlot.WIELDED)
+                    eg.Held_Right = Item(name, slot=ItemSlot.WIELDED)
                 case "   Held Left:  ":
-                    eg.Held_Left = Item(name, Slot=ItemSlot.WIELDED)
+                    eg.Held_Left = Item(name, slot=ItemSlot.WIELDED)
 
         return eg
 
@@ -596,4 +596,4 @@ Assumes any item lacking quantity parenthesis to be a non-quantity item and assi
 
         name = lineOfText[parenthesisEndIndex + 2:] if parenthesisEndIndex > -1 else lineOfText.strip()
 
-        return Item(Name=name, Quantity=quantity)
+        return Item(name, quantity)

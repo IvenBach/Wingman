@@ -1,3 +1,4 @@
+from typing import overload
 from enum import Enum, StrEnum
 
 class ItemSlot(StrEnum):
@@ -108,41 +109,50 @@ class Item:
     Mob: str | list[str]
     Quantity: int | None
 
+    @overload
+    def __init__(self, name: str): ...
+    @overload
+    def __init__(self, name: str, quantity: int): ...
+    @overload
+    def __init__(self, name: str, quantity: None): ...
+    @overload
+    def __init__(self, name: str, slot: ItemSlot): ...
+    
     def __init__(self,
-                 Name: str,
-                 Slot: ItemSlot | None = None,
-                 Type: ItemType | None = None,
-                 Spell: str | None = None,
-                 Level: int = 0,
-                 Damage: DamageRange | None = None,
-                 Timer: int | None = None,
-                 Fumble: FumbleRate | None = None,
-                 Accuracy: AccuracyRate | None = None,
-                 Defense: DefenseRating | None = None,
-                 Sigil_: Sigil | None = None,
-                 SigilLevel: int | None = None,
-                 Weight: int = 0,
-                 Realm: str | None = None,
-                 Area: str | None = None,
-                 Mob: str | list[str] = "",
-                 Quantity: int | None = None):
-        self.Name = Name.strip()
-        self.Slot = Slot
-        self.Type = Type
-        self.Spell = Spell
-        self.Level = Level
-        self.Damage = Damage
-        self.Timer = Timer
-        self.Fumble = Fumble
-        self.Accuracy = Accuracy
-        self.Defense = Defense
-        self.Sigil_ = Sigil_
-        self.SigilLevel = SigilLevel
-        self.Weight = Weight
-        self.Realm = Realm
-        self.Area = Area
-        self.Mob = Mob
-        self.Quantity = Quantity
+                 name: str,
+                 slot: ItemSlot | None = None,
+                 type: ItemType | None = None,
+                 spell: str | None = None,
+                 level: int = 0,
+                 damage: DamageRange | None = None,
+                 timer: int | None = None,
+                 fumble: FumbleRate | None = None,
+                 accuracy: AccuracyRate | None = None,
+                 defense: DefenseRating | None = None,
+                 sigil_: Sigil | None = None,
+                 sigilLevel: int | None = None,
+                 weight: int = 0,
+                 realm: str | None = None,
+                 area: str | None = None,
+                 mob: str | list[str] = "",
+                 quantity: int | None = None):
+        self.Name = name.strip()
+        self.Slot = slot
+        self.Type = type
+        self.Spell = spell
+        self.Level = level
+        self.Damage = damage
+        self.Timer = timer
+        self.Fumble = fumble
+        self.Accuracy = accuracy
+        self.Defense = defense
+        self.Sigil_ = sigil_
+        self.SigilLevel = sigilLevel
+        self.Weight = weight
+        self.Realm = realm
+        self.Area = area
+        self.Mob = mob
+        self.Quantity = quantity
 
     def __str__(self):
         if self.Quantity is not None:

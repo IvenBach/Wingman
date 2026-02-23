@@ -349,7 +349,7 @@ Returns a `list[Item]` of missing items
                     wasMatchFound = True
                     if backpackItem.QuantityComparison(supplyItem) == QuantityComparer.LESS_THAN:
                         delta = supplyItem.subtract(backpackItem) # Swapped variable order ensures positive delta
-                        missingItems.append(Item(supplyItem.Name, Quantity=delta))
+                        missingItems.append(Item(supplyItem.Name, quantity=delta))
                         break
 
             if not wasMatchFound:
