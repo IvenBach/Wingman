@@ -9,6 +9,8 @@ from Wingman.core.network_listener import NetworkListener
 from Wingman.core.model import Model
 from Wingman.core.parser import Parser, MobMovement
 from Wingman.core.mobs_in_room import MobsInRoom
+from Wingman.core.item import Item, QuantityComparer
+from Wingman.core.inventory import Inventory, EquippedGear
 
 class Controller:
     def __init__(self, model: Model, view, listener_target_ip='18.119.153.121', listener_target_port=4000):
@@ -36,6 +38,8 @@ class Controller:
         self._DARK_MODE__OPTION = 'DarkMode'
         self._ROOT_WINDOW_POSITION__OPTION = 'RootWindowPosition'
         self._IGNORED_MOBS_WINDOW_POSITION__OPTION = 'IgnoredMobsWindowPosition'
+        self._INVASION_SUPPLIES_WINDOW_POSITION__OPTION = 'InvasionSuppliesWindowPosition'
+        self._INVASION_SUPPLIES_TEXT = 'InvasionSuppliesText'
 
     @classmethod
     def ForTesting(cls, m: Model | None = None, view = None, listener_target_ip='1.2.3.4', listener_target_port=1234) -> 'Controller':
@@ -107,6 +111,14 @@ v.setup_ui()
             if isinstance(line, MobsInRoom):
                 self.model.currentMobsInRoom = line.mobs_in_room
                 self.updateMobCountInRoom()
+                continue
+
+            if isinstance(line, Inventory):
+                self.model.inventory = line
+                continue
+
+            if isinstance(line, EquippedGear):
+                self.model.inventory.EquippedGear_ = line
                 continue
 
             assert isinstance(line, str)
@@ -233,12 +245,14 @@ v.setup_ui()
             self._ALWAYS_ON_TOP__OPTION: str(self.view.var_always_on_top.get()),
             self._DARK_MODE__OPTION: str(self.view.dark_mode),
             self._IGNORED_MOB_PETS_CSV__OPTION: self.view.ignoredMobsPetsCsv.get(),
-            self._DISPLAY_PETS_IN_GROUP__OPTION: str(self.model.includePetsInGroup)
+            self._DISPLAY_PETS_IN_GROUP__OPTION: str(self.model.includePetsInGroup),
+            self._INVASION_SUPPLIES_TEXT: str(self.view.invasionSuppliesText.get("1.0", tk.END)),
         }
 
         cp[self._APP_SETTINGS] = {
             self._ROOT_WINDOW_POSITION__OPTION: '+' + self.view.parent.geometry().split('+', 1)[1],
-            self._IGNORED_MOBS_WINDOW_POSITION__OPTION: '+' + self.view._pet_or_mobs_display_settings_window.geometry().split('+', 1)[1]
+            self._IGNORED_MOBS_WINDOW_POSITION__OPTION: '+' + self.view._pet_or_mobs_display_settings_window.geometry().split('+', 1)[1],
+            self._INVASION_SUPPLIES_WINDOW_POSITION__OPTION: '+' + self.view._invasionSuppliesWindow.geometry().split('+', 1)[1],
         }
 
         srcDirectory = self.settingsFilePath()
@@ -278,6 +292,9 @@ v.setup_ui()
                 isAlwaysOnTop = configParser.getboolean(self._VIEW_SETTINGS, self._ALWAYS_ON_TOP__OPTION, fallback=False)
                 self.view.apply_topmost(isAlwaysOnTop)
 
+                invasionSuppliesText = configParser.get(self._VIEW_SETTINGS, self._INVASION_SUPPLIES_TEXT, fallback='')
+                self.view.invasionSuppliesText.insert("1.0", invasionSuppliesText)
+
             if configParser.has_section(self._APP_SETTINGS):
                 rootWindowSize = self.view.parent.geometry().split('+')[0]
                 rootWindowPosition = configParser.get(self._APP_SETTINGS, self._ROOT_WINDOW_POSITION__OPTION, fallback='+50+50')
@@ -286,7 +303,11 @@ v.setup_ui()
                 petOrMobDisplaySettingsWindowSize = self.view._pet_or_mobs_display_settings_window.geometry().split('+')[0]
                 petOrMobDisplaySettingsWindowPosition = configParser.get(self._APP_SETTINGS, self._IGNORED_MOBS_WINDOW_POSITION__OPTION, fallback='+50+50')
                 self.view._pet_or_mobs_display_settings_window.geometry(petOrMobDisplaySettingsWindowSize + petOrMobDisplaySettingsWindowPosition)
-            
+
+                invasionSuppliesWindowSize = self.view._invasionSuppliesWindow.geometry().split('+')[0]
+                invasionSuppliesWindowPosition = configParser.get(self._APP_SETTINGS, self._INVASION_SUPPLIES_WINDOW_POSITION__OPTION, fallback='+50+50')
+                self.view._invasionSuppliesWindow.geometry(invasionSuppliesWindowSize + invasionSuppliesWindowPosition)
+
         except KeyError:
             # This means the config file was missing or malformed. We can choose to ignore this and just use defaults.
             with open(self.settingsFilePath().joinpath('No settings file.txt'), 'w') as f:
@@ -301,3 +322,49 @@ v.setup_ui()
         if not displayMobsInGroupWindow:
             # If we're toggling off the display of pets/mobs in the group window, we need to remove any that are currently being displayed.
             self.gameSession.group.RemoveMembers([member for member in self.gameSession.group.Members if member.Class_ == 'mob'])
+
+    def check_invasion_supplies(self, supplyText: str, inventory: Inventory) -> list[Item]:
+        """Checks the players  non-geared inventory for items that are on their invasion supplies list. The list is expected to be in a newline separated format.
+Example input:
+```
+ ( 2) A goblet of zombie blood
+ ( 4) A darkspawned blackened fish fillet
+ ( 2) A bunch of restorative roots
+ ( 2) A ticket to Arnak's Plague
+ ( 6) A scroll of minor resurrection
+```
+Returns a `list[Item]` of missing items
+"""
+        if len(inventory.Backpack) == 0:
+            return []
+
+        missingItems: list[Item] = []
+        for supplyLine in supplyText.splitlines():
+            if supplyLine == '':
+                continue
+            supplyItem = Parser.parseQuantityItem(supplyLine)
+            wasMatchFound = False
+            for backpackItem in inventory.Backpack:
+                if supplyItem.Name == backpackItem.Name:
+                    wasMatchFound = True
+                    if backpackItem.QuantityComparison(supplyItem) == QuantityComparer.LESS_THAN:
+                        delta = supplyItem.subtract(backpackItem) # Swapped variable order ensures positive delta
+                        missingItems.append(Item(supplyItem.Name, Quantity=delta))
+                        break
+
+            if not wasMatchFound:
+                missingItems.append(supplyItem)
+
+        return missingItems
+
+    def updateInvadeSupplyListLabel(self, supplyText: str, inventory: Inventory):
+        if supplyText == '' or supplyText.isspace():
+            self.view.updateInvadeSupplyListLabel("***No supplies were checked.")
+            return
+
+        if len(inventory.Backpack) == 0:
+            self.view.updateInvadeSupplyListLabel("***Empty backpack cache. Execute `Inventory` and `Equipment` then check again.")
+            return
+
+        missingSupplies = self.check_invasion_supplies(supplyText, inventory)
+        self.view.updateInvadeSupplyListLabel(missingSupplies)

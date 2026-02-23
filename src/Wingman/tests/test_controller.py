@@ -13,6 +13,8 @@ if __name__ == "__main__":
 from Wingman.core.controller import Controller
 from Wingman.core.parser import Parser
 from Wingman.core.health_Tagger import HealthTagger
+from Wingman.core.inventory import EquippedGear, Inventory
+from Wingman.core.item import Item
 
 class TestProcessQueue():
     def test_process_queue_calculates_xp(self):
@@ -26,7 +28,7 @@ class TestProcessQueue():
         assert c.gameSession.total_xp == 1000
         assert len(logs) == 1
 
-    class TestMobRoomMovement():
+    class TestMobRoomMovement:
         def test_MobMovement_Enters_EmptyRoom_DisplayUpdatesAndMobsInRoomMatchesExpected(self):
             c = Controller.ForTesting()
             c.model.currentMobsInRoom = []
@@ -111,7 +113,7 @@ class TestProcessQueue():
             mockedDisplay.assert_called_once_with()
             assert c.model.currentMobsInRoom == []
 
-    class TestPlayerMovement():
+    class TestPlayerMovement:
         def test_PlayerMovement_ClearsMobsInRoomAndHidesMobCountInView(self):
             c = Controller.ForTesting()
             
@@ -123,7 +125,69 @@ class TestProcessQueue():
             mockedClear.assert_called_once_with()
             mockedUpdate.assert_called_once_with()
 
-class TestGrouping():
+    class TestModelUpdates:
+        def test_InventoryCommand__THEN__EquipmentCommand_EquippedGearCorrectlyOverwritesAssumedInventoryPositions(self):
+            expectedEG = EquippedGear(Head=Item("A WISPWEAVE spellbinder's crown"),
+                                        Jewel1=Item("A mark of vigilance"),
+                                        Jewel2=Item("A twisted gold torc"),
+                                        Cloak=Item("A GLOWING worldwalker's cloak"),
+                                        Body=None,
+                                        Hands=Item("A GOSSAMER noble's gleaming gloves of intelligence"),
+                                        Legs=Item("A GLOWING GOSSAMER hierophant's legwraps"),
+                                        Feet=Item("A GLOWING WISPWEAVE dragon-wing boots"),
+                                        Held_Right=Item("A bright jeweled greatsword of the phoenix"),
+                                        Held_Left=Item("A bright jeweled greatsword of the phoenix"))
+            expectedBackpack = [Item("Glowing Ahrimal's shielding scale"),
+                        Item("A GLOWING rod of endless repentance"),
+                        Item("A goblet of zombie blood", Quantity=4),
+                        Item("A darkspawned blackened fish fillet", Quantity=9),
+                        Item("A bunch of restorative roots", Quantity=10),
+                        Item("A Lucifer's Pride ticket"),
+                        Item("A ticket to Arnak's Plague", Quantity=2),
+                        Item("A scroll of minor resurrection", Quantity=6),
+                        Item("A scroll of lesser resurrection", Quantity=2)]
+            expectedInv = Inventory(expectedEG, expectedBackpack)
+
+            c = Controller.ForTesting()
+            inventoryText = """Inventory:
+  (w) A WISPWEAVE spellbinder's crown
+  (w) A mark of vigilance
+  (w) A twisted gold torc
+  (w) A GLOWING worldwalker's cloak
+  (w) A GOSSAMER noble's gleaming gloves of intelligence
+  (w) A GLOWING GOSSAMER hierophant's legwraps
+  (w) A GLOWING WISPWEAVE dragon-wing boots
+  (h) A bright jeweled greatsword of the phoenix
+      Glowing Ahrimal's shielding scale
+      A GLOWING rod of endless repentance
+ ( 4) A goblet of zombie blood
+ ( 9) A darkspawned blackened fish fillet
+ (10) A bunch of restorative roots
+      A Lucifer's Pride ticket
+ ( 2) A ticket to Arnak's Plague
+ ( 6) A scroll of minor resurrection
+ ( 2) A scroll of lesser resurrection"""
+            parsedInv = Parser().parseInventory(inventoryText)
+            equipmentText = """Items in use:
+     On Head:  a WISPWEAVE spellbinder's crown
+    On Jewel:  a mark of vigilance
+    On Jewel:  a twisted gold torc
+    On Cloak:  a GLOWING worldwalker's cloak
+     On Body:  nothing
+    On Hands:  a GOSSAMER noble's gleaming gloves of intelligence
+     On Legs:  a GLOWING GOSSAMER hierophant's legwraps
+     On Feet:  a GLOWING WISPWEAVE dragon-wing boots
+  Held Right:  a bright jeweled greatsword of the phoenix
+   Held Left:  a bright jeweled greatsword of the phoenix"""
+            parsedEG = Parser().parseEquippedGear(equipmentText)
+            c.receiver.receive(parsedInv)
+            c.receiver.receive(parsedEG)
+
+            c.process_queue()
+
+            assert c.model.inventory == expectedInv
+
+class TestGrouping:
     def test_GainNewFollower_NewFollowerAddedToGroupForDisplay(self):
         c = Controller.ForTesting()
         c.receiver.receive("""Beautiful's group:
@@ -326,7 +390,7 @@ class TestGrouping():
 
         assert c.gameSession.group.Count == 2
 
-class TestDisplayingCentralColumnLabelInView():
+class TestDisplayingCentralColumnLabelInView:
     def test_DisplayAfkLabel(self):
         c = Controller.ForTesting()
         v = c.view
@@ -501,3 +565,99 @@ class TestSettings:
         
         mockedOpen.assert_not_called()
         mockedUpdateIgnoredMobsPets.assert_called_once_with('foo, bar, baz')
+
+class TestCheckInvasionSupplies:
+    def test_HavingEqualItemInSupplyList_NoEntries(self):
+        c = Controller.ForTesting()
+        inventory = Inventory(EquippedGear(),
+                      [Parser.parseQuantityItem("(2) A darkspawned black fish fillet")])
+        supplyText = "( 2) A darkspawned black fish fillet"
+
+
+        items = c.check_invasion_supplies(supplyText, inventory)
+
+        assert len(items) == 0
+
+    def test_HavingLessThanItemInSupplyList_ReturnsMissingQuantity(self):
+        c = Controller.ForTesting()
+        inventory = Inventory(EquippedGear(),
+                      [Parser.parseQuantityItem("(1) A darkspawned black fish fillet")])
+        supplyText = "( 2) A darkspawned black fish fillet"
+
+
+        items = c.check_invasion_supplies(supplyText, inventory)
+
+        assert len(items) == 1
+        assert items[0].Name == "A darkspawned black fish fillet"
+        assert items[0].Quantity == 1
+
+    def test_HavingMoreThanItemInSupplyList_NoEntries(self):
+        c = Controller.ForTesting()
+        inventory = Inventory(EquippedGear(),
+                      [Parser.parseQuantityItem("(5) A darkspawned black fish fillet")])
+        supplyText = "( 2) A darkspawned black fish fillet"
+
+
+        items = c.check_invasion_supplies(supplyText, inventory)
+
+        assert len(items) == 0
+
+    def test_NotHavingItemInSupplyList_ReturnsItemAndQuantityFromSupplyList(self):
+        c = Controller.ForTesting()
+        inventory = Inventory(EquippedGear(),
+                      [Parser.parseQuantityItem("(3) A darkspawned black fish fillet")])
+        supplyText = "( 2) A goblet of zombie blood"
+
+
+        items = c.check_invasion_supplies(supplyText, inventory)
+
+        assert len(items) == 1
+        assert items[0].Name == "A goblet of zombie blood"
+        assert items[0].Quantity == 2
+
+    def test_AlreadyHaveSomeItems_LackingSomeOnSupplyList_ReturnsOnlyMissingItemsAndTheirQuantities(self):
+        c = Controller.ForTesting()
+        backpack = [Parser.parseQuantityItem("( 2) A goblet of zombie blood"),
+                    Parser.parseQuantityItem("( 4) A darkspawned blackened fish fillet"),
+                    Parser.parseQuantityItem("( 2) A bunch of restorative roots"),
+                    Parser.parseQuantityItem("( 2) A ticket to Arnak's Plague"),
+                    Parser.parseQuantityItem("( 6) A scroll of minor resurrection")]
+        inventory = Inventory(EquippedGear(), backpack)
+        supplyText = """( 9) A goblet of zombie blood
+( 3) A darkspawned blackened fish fillet
+(15) A bunch of restorative roots
+( 3) A ticket to Arnak's Plague
+( 2) A scroll of minor resurrection"""
+
+        items = c.check_invasion_supplies(supplyText, inventory)
+
+        assert len(items) == 3
+        assert items[0].Name == "A goblet of zombie blood"
+        assert items[0].Quantity == 7
+        assert items[1].Name == "A bunch of restorative roots"
+        assert items[1].Quantity == 13
+        assert items[2].Name == "A ticket to Arnak's Plague"
+        assert items[2].Quantity == 1
+
+class TestUpdateInvadeSupplyListLabel:
+    def test_EmptySupplyList_AlertsViewOfEmptySupplyList(self):
+        c = Controller.ForTesting()
+        v = c.view
+        inv = Inventory(EquippedGear(), [])
+        with patch.object(v, v.updateInvadeSupplyListLabel.__name__) as mockedUpdateLabel:
+            c.updateInvadeSupplyListLabel("", inv)
+
+        userHelpfulText = mockedUpdateLabel.mock_calls[0].args[0]
+        assert '***' in userHelpfulText
+        assert type(userHelpfulText) == str
+
+    def test_EmptyBackpack_AlertsViewThatBackpackIsEmpty(self):
+        c = Controller.ForTesting()
+        v = c.view
+        inv = Inventory(EquippedGear(), [])
+        with patch.object(v, v.updateInvadeSupplyListLabel.__name__) as mockedUpdateLabel:
+            c.updateInvadeSupplyListLabel("( 2) A goblet of zombie blood", inv)
+
+        userHelpfulText = mockedUpdateLabel.mock_calls[0].args[0]
+        assert '***' in userHelpfulText
+        assert type(userHelpfulText) == str

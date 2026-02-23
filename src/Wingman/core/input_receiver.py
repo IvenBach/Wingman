@@ -1,4 +1,5 @@
 import re
+from typing import Any
 from collections import deque
 from Wingman.core.mobs_in_room import MobsInRoom
 
@@ -8,7 +9,7 @@ class InputReceiver:
 
     def __init__(self, on_new_line_callback=None):
         self.last_received = ""
-        self._queue: deque[str | MobsInRoom | None] = deque()
+        self._queue: deque[str | Any | None] = deque()
         self.on_new_line_callback = on_new_line_callback  # Optional callback function
 
         # Clear the log file when the instance is initialized
@@ -27,7 +28,7 @@ class InputReceiver:
         ansi_code_pattern = re.compile(r'\x1b\[\d+(?:;\d+)*m')
         return ansi_code_pattern.sub('', input_line)
 
-    def receive(self, input_line: str | MobsInRoom):
+    def receive(self, input_line: str | Any):
         '''
         Receives an input line, and adds it to the processing queue.
 
@@ -39,12 +40,12 @@ class InputReceiver:
         self.last_received = input_line
         self._add_to_queue(input_line)
 
-    def _add_to_queue(self, cleaned_input: str | MobsInRoom):
+    def _add_to_queue(self, cleaned_input: str | Any):
         self._queue.append(cleaned_input)
 
-    def dequeue(self) -> str | MobsInRoom | None:
+    def dequeue(self) -> str | Any | None:
         removed = self._queue.popleft() if self._queue else None
         return removed
-
-    def get_last_received(self) -> str | MobsInRoom:
+    
+    def get_last_received(self) -> str | Any:
         return self.last_received

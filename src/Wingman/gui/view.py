@@ -3,11 +3,13 @@ import tkinter as tk
 from tkinter import ttk
 import time
 import ctypes
+from typing import overload
 from Wingman.core.controller import Controller
 from Wingman.core.group import Group
 from Wingman.core.character import Character
 from Wingman.core.health_Tagger import HealthTagger
 from Wingman.core.parser import Parser
+from Wingman.core.item import Item
 
 class View(tk.Frame):
     def __init__(self, parent: tk.Tk | tk.Toplevel):
@@ -33,6 +35,9 @@ class View(tk.Frame):
         self.menu_settings: tk.Menu
         self.var_ignoredMobPetsCsv = tk.StringVar(value="")
         self._pet_or_mobs_display_settings_window = tk.Toplevel(parent)
+        self._invasionSuppliesWindow = tk.Toplevel(parent)
+        self.var_invasionSuppliesNewlineSeparatedValues = tk.StringVar(value="")
+        self.var_lackingInvasionSupplyValues = tk.StringVar(value="")
         self.var_includePetsInGroup = tk.BooleanVar(value=False)
         self._cachedGroup: Group = Group([])
         self._hideDisplayedLabelCallbackTimer = 2000 #ms
@@ -42,7 +47,9 @@ class View(tk.Frame):
         self.style = ttk.Style()
         self.style.theme_use('clam')
 
-        self._TopLevelWidgets: list[tk.Tk | tk.Toplevel] = [self.parent, self._pet_or_mobs_display_settings_window]
+        self._TopLevelWidgets: list[tk.Tk | tk.Toplevel] = [self.parent,
+                                                            self._pet_or_mobs_display_settings_window,
+                                                            self._invasionSuppliesWindow]
     
     @classmethod
     def ForTesting(cls):
@@ -151,7 +158,7 @@ c = Controller.ForTesting()
         self.menu_settings.add_command(label="Reset Stats", command=self._controller.reset_stats)
         self.menu_settings.add_separator()
         self.menu_settings.add_command(label="Mobs/Pet settings", command=self._controller.open_ignore_mobs_window)
-        self._pet_or_mobs_display_settings_window.attributes("-topmost", True)
+        self._pet_or_mobs_display_settings_window.attributes("-topmost", self.var_always_on_top.get())
         self._pet_or_mobs_display_settings_window.protocol("WM_DELETE_WINDOW", self._withdraw_pet_or_mobs_display_settings_window)  # Hide on close
         self._pet_or_mobs_display_settings_window.withdraw()  # Start hidden
         self._pet_or_mobs_display_settings_window.title("Mob/Pet Settings")
@@ -172,7 +179,41 @@ c = Controller.ForTesting()
                                                         variable=self.var_includePetsInGroup, 
                                                         command=lambda: self.update_display_of_pets_in_group_window(self.var_includePetsInGroup.get()))
         self.includeMobsInGroupCheckButton.grid(row=1, column=1, sticky=tk.W, padx=10, pady=(0, 10))
-        
+
+        self.menu_settings.add_command(label="Check Invasion Supplies", command=self.open_InvasionSuppliesWindow)
+        self._invasionSuppliesWindow.attributes("-topmost", self.var_always_on_top.get())
+        self._invasionSuppliesWindow.protocol("WM_DELETE_WINDOW", self._withdraw_InvasionSuppliesWindow)  # Hide on close
+        self._invasionSuppliesWindow.withdraw()
+        self._invasionSuppliesWindow.title("Invasion Supplies")
+        self._invasionSuppliesWindow.minsize(450, 260)
+        self._invasionSuppliesWindow.grid_rowconfigure(1, weight=1)
+        self._invasionSuppliesWindow.grid_columnconfigure(0, weight=1)
+
+        invasionSupplyFrame = ttk.Frame(self._invasionSuppliesWindow)
+        invasionSupplyFrame.grid(row=0, column=0, sticky=tk.NSEW)
+        invasionSupplyFrame.grid_rowconfigure(1, weight=1)
+        invasionSupplyFrame.grid_columnconfigure(0, weight=1)
+
+
+        ttk.Label(invasionSupplyFrame,
+                  text="List of items to have in your inventory for invading.")\
+            .grid(row=0, column=0, sticky=tk.W, padx=10, pady=(10, 0))
+        self.invasionSuppliesText = tk.Text(invasionSupplyFrame,
+                                               width=60,
+                                               height=10)
+        self.invasionSuppliesText.grid(row=1, column=0, sticky=tk.NSEW, padx=10)
+        invasionFooterFrame = ttk.Frame(invasionSupplyFrame)
+        invasionFooterFrame.grid(row=2, column=0, sticky=tk.EW)
+        ttk.Button(invasionFooterFrame,
+                   text="Check Inventory",
+                   command=lambda: self._controller.updateInvadeSupplyListLabel(self.invasionSuppliesText.get("1.0", tk.END), self._controller.model.inventory))\
+            .grid(row=0, column=0, sticky=tk.W, padx=10, pady=5)
+        ttk.Label(invasionFooterFrame,
+                  textvariable=self.var_lackingInvasionSupplyValues,
+                  wraplength=475)\
+            .grid(row=0, column=1, sticky=tk.EW, padx=5, pady=5)
+
+
         self.mb_settings["menu"] = self.menu_settings
 
         # --- Group Dashboard (Treeview) ---
@@ -260,7 +301,7 @@ c = Controller.ForTesting()
         else:
             self.btn_pause.config(text="Pause")
             if hasattr(self._controller.gameSession, 'resume_clock'): self._controller.gameSession.resume_clock()
-    
+
     def set_windows_titlebar_color(self, use_dark: bool):
         try:
             DWMWA_USE_IMMERSIVE_DARK_MODE = 20
@@ -270,7 +311,7 @@ c = Controller.ForTesting()
             for window in self._TopLevelWidgets:
                 hwnd = get_parent(window.winfo_id())
                 set_window_attribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ctypes.byref(ctypes.c_int(value)), 4)
-            
+
             self.update()
         except Exception:
             pass
@@ -288,7 +329,7 @@ c = Controller.ForTesting()
         now = time.time()
         if now - self.last_stat_update >= 1.0:
             self.updateTimeRelatedValues(now)
-        
+
         match self._controller.model.isAfk:
             case True:
                 self.displayAfkLabel()
@@ -296,7 +337,7 @@ c = Controller.ForTesting()
                 self.hideAfkLabel()
             case _:
                 pass
-        
+
         match self._controller.model.isMeditating:
             case True:
                 self.displayMeditationLabel()
@@ -305,7 +346,7 @@ c = Controller.ForTesting()
                 self._controller.model.isMeditating = None # Set to None to avoid repeated grid removals.
             case _:
                 pass
-        
+
         match self._controller.model.isHiding:
             case True:
                 self.displayHidingLabel()
@@ -313,7 +354,7 @@ c = Controller.ForTesting()
                 self.hideHidingLabel()
             case _:
                 pass
-        
+
         if self._controller.model.BuffOrShieldEnding is not None:
             self.displayBuffOrShieldEndedLabel(self._controller.model.BuffOrShieldEnding)
 
@@ -333,6 +374,8 @@ c = Controller.ForTesting()
         """Applies the current state of the BooleanVar to the window."""
         self.var_always_on_top.set(value)
         self.parent.attributes("-topmost", value)
+        for widget in self._TopLevelWidgets:
+            widget.attributes("-topmost", value)
 
     def toggle_theme(self):
         self.dark_mode = not self.dark_mode
@@ -413,7 +456,7 @@ c = Controller.ForTesting()
 
     def _withdraw_pet_or_mobs_display_settings_window(self):
         self._pet_or_mobs_display_settings_window.withdraw()
-    
+
     def update_display_of_pets_in_group_window(self, displayMobsInGroupWindow: bool):
         self._controller.update_display_of_pets_in_group_window(displayMobsInGroupWindow)
 
@@ -433,3 +476,30 @@ c = Controller.ForTesting()
         self.after(self._hideDisplayedLabelCallbackTimer, self.hideSpellMitigatesAffect)
     def hideSpellMitigatesAffect(self):
         self.spellMitigatesAffectsLabel.grid_remove()
+
+    def open_InvasionSuppliesWindow(self):
+        self._invasionSuppliesWindow.deiconify()
+    def _withdraw_InvasionSuppliesWindow(self):
+        self._invasionSuppliesWindow.withdraw()
+
+    @overload
+    def updateInvadeSupplyListLabel(self, displayText: str):
+        ...
+
+    @overload
+    def updateInvadeSupplyListLabel(self, missingSuppliesList: list[Item]):
+        ...
+
+    def updateInvadeSupplyListLabel(self, value):
+        if isinstance(value, str):
+            self.var_lackingInvasionSupplyValues.set(value)
+            return
+        
+        if isinstance(value, list):
+            if len(value) == 0:
+                displayText = "All items are present for invading!"
+                self.after(self._hideDisplayedLabelCallbackTimer, lambda: self.var_lackingInvasionSupplyValues.set("")) # Clear the label after a delay
+            else:
+                displayText = "Missing Supplies:\n  " + "\n  ".join([f"{item}" for item in value])
+
+            self.var_lackingInvasionSupplyValues.set(displayText)

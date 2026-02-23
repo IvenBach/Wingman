@@ -34,6 +34,17 @@ class NetworkListener:
 
                     # Decode and append to buffer immediately
                     chunk = payload_bytes.decode('utf-8', errors='replace')
+
+                    inventory = Parser().parseInventory(self.receiver.remove_ANSI_color_codes(chunk))
+                    if inventory is not None:
+                        self.receiver.receive(inventory)
+                        return
+
+                    eg = Parser().parseEquippedGear(self.receiver.remove_ANSI_color_codes(chunk))
+                    if eg is not None:
+                        self.receiver.receive(eg)
+                        return
+
                     if Parser().ParseMobs().hasAnsiColorCodedMobs(chunk, predeterminedChunkMobList):
                         mobsInRoom = MobsInRoom(predeterminedChunkMobList)
 

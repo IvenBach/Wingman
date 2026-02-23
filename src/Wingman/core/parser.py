@@ -5,6 +5,8 @@ from Wingman.core.status_indicator import StatusIndicator
 from Wingman.core.resource_bar import ResourceBar
 from Wingman.core.character import Character
 from Wingman.core.group import Group
+from Wingman.core.inventory import EquippedGear, Inventory
+from Wingman.core.item import Item, ItemSlot
 
 class MobMovement(StrEnum):
     LEAVING = "LEAVING"
@@ -23,7 +25,7 @@ class Parser():
             total_xp += (base + bonus)
 
         return total_xp
-    
+
     def parse_group_status(self, text_block: str, includePets: bool = False) -> List[Character]:
         """
         Parses a text block for group member status.
@@ -145,7 +147,7 @@ class Parser():
         
         disbandingGroup = pattern.findall(text)
         return disbandingGroup[0] == group.Leader.Name
-    
+
     class AfkStatus(StrEnum):
         BeginAfk = "You are now listed as AFK."
         EndAfk = "You are no longer AFK."
@@ -176,7 +178,7 @@ class Parser():
             return False
         
         return None
-    
+
     class MeditationState(StrEnum):
         Begin = "You slip into a meditative trance..."
         Termination_ByStanding = "You stand up.\nYou end your meditation."
@@ -287,7 +289,7 @@ BG	FC	Color			Color
             for mob in foundMobs:
                 listedMobs.append(mob[1])
             return listedMobs
-    
+
     class ParseMovement:
         def playerMovement(self, text: str) -> bool:
             return "Obvious exits:" in text
@@ -452,7 +454,7 @@ If the text includes the ending and starting value for the spell, this is treate
             return False, self.ParseBuffOrShieldText.Vitalize_Ended
 
         return None, None
-    
+
     class SpellMitigationAffect(StrEnum):
         '''Spells that provide a mitigating affect. Whether reduced damage or preventing a status affect like Bleed, Poison, or Disease (BPD).'''
         ToughDotSkin = "Your hardened skin tempers the impact!"
@@ -471,3 +473,132 @@ If the text includes the ending and starting value for the spell, this is treate
             return True, map[text]
 
         return False, None
+
+    def parseInventory(self, text: str) -> Inventory | None:
+        '''Parses the text for the contents of the player's inventory.
+        Current implementation limitations:
+- Assumes gear to be fully equipped with no empty slots. If there are any empty slots then some worn gear will be placed in order: 
+Head, Jewel1, Jewel2, Cloak, Body, Hands, Legs, Feet, Held_Right, Held_Left.
+- Cannot differentiate 2handed items from 1handed items. Will list a 2handed item held in one hand.
+
+TODO: Future update to correct the above limitation: `equipment` should be executed to display equipped items.
+That parse is intended to overwrite with the correct worn gear.'''
+        if "Inventory:" not in text:
+            return None
+
+        eg = EquippedGear(None, None, None, None, None, None, None, None, None, None)
+        backpackStartIndex = 1
+        lines = text.split('\n')
+        equippedText = [line[6:] for line in lines if line.startswith("  (w) ")]
+
+        wornCounter = 0
+        for wornCounter, line in enumerate(equippedText):
+            match wornCounter:
+                case 0:
+                    eg.Head = Item(line, Slot=ItemSlot.HEAD)
+                case 1:
+                    eg.Jewel1 = Item(line, Slot=ItemSlot.JEWEL)
+                case 2:
+                    eg.Jewel2 = Item(line, Slot=ItemSlot.JEWEL)
+                case 3:
+                    eg.Cloak = Item(line, Slot=ItemSlot.CLOAK)
+                case 4:
+                    eg.Body = Item(line, Slot=ItemSlot.BODY)
+                case 5:
+                    eg.Hands = Item(line, Slot=ItemSlot.HANDS)
+                case 6:
+                    eg.Legs = Item(line, Slot=ItemSlot.LEGS)
+                case 7:
+                    eg.Feet = Item(line, Slot=ItemSlot.FEET)
+        
+        heldText = [line[6:] for line in lines if line.startswith("  (h) ")]
+        for heldCounter, line in enumerate(heldText):
+            match heldCounter:
+                case 0:
+                    eg.Held_Right = Item(line, Slot=ItemSlot.WIELDED)
+                case 1:
+                    eg.Held_Left = Item(line, Slot=ItemSlot.WIELDED)
+
+        backpackStartIndex = len(equippedText) + len(heldText) + 1
+
+        footerLines = 0
+        if '\n\n' in text:
+            footerLines += 1
+        if self._inventoryCountFooterPattern().findall(text):
+            footerLines += 1
+        if self._inventoryWeightFooterPattern().findall(text):
+            footerLines += 1
+        
+        backpack: List[Item] = []
+        createFrom = lines[backpackStartIndex: len(lines) - footerLines]
+        backpack = [self.parseQuantityItem(line) for line in createFrom]
+
+        return Inventory(eg, backpack)
+
+    def _inventoryCountFooterPattern(self) -> re.Pattern[str]:
+        '''Pattern to search for inventory count footer `Inventory: xx / XX`'''
+        return re.compile(r"Inventory:\s+(\d|\w)+\s*/\s*(\d|\w)+")
+
+    def _inventoryWeightFooterPattern(self) -> re.Pattern[str]:
+        '''Pattern to search for inventory weight footer `Encumbrance: yy / YYY`'''
+        return re.compile(r"Encumbrance:\s+(\d|\w)+\s*/\s*(\d|\w)+")
+
+    def parseEquippedGear(self, text: str) -> EquippedGear | None:
+        if "Items in use:" not in text:
+            return None
+
+        eg = EquippedGear()
+        lines = text.split('\n')
+        for line in lines:
+            if "Items in use:" in line:
+                continue
+
+            prefix = line[:15]
+            name = line[15:]
+            if name == 'nothing':
+                continue
+
+            match prefix:
+                case "     On Head:  ":
+                    eg.Head = Item(name, Slot=  ItemSlot.HEAD)
+                case "    On Jewel:  ":
+                    if eg.Jewel1 is None:
+                        eg.Jewel1 = Item(name, Slot=ItemSlot.JEWEL)
+                    else:
+                        eg.Jewel2 = Item(name, Slot=ItemSlot.JEWEL)
+                case "    On Cloak:  ":
+                    eg.Cloak = Item(name, Slot=ItemSlot.CLOAK)
+                case "     On Body:  ":
+                    eg.Body = Item(name, Slot=ItemSlot.BODY)
+                case "    On Hands:  ":
+                    eg.Hands = Item(name, Slot=ItemSlot.HANDS)
+                case "     On Legs:  ":
+                    eg.Legs = Item(name, Slot=ItemSlot.LEGS)
+                case "     On Feet:  ":
+                    eg.Feet = Item(name, Slot=ItemSlot.FEET)
+                case "  Held Right:  ":
+                    eg.Held_Right = Item(name, Slot=ItemSlot.WIELDED)
+                case "   Held Left:  ":
+                    eg.Held_Left = Item(name, Slot=ItemSlot.WIELDED)
+
+        return eg
+
+    @staticmethod
+    def parseQuantityItem(lineOfText: str) -> Item:
+        '''Parses text for an item with quantity.
+
+Assumes any item lacking quantity parenthesis to be a non-quantity item and assigns it a `None` quantity.'''
+        parenthesisStartIndex = lineOfText.find("(")
+        parenthesisEndIndex = lineOfText.find(")")
+
+        if parenthesisStartIndex > -1 and parenthesisEndIndex > parenthesisStartIndex:
+            try:
+                quantity = int(lineOfText[parenthesisStartIndex + 1:parenthesisEndIndex].strip())
+            except ValueError:
+                quantity = None
+        else:
+            quantity = None
+
+        name = lineOfText[parenthesisEndIndex + 2:] if parenthesisEndIndex > -1 else lineOfText.strip()
+
+        return Item(Name=name, Quantity=quantity)

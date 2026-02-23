@@ -11,7 +11,7 @@ from Wingman.core.parser import MobMovement, Parser
 from Wingman.core.status_indicator import StatusIndicator
 from Wingman.core.group import Group
 from Wingman.core.character import Character
-
+from Wingman.core.item import Item, ItemSlot
 
 
 @pytest.fixture
@@ -533,3 +533,380 @@ class TestSpellMitigationAffectParse:
 
         assert isMitigatingText
         assert mitigatingSpell == Parser.SpellMitigationAffect.BleedDotResist
+
+class TestInventoryParse:
+    def test_FullyEquippedItemSlots_PlacesThemIntoGearSlots(self):
+        text = """Inventory:
+  (w) A WISPWEAVE spellbinder's crown
+  (w) A twisted gold torc
+  (w) A mark of vigilance
+  (w) A GLOWING worldwalker's cloak
+  (w) A GOSSAMER noble's gleaming raiment of evasion
+  (w) A GOSSAMER noble's gleaming gloves of intelligence
+  (w) A GLOWING GOSSAMER hierophant's legwraps
+  (w) A GLOWING WISPWEAVE dragon-wing boots
+  (h) A GLOWING rod of endless repentance
+  (h) Glowing Ahrimal's shielding scale
+
+Inventory:   46 / 60
+Encumbrance: 85 / 230"""
+
+        inventory = Parser().parseInventory(text)
+        assert inventory is not None
+        assert inventory.EquippedGear_.Head.Name == "A WISPWEAVE spellbinder's crown"
+        assert inventory.EquippedGear_.Jewel1.Name == "A twisted gold torc"
+        assert inventory.EquippedGear_.Jewel2.Name == "A mark of vigilance"
+        assert inventory.EquippedGear_.Cloak.Name == "A GLOWING worldwalker's cloak"
+        assert inventory.EquippedGear_.Body.Name == "A GOSSAMER noble's gleaming raiment of evasion"
+        assert inventory.EquippedGear_.Hands.Name == "A GOSSAMER noble's gleaming gloves of intelligence"
+        assert inventory.EquippedGear_.Legs.Name == "A GLOWING GOSSAMER hierophant's legwraps"
+        assert inventory.EquippedGear_.Feet.Name == "A GLOWING WISPWEAVE dragon-wing boots"
+        assert inventory.EquippedGear_.Held_Right.Name == "A GLOWING rod of endless repentance"
+        assert inventory.EquippedGear_.Held_Left.Name == "Glowing Ahrimal's shielding scale"
+
+    def test_NoEquippedItems_PlacesThemIntoBackpack(self):
+        text = """Inventory:
+      A bright jeweled greatsword of the phoenix
+ ( 4) A goblet of zombie blood
+ (10) A bunch of restorative roots
+ (11) A darkspawned blackened fish fillet
+ ( 2) A ticket to Arnak's Plague
+ ( 6) A scroll of minor resurrection
+ ( 2) A scroll of lesser resurrection
+
+Inventory:   xx / XX
+Encumbrance: yy / YYY"""
+
+        inventory = Parser().parseInventory(text)
+        assert inventory is not None
+        assert len(inventory.Backpack) == 7
+        assert inventory.Backpack[0].Name == "A bright jeweled greatsword of the phoenix"
+        assert inventory.Backpack[1].Name == "A goblet of zombie blood" and inventory.Backpack[1].Quantity == 4
+        assert inventory.Backpack[2].Name == "A bunch of restorative roots" and inventory.Backpack[2].Quantity == 10
+        assert inventory.Backpack[3].Name == "A darkspawned blackened fish fillet" and inventory.Backpack[3].Quantity == 11
+        assert inventory.Backpack[4].Name == "A ticket to Arnak's Plague" and inventory.Backpack[4].Quantity == 2
+        assert inventory.Backpack[5].Name == "A scroll of minor resurrection" and inventory.Backpack[5].Quantity == 6
+        assert inventory.Backpack[6].Name == "A scroll of lesser resurrection" and inventory.Backpack[6].Quantity == 2
+
+    def test_EquippedGearWithSomeEmptySlots_PlacesEquippedItemIntoFirstOpenSlots(self):
+        #TODO: Make gear aware of which slot it should occupy in the future
+        text = """Inventory:
+  (w) A WISPWEAVE spellbinder's crown
+  (w) A mark of vigilance
+  (w) A GLOWING worldwalker's cloak
+  (w) A GOSSAMER noble's gleaming gloves of intelligence
+  (h) A bright jeweled greatsword of the phoenix
+      A GLOWING WISPWEAVE dragon-wing boots
+      A GLOWING GOSSAMER hierophant's legwraps
+      A twisted gold torc
+      A GOSSAMER noble's gleaming raiment of evasion
+      Glowing Ahrimal's shielding scale
+      A GLOWING rod of endless repentance
+ ( 4) A goblet of zombie blood
+ ( 9) A darkspawned blackened fish fillet
+ (10) A bunch of restorative roots
+      A Lucifer's Pride ticket
+ ( 2) A ticket to Arnak's Plague
+ ( 6) A scroll of minor resurrection
+ ( 2) A scroll of lesser resurrection"""
+
+        inventory = Parser().parseInventory(text)
+        eg = inventory.EquippedGear_
+
+        assert inventory is not None
+        assert eg.Head == "A WISPWEAVE spellbinder's crown"
+        assert eg.Jewel1 == "A mark of vigilance"
+        assert eg.Jewel2 == "A GLOWING worldwalker's cloak" #Known wrong position, was first open slot
+        assert eg.Cloak == "A GOSSAMER noble's gleaming gloves of intelligence" #Known wrong position, was first open slot
+        assert eg.Body is None
+        assert eg.Hands is None
+        assert eg.Legs is None
+        assert eg.Feet is None
+        assert eg.Held_Right == "A bright jeweled greatsword of the phoenix"
+        assert eg.Held_Left is None
+        assert len(inventory.Backpack) == 13
+
+    def test_ParseHeldTwoHandedWeapon_EquipsItInHeldRight__DoesNotAlsoHoldInOffhand(self):
+        text = """Inventory:
+  (h) A bright jeweled greatsword of the phoenix
+
+Inventory:   xx / XX
+Encumbrance: yy / YYY"""
+
+        inventory = Parser().parseInventory(text)
+        assert inventory is not None
+        assert inventory.EquippedGear_.Held_Right.Name == "A bright jeweled greatsword of the phoenix"
+
+    class TestFootersWithEitherDigitsOrWords:
+        @pytest.mark.parametrize("inventoryFooter", ["Inventory:   45 / 60",
+                                                    "Inventory:   xx / XX",]
+                                                    , ids=["Inventory footer with digits",
+                                                        "Inventory footer with non-digit characters"])
+        def test_InventoryCountFooterWorksWithEitherDigitOrWordCharacters(self, inventoryFooter):
+            text = f"""Inventory:
+  (w) A WISPWEAVE spellbinder's crown
+  (w) A mark of vigilance
+  (w) A twisted gold torc
+  (w) A GLOWING worldwalker's cloak
+  (w) A GOSSAMER noble's gleaming gloves of intelligence
+  (w) A GLOWING GOSSAMER hierophant's legwraps
+  (w) A GLOWING WISPWEAVE dragon-wing boots
+  (h) A bright jeweled greatsword of the phoenix
+      Glowing Ahrimal's shielding scale
+      A GLOWING rod of endless repentance
+ ( 4) A goblet of zombie blood
+ ( 9) A darkspawned blackened fish fillet
+ (10) A bunch of restorative roots
+      A Lucifer's Pride ticket
+ ( 2) A ticket to Arnak's Plague
+ ( 6) A scroll of minor resurrection
+ ( 2) A scroll of lesser resurrection
+
+{inventoryFooter}
+Encumbrance: 83 / 230"""
+
+            inventory = Parser().parseInventory(text)
+
+            assert len(inventory.Backpack) == 9
+
+        @pytest.mark.parametrize("encumbranceFooter", ["Encumbrance:   45 / 60",
+                                                    "Encumbrance:   yy / YYY",]
+                                                    , ids=["Encumbrance footer with digits",
+                                                        "Encumbrance footer with non-digit characters"])
+        def test_EncumbranceFooterWorksWithEitherDigitOrWordCharacters(self, encumbranceFooter):
+            text = f"""Inventory:
+  (w) A WISPWEAVE spellbinder's crown
+  (w) A mark of vigilance
+  (w) A twisted gold torc
+  (w) A GLOWING worldwalker's cloak
+  (w) A GOSSAMER noble's gleaming gloves of intelligence
+  (w) A GLOWING GOSSAMER hierophant's legwraps
+  (w) A GLOWING WISPWEAVE dragon-wing boots
+  (h) A bright jeweled greatsword of the phoenix
+      Glowing Ahrimal's shielding scale
+      A GLOWING rod of endless repentance
+ ( 4) A goblet of zombie blood
+ ( 9) A darkspawned blackened fish fillet
+ (10) A bunch of restorative roots
+      A Lucifer's Pride ticket
+ ( 2) A ticket to Arnak's Plague
+ ( 6) A scroll of minor resurrection
+ ( 2) A scroll of lesser resurrection
+
+Inventory:   xx / XX
+{encumbranceFooter}"""
+
+            inventory = Parser().parseInventory(text)
+
+            assert len(inventory.Backpack) == 9
+
+    class TestOmitFooterlines:
+        def test_Omit__InventoryCount__InInventoryFooter_DoesNotCutOffLastItemsInInventory(self):
+            text = """Inventory:
+  (w) A WISPWEAVE spellbinder's crown
+  (w) A mark of vigilance
+  (w) A twisted gold torc
+  (w) A GLOWING worldwalker's cloak
+  (w) A GOSSAMER noble's gleaming gloves of intelligence
+  (w) A GLOWING GOSSAMER hierophant's legwraps
+  (w) A GLOWING WISPWEAVE dragon-wing boots
+  (h) A bright jeweled greatsword of the phoenix
+      Glowing Ahrimal's shielding scale
+      A GLOWING rod of endless repentance
+ ( 4) A goblet of zombie blood
+ ( 9) A darkspawned blackened fish fillet
+ (10) A bunch of restorative roots
+      A Lucifer's Pride ticket
+ ( 2) A ticket to Arnak's Plague
+ ( 6) A scroll of minor resurrection
+ ( 2) A scroll of lesser resurrection
+
+Encumbrance: yy / YYY"""
+            inventory = Parser().parseInventory(text)
+            assert inventory is not None
+            assert len(inventory.Backpack) == 9
+
+        def test_Omit__Encumbrance__InInventoryFooter_DoesNotCutOffLastItemsInInventory(self):
+            text = """Inventory:
+  (w) A WISPWEAVE spellbinder's crown
+  (w) A mark of vigilance
+  (w) A twisted gold torc
+  (w) A GLOWING worldwalker's cloak
+  (w) A GOSSAMER noble's gleaming gloves of intelligence
+  (w) A GLOWING GOSSAMER hierophant's legwraps
+  (w) A GLOWING WISPWEAVE dragon-wing boots
+  (h) A bright jeweled greatsword of the phoenix
+      Glowing Ahrimal's shielding scale
+      A GLOWING rod of endless repentance
+ ( 4) A goblet of zombie blood
+ ( 9) A darkspawned blackened fish fillet
+      A Lucifer's Pride ticket
+ ( 2) A ticket to Arnak's Plague
+ ( 6) A scroll of minor resurrection
+ ( 2) A scroll of lesser resurrection
+
+Inventory:   xx / XX"""
+
+            inventory = Parser().parseInventory(text)
+            assert inventory is not None
+            assert len(inventory.Backpack) == 8
+
+        def test_Omit__EmptyLine__InInventoryFooter_DoesNotCutOffLastItemsInInventory(self):
+            text = """Inventory:
+  (w) A WISPWEAVE spellbinder's crown
+  (w) A mark of vigilance
+  (w) A twisted gold torc
+  (w) A GLOWING worldwalker's cloak
+  (w) A GOSSAMER noble's gleaming gloves of intelligence
+  (w) A GLOWING GOSSAMER hierophant's legwraps
+  (w) A GLOWING WISPWEAVE dragon-wing boots
+  (h) A bright jeweled greatsword of the phoenix
+      Glowing Ahrimal's shielding scale
+      A GLOWING rod of endless repentance
+ ( 9) A darkspawned blackened fish fillet
+      A Lucifer's Pride ticket
+ ( 2) A ticket to Arnak's Plague
+ ( 6) A scroll of minor resurrection
+ ( 2) A scroll of lesser resurrection
+Inventory:   xx / XX
+Encumbrance: yy / YYY"""
+
+            inventory = Parser().parseInventory(text)
+            assert inventory is not None
+            assert len(inventory.Backpack) == 7
+
+        def test_Omit__AllInventoryFooterLines__DoesNotCutOffLastItemsInInventory(self):
+            text = """Inventory:
+  (w) A WISPWEAVE spellbinder's crown
+  (w) A mark of vigilance
+  (w) A twisted gold torc
+  (w) A GLOWING worldwalker's cloak
+  (w) A GOSSAMER noble's gleaming gloves of intelligence
+  (w) A GLOWING GOSSAMER hierophant's legwraps
+  (w) A GLOWING WISPWEAVE dragon-wing boots
+  (h) A bright jeweled greatsword of the phoenix
+      Glowing Ahrimal's shielding scale
+      A GLOWING rod of endless repentance
+ ( 9) A darkspawned blackened fish fillet
+      A Lucifer's Pride ticket
+ ( 6) A scroll of minor resurrection
+ ( 2) A scroll of lesser resurrection"""
+
+            inventory = Parser().parseInventory(text)
+            assert inventory is not None
+            assert len(inventory.Backpack) == 6
+
+class TestQuantityItemParse:
+    @pytest.mark.parametrize("input, expectedQuantity, expectedName",
+                             [(" ( 4) A goblet of zombie blood", 4, "A goblet of zombie blood"),
+                              ("( 4) A goblet of zombie blood", 4, "A goblet of zombie blood"),
+                              ("(4) A goblet of zombie blood", 4, "A goblet of zombie blood"),
+                            ],
+                            ids=["Copied from logs",
+                                 "Excluding leading space before quantity",
+                                 "Single digit quantity with no leading space"])
+    def test_ParseItemWithQuantity_MatchesQuantity(self, input, expectedQuantity, expectedName):
+        item = Parser.parseQuantityItem(input)
+        
+        assert item is not None
+        assert item.Quantity == expectedQuantity
+        assert item.Name == expectedName
+    
+    def test_ParseItemWithoutQuantityParenthesis_AssumedToBeNoneQuantityItem(self):
+        input = "A goblet of zombie blood"
+
+        item = Parser.parseQuantityItem(input)
+
+        assert item.Quantity == None
+
+    @pytest.mark.parametrize("input, expectedName",
+                             [("      A GLOWING rod of endless repentance", "A GLOWING rod of endless repentance"),
+                              ("A GLOWING rod of endless repentance", "A GLOWING rod of endless repentance")
+                            ],
+                            ids=["Copied from logs with leading spaces",
+                                 "No leading spaces"])
+    def test_ParseItemWithoutQuantity_ReturnsItem(self, input, expectedName):
+        item = Parser.parseQuantityItem(input)
+
+        assert item.Quantity == None
+        assert item.Name == expectedName
+
+class TestEquippedGearParse:
+    def test_ParseFullyEquippedGear_PlacesItemsInCorrectGearSlots(self):
+        text = """Items in use:
+     On Head:  a WISPWEAVE spellbinder's crown
+    On Jewel:  a twisted gold torc
+    On Jewel:  a mark of vigilance
+    On Cloak:  a GLOWING worldwalker's cloak
+     On Body:  a GOSSAMER noble's gleaming raiment of evasion
+    On Hands:  a GOSSAMER noble's gleaming gloves of intelligence
+     On Legs:  a GLOWING GOSSAMER hierophant's legwraps
+     On Feet:  a GLOWING WISPWEAVE dragon-wing boots
+  Held Right:  a bright jeweled greatsword of the phoenix
+   Held Left:  a bright jeweled greatsword of the phoenix"""
+
+        eg = Parser().parseEquippedGear(text)
+
+        assert eg.Head.Name == "a WISPWEAVE spellbinder's crown"
+        assert eg.Jewel1.Name == "a twisted gold torc"
+        assert eg.Jewel2.Name == "a mark of vigilance"
+        assert eg.Cloak.Name == "a GLOWING worldwalker's cloak"
+        assert eg.Body.Name == "a GOSSAMER noble's gleaming raiment of evasion"
+        assert eg.Hands.Name == "a GOSSAMER noble's gleaming gloves of intelligence"
+        assert eg.Legs.Name == "a GLOWING GOSSAMER hierophant's legwraps"
+        assert eg.Feet.Name == "a GLOWING WISPWEAVE dragon-wing boots"
+        assert eg.Held_Right.Name == "a bright jeweled greatsword of the phoenix"
+        assert eg.Held_Left.Name == "a bright jeweled greatsword of the phoenix"
+    
+    def test_NoEquippedGear_PlacesNoItemsInGearSlots(self):
+        text = """Items in use:
+     On Head:  nothing
+    On Jewel:  nothing
+    On Jewel:  nothing
+    On Cloak:  nothing
+     On Body:  nothing
+    On Hands:  nothing
+     On Legs:  nothing
+     On Feet:  nothing
+  Held Right:  nothing
+   Held Left:  nothing"""
+
+        eg = Parser().parseEquippedGear(text)
+
+        assert eg.Head == None
+        assert eg.Jewel1 == None
+        assert eg.Jewel2 == None
+        assert eg.Cloak == None
+        assert eg.Body == None
+        assert eg.Hands == None
+        assert eg.Legs == None
+        assert eg.Feet == None
+        assert eg.Held_Right == None
+        assert eg.Held_Left == None
+    
+    def test_SomeEquippedGear_PlacesItemsInCorrectGearSlotsAndLeavesEmptySlotsAsNone(self):
+        text = """Items in use:
+     On Head:  a WISPWEAVE spellbinder's crown
+    On Jewel:  nothing
+    On Jewel:  nothing
+    On Cloak:  a GLOWING worldwalker's cloak
+     On Body:  nothing
+    On Hands:  a GOSSAMER noble's gleaming gloves of intelligence
+     On Legs:  nothing
+     On Feet:  a GLOWING WISPWEAVE dragon-wing boots
+  Held Right:  a bright jeweled greatsword of the phoenix
+   Held Left:  a bright jeweled greatsword of the phoenix"""
+        
+        eg = Parser().parseEquippedGear(text)
+
+        assert eg.Head.Name == "a WISPWEAVE spellbinder's crown"
+        assert eg.Cloak.Name == "a GLOWING worldwalker's cloak"
+        assert eg.Hands.Name == "a GOSSAMER noble's gleaming gloves of intelligence"
+        assert eg.Feet.Name == "a GLOWING WISPWEAVE dragon-wing boots"
+        assert eg.Held_Right.Name == "a bright jeweled greatsword of the phoenix"
+        assert eg.Held_Left.Name == "a bright jeweled greatsword of the phoenix"
+
+        assert eg.Jewel1 == None
+        assert eg.Jewel2 == None
+        assert eg.Body == None
+        assert eg.Legs == None
