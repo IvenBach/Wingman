@@ -481,7 +481,7 @@ That parse is intended to overwrite with the correct worn gear.'''
         if "Inventory:" not in text:
             return None
 
-        eg = EquippedGear(None, None, None, None, None, None, None, None, None, None)
+        eg = EquippedGear()
         backpackStartIndex = 1
         lines = text.split('\n')
         equippedText = [line[6:] for line in lines if line.startswith("  (w) ")]
@@ -596,4 +596,4 @@ Assumes any item lacking quantity parenthesis to be a non-quantity item and assi
 
         name = lineOfText[parenthesisEndIndex + 2:] if parenthesisEndIndex > -1 else lineOfText.strip()
 
-        return Item(name, quantity)
+        return Item(name, quantity=quantity)

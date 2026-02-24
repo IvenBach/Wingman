@@ -6,7 +6,7 @@ from pathlib import Path
 if __name__ == "__main__":
     srcDirectory = Path(__file__).parent.parent.parent.resolve()
     sys.path.append(str(srcDirectory))
-from Wingman.gui.view import View
+from Wingman.gui.view import View, SuppliesPaneChangeDirection
 from Wingman.core.controller import Controller
 from Wingman.core.parser import Parser
 from Wingman.core.model import Model
@@ -323,3 +323,14 @@ class TestView():
                 v.update_gui()
 
             mockedHide.assert_called_once_with()
+
+    class TestSuppliesWindow:
+        def test_ChangingActiveTab_UpdatesActiveTab(self):
+            v = View.ForTesting()
+            initiallySelectedPane = v.suppliesNotebook.select()
+
+            v.change_page_in_supplies_window(SuppliesPaneChangeDirection.NEXT)
+
+            newlySelectedPane = v.suppliesNotebook.select()
+
+            assert initiallySelectedPane != newlySelectedPane

@@ -25,7 +25,13 @@ class EquippedGear:
         self.Held_Right = held_right
         self.Held_Left = held_left
 
-@dataclass
 class Inventory:
-    EquippedGear_: EquippedGear
-    Backpack: list[Item]
+    def __init__(self, equippedGear: EquippedGear, backpack: list[Item]):
+        self.EquippedGear_ = equippedGear
+        self.Backpack = backpack
+
+    def __eq__(self, other):
+        if not isinstance(other, Inventory):
+            return False
+
+        return self.EquippedGear_ == other.EquippedGear_ and self.Backpack == other.Backpack

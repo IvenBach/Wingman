@@ -38,8 +38,10 @@ class Controller:
         self._DARK_MODE__OPTION = 'DarkMode'
         self._ROOT_WINDOW_POSITION__OPTION = 'RootWindowPosition'
         self._IGNORED_MOBS_WINDOW_POSITION__OPTION = 'IgnoredMobsWindowPosition'
-        self._INVASION_SUPPLIES_WINDOW_POSITION__OPTION = 'InvasionSuppliesWindowPosition'
-        self._INVASION_SUPPLIES_TEXT = 'InvasionSuppliesText'
+        self._CHECK_SUPPLIES_WINDOW_POSITION__OPTION = 'CheckSuppliesWindowPosition'
+        self._PVP_SUPPLIES_TEXT__OPTION = 'PvpSuppliesText'
+        self._PVE_SUPPLIES_TEXT__OPTION = 'PveSuppliesText'
+        self._ACTIVE_SUPPLIES_TAB__OPTION = 'ActiveSuppliesTab'
 
     @classmethod
     def ForTesting(cls, m: Model | None = None, view = None, listener_target_ip='1.2.3.4', listener_target_port=1234) -> 'Controller':
@@ -246,13 +248,15 @@ v.setup_ui()
             self._DARK_MODE__OPTION: str(self.view.dark_mode),
             self._IGNORED_MOB_PETS_CSV__OPTION: self.view.ignoredMobsPetsCsv.get(),
             self._DISPLAY_PETS_IN_GROUP__OPTION: str(self.model.includePetsInGroup),
-            self._INVASION_SUPPLIES_TEXT: str(self.view.invasionSuppliesText.get("1.0", tk.END)),
+            self._PVP_SUPPLIES_TEXT__OPTION: str(self.view.pvpSuppliesText.get("1.0", tk.END)),
+            self._PVE_SUPPLIES_TEXT__OPTION: str(self.view.pveSuppliesText.get("1.0", tk.END)),
+            self._ACTIVE_SUPPLIES_TAB__OPTION: str(self.view.suppliesNotebook.select())
         }
 
         cp[self._APP_SETTINGS] = {
             self._ROOT_WINDOW_POSITION__OPTION: '+' + self.view.parent.geometry().split('+', 1)[1],
             self._IGNORED_MOBS_WINDOW_POSITION__OPTION: '+' + self.view._pet_or_mobs_display_settings_window.geometry().split('+', 1)[1],
-            self._INVASION_SUPPLIES_WINDOW_POSITION__OPTION: '+' + self.view._invasionSuppliesWindow.geometry().split('+', 1)[1],
+            self._CHECK_SUPPLIES_WINDOW_POSITION__OPTION: '+' + self.view._supplyCheckerWindow.geometry().split('+', 1)[1],
         }
 
         srcDirectory = self.settingsFilePath()
@@ -292,8 +296,15 @@ v.setup_ui()
                 isAlwaysOnTop = configParser.getboolean(self._VIEW_SETTINGS, self._ALWAYS_ON_TOP__OPTION, fallback=False)
                 self.view.apply_topmost(isAlwaysOnTop)
 
-                invasionSuppliesText = configParser.get(self._VIEW_SETTINGS, self._INVASION_SUPPLIES_TEXT, fallback='')
-                self.view.invasionSuppliesText.insert("1.0", invasionSuppliesText)
+                pvpSuppliesText = configParser.get(self._VIEW_SETTINGS, self._PVP_SUPPLIES_TEXT__OPTION, fallback='')
+                self.view.pvpSuppliesText.insert("1.0", pvpSuppliesText)
+                pveSuppliesText = configParser.get(self._VIEW_SETTINGS, self._PVE_SUPPLIES_TEXT__OPTION, fallback='')
+                self.view.pveSuppliesText.insert("1.0", pveSuppliesText)
+                activeTabIdentifier = configParser.get(self._VIEW_SETTINGS, self._ACTIVE_SUPPLIES_TAB__OPTION, fallback=0)
+                try:
+                    self.view.suppliesNotebook.select(activeTabIdentifier)
+                except tk.TclError:
+                    self.view.suppliesNotebook.select(0) # Default to first tab if the saved identifier is invalid
 
             if configParser.has_section(self._APP_SETTINGS):
                 rootWindowSize = self.view.parent.geometry().split('+')[0]
@@ -304,9 +315,9 @@ v.setup_ui()
                 petOrMobDisplaySettingsWindowPosition = configParser.get(self._APP_SETTINGS, self._IGNORED_MOBS_WINDOW_POSITION__OPTION, fallback='+50+50')
                 self.view._pet_or_mobs_display_settings_window.geometry(petOrMobDisplaySettingsWindowSize + petOrMobDisplaySettingsWindowPosition)
 
-                invasionSuppliesWindowSize = self.view._invasionSuppliesWindow.geometry().split('+')[0]
-                invasionSuppliesWindowPosition = configParser.get(self._APP_SETTINGS, self._INVASION_SUPPLIES_WINDOW_POSITION__OPTION, fallback='+50+50')
-                self.view._invasionSuppliesWindow.geometry(invasionSuppliesWindowSize + invasionSuppliesWindowPosition)
+                invasionSuppliesWindowSize = self.view._supplyCheckerWindow.geometry().split('+')[0]
+                invasionSuppliesWindowPosition = configParser.get(self._APP_SETTINGS, self._CHECK_SUPPLIES_WINDOW_POSITION__OPTION, fallback='+50+50')
+                self.view._supplyCheckerWindow.geometry(invasionSuppliesWindowSize + invasionSuppliesWindowPosition)
 
         except KeyError:
             # This means the config file was missing or malformed. We can choose to ignore this and just use defaults.
@@ -357,14 +368,24 @@ Returns a `list[Item]` of missing items
 
         return missingItems
 
-    def updateInvadeSupplyListLabel(self, supplyText: str, inventory: Inventory):
+    def suppliesTextBasedOnActiveTab(self) -> str:
+        activeTab = self.view.suppliesNotebook.select()
+        activeTabText = self.view.suppliesNotebook.tab(activeTab, "text")
+        if activeTabText == "PvP":
+            return self.view.pvpSuppliesText.get("1.0", tk.END)
+        elif activeTabText == "PvE":
+            return self.view.pveSuppliesText.get("1.0", tk.END)
+        else:
+            raise ValueError(f"Unexpected active tab name: {activeTabText}")
+
+    def updateMissingSuppliesLabel(self, tabIndicatorText: str, supplyText: str, inventory: Inventory):
         if supplyText == '' or supplyText.isspace():
-            self.view.updateInvadeSupplyListLabel("***No supplies were checked.")
+            self.view.updateMissingSuppliesLabel("***No supplies were checked.")
             return
 
         if len(inventory.Backpack) == 0:
-            self.view.updateInvadeSupplyListLabel("***Empty backpack cache. Execute `Inventory` and `Equipment` then check again.")
+            self.view.updateMissingSuppliesLabel("***Empty backpack cache. Execute `Inventory` then check again.")
             return
 
         missingSupplies = self.check_invasion_supplies(supplyText, inventory)
-        self.view.updateInvadeSupplyListLabel(missingSupplies)
+        self.view.updateMissingSuppliesLabel(tabIndicatorText, missingSupplies)

@@ -1,6 +1,6 @@
 import unittest.mock
 import pytest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from pathlib import Path
 import sys
 import configparser
@@ -639,13 +639,13 @@ class TestCheckInvasionSupplies:
         assert items[2].Name == "A ticket to Arnak's Plague"
         assert items[2].Quantity == 1
 
-class TestUpdateInvadeSupplyListLabel:
+class TestSuppliesList:
     def test_EmptySupplyList_AlertsViewOfEmptySupplyList(self):
         c = Controller.ForTesting()
         v = c.view
         inv = Inventory(EquippedGear(), [])
-        with patch.object(v, v.updateInvadeSupplyListLabel.__name__) as mockedUpdateLabel:
-            c.updateInvadeSupplyListLabel("", inv)
+        with patch.object(v, v.updateMissingSuppliesLabel.__name__) as mockedUpdateLabel:
+            c.updateMissingSuppliesLabel("N/A", "", inv)
 
         userHelpfulText = mockedUpdateLabel.mock_calls[0].args[0]
         assert '***' in userHelpfulText
@@ -655,9 +655,47 @@ class TestUpdateInvadeSupplyListLabel:
         c = Controller.ForTesting()
         v = c.view
         inv = Inventory(EquippedGear(), [])
-        with patch.object(v, v.updateInvadeSupplyListLabel.__name__) as mockedUpdateLabel:
-            c.updateInvadeSupplyListLabel("( 2) A goblet of zombie blood", inv)
+        with patch.object(v, v.updateMissingSuppliesLabel.__name__) as mockedUpdateLabel:
+            c.updateMissingSuppliesLabel("N/A", "( 2) A goblet of zombie blood", inv)
 
         userHelpfulText = mockedUpdateLabel.mock_calls[0].args[0]
         assert '***' in userHelpfulText
         assert type(userHelpfulText) == str
+
+    @pytest.mark.parametrize("pvpText, pveText, activeTabIndex", [("( 2) A goblet of zombie blood", "", 0),
+                                                            ("", "( 2) A goblet of zombie blood", 1)],
+                                                        ids=['PvpSuppliesText', 'PvESuppliesText'])
+    def test_CorrectSuppliesTextPulledFromSuppliesActiveTab(self, pvpText: str, pveText: str, activeTabIndex: int):
+        c = Controller.ForTesting()
+        v = c.view
+        c.model.inventory = Inventory(EquippedGear(),
+                                        [Item("Any item to not have an empty backpack.")])
+
+        v.pvpSuppliesText.insert('1.0', pvpText) #Index0
+        v.pveSuppliesText.insert('1.0', pveText) #Index1
+
+        v.suppliesNotebook.select(activeTabIndex)
+        actualText =c.suppliesTextBasedOnActiveTab()
+
+        assert actualText == "( 2) A goblet of zombie blood\n"
+
+    def test_TextSuppliesAccessFromUnexpectedTab_RaisesValueError(self):
+        c = Controller.ForTesting()
+        v = c.view
+        mockedTab = MagicMock()
+        mockedTab.return_value = 'UnexpectedTab'
+        v.suppliesNotebook.tab = mockedTab
+
+        with pytest.raises(ValueError):
+            c.suppliesTextBasedOnActiveTab()
+
+class TestApplySettings:
+    def test_NotebookTabIdentifierNotFound_GracefullyContinuesUsingDefaultIndex_Zero(self):
+        cp = configparser.ConfigParser()
+        c = Controller.ForTesting()
+        cp[c._VIEW_SETTINGS] = {
+            c._ACTIVE_SUPPLIES_TAB__OPTION: "`TclError` producing identifier"
+        }
+
+        c.applySettings(cp)
+        #Gracefully applied settings

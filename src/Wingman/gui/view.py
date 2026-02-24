@@ -4,12 +4,17 @@ from tkinter import ttk
 import time
 import ctypes
 from typing import overload
+from enum import Enum
 from Wingman.core.controller import Controller
 from Wingman.core.group import Group
 from Wingman.core.character import Character
 from Wingman.core.health_Tagger import HealthTagger
 from Wingman.core.parser import Parser
 from Wingman.core.item import Item
+
+class SuppliesPaneChangeDirection(Enum):
+    PREVIOUS = -1
+    NEXT = 1
 
 class View(tk.Frame):
     def __init__(self, parent: tk.Tk | tk.Toplevel):
@@ -34,10 +39,10 @@ class View(tk.Frame):
         self.groupTreeview: ttk.Treeview
         self.menu_settings: tk.Menu
         self.var_ignoredMobPetsCsv = tk.StringVar(value="")
-        self._pet_or_mobs_display_settings_window = tk.Toplevel(parent)
-        self._invasionSuppliesWindow = tk.Toplevel(parent)
-        self.var_invasionSuppliesNewlineSeparatedValues = tk.StringVar(value="")
-        self.var_lackingInvasionSupplyValues = tk.StringVar(value="")
+        self._pet_or_mobs_display_settings_window = tk.Toplevel(parent, name="petOrMobsDisplaySettingsWindow")
+        self._supplyCheckerWindow = tk.Toplevel(parent, name="supplyCheckerWindow")
+        self.var_missingSupplyValues = tk.StringVar(value="")
+        self.var_missingPveSupplyValues = tk.StringVar(value="")
         self.var_includePetsInGroup = tk.BooleanVar(value=False)
         self._cachedGroup: Group = Group([])
         self._hideDisplayedLabelCallbackTimer = 2000 #ms
@@ -49,8 +54,8 @@ class View(tk.Frame):
 
         self._TopLevelWidgets: list[tk.Tk | tk.Toplevel] = [self.parent,
                                                             self._pet_or_mobs_display_settings_window,
-                                                            self._invasionSuppliesWindow]
-    
+                                                            self._supplyCheckerWindow]
+
     @classmethod
     def ForTesting(cls):
         """
@@ -69,7 +74,7 @@ c = Controller.ForTesting()
         # 1. Initialize "Always on Top" variable
         self.var_always_on_top = tk.BooleanVar(value=True)
         self.parent.attributes("-topmost", self.var_always_on_top.get())
-    
+
     def setup_ui(self):
         """
         Setting up the UI requires the controller to be set first for binding.
@@ -180,36 +185,52 @@ c = Controller.ForTesting()
                                                         command=lambda: self.update_display_of_pets_in_group_window(self.var_includePetsInGroup.get()))
         self.includeMobsInGroupCheckButton.grid(row=1, column=1, sticky=tk.W, padx=10, pady=(0, 10))
 
-        self.menu_settings.add_command(label="Check Invasion Supplies", command=self.open_InvasionSuppliesWindow)
-        self._invasionSuppliesWindow.attributes("-topmost", self.var_always_on_top.get())
-        self._invasionSuppliesWindow.protocol("WM_DELETE_WINDOW", self._withdraw_InvasionSuppliesWindow)  # Hide on close
-        self._invasionSuppliesWindow.withdraw()
-        self._invasionSuppliesWindow.title("Invasion Supplies")
-        self._invasionSuppliesWindow.minsize(450, 260)
-        self._invasionSuppliesWindow.grid_rowconfigure(1, weight=1)
-        self._invasionSuppliesWindow.grid_columnconfigure(0, weight=1)
+        self.menu_settings.add_command(label="Check Supplies", command=self.open_suppliesWindow)
+        self._supplyCheckerWindow.attributes("-topmost", self.var_always_on_top.get())
+        self._supplyCheckerWindow.protocol("WM_DELETE_WINDOW", self._withdraw_suppliesWindow)  # Hide on close
+        self._supplyCheckerWindow.withdraw()
+        self._supplyCheckerWindow.title("Supply Checker")
+        self._supplyCheckerWindow.minsize(450, 280)
+        self._supplyCheckerWindow.grid_rowconfigure(1, weight=1)
+        self._supplyCheckerWindow.grid_columnconfigure(0, weight=1)
+        self._supplyCheckerWindow.bind("<Control-Next>",
+                lambda _: self.change_page_in_supplies_window(direction=SuppliesPaneChangeDirection.NEXT))
+        self._supplyCheckerWindow.bind("<Control-Prior>",
+                lambda _: self.change_page_in_supplies_window(direction=SuppliesPaneChangeDirection.PREVIOUS))
 
-        invasionSupplyFrame = ttk.Frame(self._invasionSuppliesWindow)
-        invasionSupplyFrame.grid(row=0, column=0, sticky=tk.NSEW)
-        invasionSupplyFrame.grid_rowconfigure(1, weight=1)
-        invasionSupplyFrame.grid_columnconfigure(0, weight=1)
+        suppliesFrame = ttk.Frame(self._supplyCheckerWindow, name="suppliesFrame")
+        suppliesFrame.grid(row=0, column=0, sticky=tk.NSEW)
+        suppliesFrame.grid_rowconfigure(1, weight=1)
+        suppliesFrame.grid_columnconfigure(0, weight=1)
 
 
-        ttk.Label(invasionSupplyFrame,
-                  text="List of items to have in your inventory for invading.")\
+        ttk.Label(suppliesFrame,
+                  text="List of items to have in your inventory.")\
             .grid(row=0, column=0, sticky=tk.W, padx=10, pady=(10, 0))
-        self.invasionSuppliesText = tk.Text(invasionSupplyFrame,
-                                               width=60,
-                                               height=10)
-        self.invasionSuppliesText.grid(row=1, column=0, sticky=tk.NSEW, padx=10)
-        invasionFooterFrame = ttk.Frame(invasionSupplyFrame)
-        invasionFooterFrame.grid(row=2, column=0, sticky=tk.EW)
-        ttk.Button(invasionFooterFrame,
+        self.suppliesNotebook = ttk.Notebook(suppliesFrame, name="suppliesNotebook")
+        self.suppliesNotebook.grid(row=1, column=0, sticky=tk.NSEW, padx=10, pady=5)
+        pvpFrame = ttk.Frame(self.suppliesNotebook, name="pvpSuppliesFrame")
+        pvpFrame.grid_columnconfigure(0, weight=1)
+        pveFrame = ttk.Frame(self.suppliesNotebook, name="pveSuppliesFrame")
+        pveFrame.grid_columnconfigure(0, weight=1)
+        self.suppliesNotebook.add(pvpFrame, text="PvP")
+        self.pvpSuppliesText = tk.Text(pvpFrame, width=60, height=10)
+        self.pvpSuppliesText.grid(row=0, column=0, sticky=tk.NSEW)
+
+        self.suppliesNotebook.add(pveFrame, text="PvE")
+        self.pveSuppliesText = tk.Text(pveFrame, width=60, height=10)
+        self.pveSuppliesText.grid(row=0, column=0, sticky=tk.NSEW)
+
+        supplyCheckerFooterFrame = ttk.Frame(suppliesFrame)
+        supplyCheckerFooterFrame.grid(row=2, column=0, sticky=tk.EW)
+        ttk.Button(supplyCheckerFooterFrame,
                    text="Check Inventory",
-                   command=lambda: self._controller.updateInvadeSupplyListLabel(self.invasionSuppliesText.get("1.0", tk.END), self._controller.model.inventory))\
-            .grid(row=0, column=0, sticky=tk.W, padx=10, pady=5)
-        ttk.Label(invasionFooterFrame,
-                  textvariable=self.var_lackingInvasionSupplyValues,
+                   command=lambda: self._controller.updateMissingSuppliesLabel(self.suppliesNotebook.tab(self.suppliesNotebook.select(), option="text"),
+                                                                               self._controller.suppliesTextBasedOnActiveTab(),
+                                                                               self._controller.model.inventory))\
+            .grid(row=0, column=0, sticky=tk.NW, padx=10, pady=5)
+        ttk.Label(supplyCheckerFooterFrame,
+                  textvariable=self.var_missingSupplyValues,
                   wraplength=475)\
             .grid(row=0, column=1, sticky=tk.EW, padx=5, pady=5)
 
@@ -264,8 +285,8 @@ c = Controller.ForTesting()
         self.buffOrShieldEndedLabel.grid_remove()
 
         self.spellMitigatesAffectsLabel = ttk.Label(_statusFooter, 
-                                           textvariable=self.var_spellMitigatesAffectText, 
-                                           style=statusFooterStyleName)
+                                                    textvariable=self.var_spellMitigatesAffectText, 
+                                                    style=statusFooterStyleName)
         self.spellMitigatesAffectsLabel.grid(row=3, column=1)
 
 
@@ -291,6 +312,15 @@ c = Controller.ForTesting()
         self.style.map("Treeview", background=[("selected", select_bg)], foreground=[("selected", "white")])
         self.style.configure("Treeview.Heading", background=bg_color, foreground=fg_color, relief="flat")
         self.style.configure("TMenubutton", background=bg_color, foreground=fg_color)
+
+        #https://likegeeks.com/tkinter-notebook-tab-styling-ttk/
+        self.style.configure("TNotebook.Tab", foreground="black")
+        self.style.map("TNotebook.Tab",
+                  background=[("selected", bg_color), ("active", field_bg), ("disabled", "black")],
+                  foreground=[("selected", fg_color), ("active", fg_color), ("disabled", "darkgray")])
+        self.pvpSuppliesText.configure(bg=field_bg, fg=fg_color)
+        self.pveSuppliesText.configure(bg=field_bg, fg=fg_color)
+
         self.menu_settings.config(bg=field_bg, fg=fg_color, activebackground=select_bg, activeforeground="white")
 
     def toggle_pause(self):
@@ -477,29 +507,35 @@ c = Controller.ForTesting()
     def hideSpellMitigatesAffect(self):
         self.spellMitigatesAffectsLabel.grid_remove()
 
-    def open_InvasionSuppliesWindow(self):
-        self._invasionSuppliesWindow.deiconify()
-    def _withdraw_InvasionSuppliesWindow(self):
-        self._invasionSuppliesWindow.withdraw()
+    def open_suppliesWindow(self):
+        self._supplyCheckerWindow.deiconify()
+    def _withdraw_suppliesWindow(self):
+        self._supplyCheckerWindow.withdraw()
 
     @overload
-    def updateInvadeSupplyListLabel(self, displayText: str):
-        ...
-
+    def updateMissingSuppliesLabel(self, displayText: str): ...
     @overload
-    def updateInvadeSupplyListLabel(self, missingSuppliesList: list[Item]):
-        ...
+    def updateMissingSuppliesLabel(self, tabIndicatorText: str, missingSuppliesList: list[Item]): ...
 
-    def updateInvadeSupplyListLabel(self, value):
-        if isinstance(value, str):
-            self.var_lackingInvasionSupplyValues.set(value)
+    def updateMissingSuppliesLabel(self, *args):
+        if len(args) == 1 and isinstance(args[0], str):
+            value = args[0]
+            self.var_missingSupplyValues.set(value)
             return
         
-        if isinstance(value, list):
+        if len(args) == 2 and isinstance(args[0], str) and isinstance(args[1], list):
+            tabIndicatorText = args[0]
+            value = args[1]
             if len(value) == 0:
                 displayText = "All items are present for invading!"
-                self.after(self._hideDisplayedLabelCallbackTimer, lambda: self.var_lackingInvasionSupplyValues.set("")) # Clear the label after a delay
+                self.after(self._hideDisplayedLabelCallbackTimer, lambda: self.var_missingSupplyValues.set("")) # Clear the label after a delay
             else:
-                displayText = "Missing Supplies:\n  " + "\n  ".join([f"{item}" for item in value])
+                displayText = f"Missing '{tabIndicatorText}' Supplies:\n  " + "\n  ".join([f"{item}" for item in value])
 
-            self.var_lackingInvasionSupplyValues.set(displayText)
+            self.var_missingSupplyValues.set(displayText)
+
+    def change_page_in_supplies_window(self, direction: SuppliesPaneChangeDirection):
+        currentTab = self.suppliesNotebook.index(self.suppliesNotebook.select())
+        totalTabs = len(self.suppliesNotebook.tabs())
+        newTabIndex = (currentTab + direction.value) % totalTabs
+        self.suppliesNotebook.select(newTabIndex)
