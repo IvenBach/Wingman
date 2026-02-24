@@ -13,6 +13,8 @@ class MobMovement(StrEnum):
     ENTERING = "ENTERING"
 
 class Parser():
+    mobNameRegexList = r"[a-zA-Z ',\-]+"
+    charNameRegexList = r"[a-zA-Z '\-]+"
     def parse_xp_message(self, text_block: str) -> int:
         """Parses text for XP gains."""
         # Use finditer to find ALL occurrences in the block
@@ -278,7 +280,7 @@ BG	FC	Color			Color
             if "Also there is " not in text:
                 return []
 
-            mobIndicator = r"(?P<subMob>\x1b\[1;31m(?P<name>[a-zA-Z ',\-]+))+"
+            mobIndicator = r"(?P<subMob>\x1b\[1;31m(?P<name>" + Parser.mobNameRegexList + r")+)"
             searchPattern = re.compile(mobIndicator)
             foundMobs = searchPattern.findall(text)
 
@@ -302,16 +304,16 @@ BG	FC	Color			Color
 - Last Tuple Part: `str` - the mob that moved.
 
 Subsequent removal of mob from the model needs to be dealt with by the caller.'''
-            mobName = r"(?P<mobName>(A|An) [a-zA-Z '-]+)"
+            mobName = r"(?P<mobName>(A|An) " + Parser.mobNameRegexList + r")"
 
-            exitType = r"(?P<exitType>leaves|dies|chases [a-zA-Z '\-]+ out of the room)"
+            exitType = r"(?P<exitType>leaves|dies|chases " + Parser.charNameRegexList + r" out of the room)"
             exitPattern = re.compile(f'{mobName} {exitType}', re.IGNORECASE)
             mobExiting = exitPattern.findall(text)
             if mobExiting:
                 name: str = mobExiting[0][0]
                 return True, MobMovement.LEAVING, name[:1].lower() + name[1:]
 
-            entryType = r"(?P<entryType>arrives from|enters the room|chases [a-zA-Z '\-]+ into the room)"
+            entryType = r"(?P<entryType>arrives from|enters the room|chases " + Parser.charNameRegexList + r" into the room)"
             pattern = re.compile(f'{mobName} {entryType}', re.IGNORECASE)
             mobEntering = pattern.findall(text)
             if mobEntering:
