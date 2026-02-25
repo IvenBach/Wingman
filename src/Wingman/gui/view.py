@@ -167,6 +167,7 @@ c = Controller.ForTesting()
         self._pet_or_mobs_display_settings_window.protocol("WM_DELETE_WINDOW", self._withdraw_pet_or_mobs_display_settings_window)  # Hide on close
         self._pet_or_mobs_display_settings_window.withdraw()  # Start hidden
         self._pet_or_mobs_display_settings_window.title("Mob/Pet Settings")
+        self._pet_or_mobs_display_settings_window.bind("<Escape>", lambda e: self._withdraw_pet_or_mobs_display_settings_window())
         ttk.Label(self._pet_or_mobs_display_settings_window, 
                   text="Ignore mobs/pets in room\n(comma-separated):")\
             .grid(row=0, column=0, sticky=tk.W, padx=10, pady=(10, 0))
@@ -190,6 +191,7 @@ c = Controller.ForTesting()
         self._supplyCheckerWindow.protocol("WM_DELETE_WINDOW", self._withdraw_suppliesWindow)  # Hide on close
         self._supplyCheckerWindow.withdraw()
         self._supplyCheckerWindow.title("Supply Checker")
+        self._supplyCheckerWindow.bind("<Escape>", lambda e: self._withdraw_suppliesWindow())
         self._supplyCheckerWindow.minsize(450, 280)
         self._supplyCheckerWindow.grid_rowconfigure(1, weight=1)
         self._supplyCheckerWindow.grid_columnconfigure(0, weight=1)
