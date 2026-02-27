@@ -187,6 +187,41 @@ class TestProcessQueue():
 
             assert c.model.inventory == expectedInv
 
+    class TestAffectLabelDisplay:
+        def test_AffectsWithoutDuration_NoDisplayedAffectSpellDropLabel(self):
+            c = Controller.ForTesting()
+            v = c.view
+
+            text = """You are affected by: 
+Bless.II                                                  """
+            _, affects, _ = Parser.ParseAffect().parseAffects(text)
+            c.receiver.receive(affects)
+            c.process_queue()
+
+            with patch.object(c, c.displayAffectSpellDropWarningLabel.__name__) as mockedDisplay:
+                v.update_gui()
+
+            mockedDisplay.assert_not_called()
+
+        def test_AffectsWithDuration_DisplayAffectSpellDropLabel(self):
+            c = Controller.ForTesting()
+            v = c.view
+
+            text = """You are affected by: 
+Bless.II                                             
+Shield.V                       4m 20s                
+Blur.V                         4m 5s                """
+            _, affects, _ = Parser.ParseAffect().parseAffects(text)
+            c.receiver.receive(affects)
+            c.process_queue()
+
+            with patch.object(v, v.displayAffectSpellDropWarningLabel.__name__) as mockedDisplay:
+                v.update_gui()
+
+            argument = mockedDisplay.mock_calls[0].args[0]
+            assert 'Shield.V' in argument
+            assert 'Blur.V' in argument
+
 class TestGrouping:
     def test_GainNewFollower_NewFollowerAddedToGroupForDisplay(self):
         c = Controller.ForTesting()
@@ -690,6 +725,44 @@ class TestSuppliesList:
             c.suppliesTextBasedOnActiveTab()
 
 class TestApplySettings:
+    def test_IgnoredMobsPetsCsv(self):
+        cp = configparser.ConfigParser()
+        c = Controller.ForTesting()
+        cp[c._VIEW_SETTINGS] = {
+            c._IGNORED_MOB_PETS_CSV__OPTION: "foo, bar, baz"
+        }
+
+        c.applySettings(cp)
+        appliedText = c.view.var_ignoredMobPetsCsv.get()
+
+        assert appliedText == "foo, bar, baz"
+        assert c.model.ignoreTheseMobsInCurrentRoom == ['foo', 'bar', 'baz']
+
+
+    def test_PvpSupplies(self):
+        cp = configparser.ConfigParser()
+        c = Controller.ForTesting()
+        cp[c._VIEW_SETTINGS] = {
+            c._PVP_SUPPLIES_TEXT__OPTION: "A safety blanket"
+        }
+
+        c.applySettings(cp)
+        appliedText = c.view.pvpSuppliesText.get('1.0', 'end')
+
+        assert appliedText == "A safety blanket\n"
+
+    def test_PveSupplies(self):
+        cp = configparser.ConfigParser()
+        c = Controller.ForTesting()
+        cp[c._VIEW_SETTINGS] = {
+            c._PVE_SUPPLIES_TEXT__OPTION: "( 2) A goblet of zombie blood"
+        }
+
+        c.applySettings(cp)
+        appliedText = c.view.pveSuppliesText.get('1.0', 'end')
+
+        assert appliedText == "( 2) A goblet of zombie blood\n"
+
     def test_NotebookTabIdentifierNotFound_GracefullyContinuesUsingDefaultIndex_Zero(self):
         cp = configparser.ConfigParser()
         c = Controller.ForTesting()
@@ -699,3 +772,25 @@ class TestApplySettings:
 
         c.applySettings(cp)
         #Gracefully applied settings
+
+    def test_HideDisplayedLabelCallbackTimer(self):
+        cp = configparser.ConfigParser()
+        c = Controller.ForTesting()
+        cp[c._VIEW_SETTINGS] = {
+            c._HIDE_DISPLAYED_LABEL_CALLBACK_TIMER_IN_MILLISECONDS__OPTION: str(5000)
+        }
+
+        c.applySettings(cp)
+
+        assert c.view.var_hideDisplayedLabelCallbackTimerInMilliseconds.get() == 5000
+
+    def test_AlertForSpellsDropping(self):
+        cp = configparser.ConfigParser()
+        c = Controller.ForTesting()
+        cp[c._VIEW_SETTINGS] = {
+            c._ALERT_FOR_SPELL_DROPPING_DURATION_IN_MINUTES__OPTION: str(10)
+        }
+
+        c.applySettings(cp)
+
+        assert c.view.var_timeInMinutesToWarnAboutSpellsDropping.get() == 10

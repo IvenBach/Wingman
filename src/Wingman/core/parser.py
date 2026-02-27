@@ -7,6 +7,8 @@ from Wingman.core.character import Character
 from Wingman.core.group import Group
 from Wingman.core.inventory import EquippedGear, Inventory
 from Wingman.core.item import Item, ItemSlot
+from Wingman.core.affect import Affect
+from Wingman.core.ansi_code_stripper import remove_ANSI_color_codes
 
 class MobMovement(StrEnum):
     LEAVING = "LEAVING"
@@ -286,7 +288,7 @@ BG	FC	Color			Color
 
             if not foundMobs:
                 return []
-            
+
             listedMobs = list[str]()
             for mob in foundMobs:
                 listedMobs.append(mob[1])
@@ -599,3 +601,59 @@ Assumes any item lacking quantity parenthesis to be a non-quantity item and assi
         name = lineOfText[parenthesisEndIndex + 2:] if parenthesisEndIndex > -1 else lineOfText.strip()
 
         return Item(name, quantity=quantity)
+
+    class ParseAffect:
+        affectNamePortion = r"(?P<affectName>\S+)"
+        #https://www.regextutorial.org/positive-and-negative-lookahead-assertions.php
+        positiveLookaheadPortion = r"(?=(?:.*\d+[hms]))" # asserts the regex includes a time component
+
+        hourPortion = r"(?:(?P<hours>\d+)h\s*)?" # capture group for time portion
+        minutePortion = r"(?:(?P<minutes>\d+)m\s*)?"
+        secondPortion = r"(?:(?P<seconds>\d+)s\s*)?"
+        timePortion = r"(?P<time>" + hourPortion + minutePortion + secondPortion + r")"
+        pattern = re.compile(r"^\s*" + affectNamePortion + r"(?:\s+" + positiveLookaheadPortion + timePortion + r")?\s*$",
+            re.MULTILINE)
+
+        def parseAffects(self, text: str) -> tuple[bool, list[Affect], tuple[int, int]]:
+            '''Parses text for affects.
+- First Tuple Part: `bool` - `True` = text contains affects, `False` = text does not contain affects
+- Second Tuple Part: `list[Affect]` - list of Affect objects parsed from the text, or empty list if no affects are found.
+- Third Tuple Part: tuple[int, int] - start and end index of the affects block in the text, `(-1, -1)` if no affects are found.'''
+            startIndex = text.find("\x1b[1mYou are affected by: ")
+            endingText = "\n\n\n\n\x1b[8m"
+            endIndex = text.find(endingText, startIndex) + len(endingText) if startIndex > -1 else -1
+
+            cleanedText = remove_ANSI_color_codes(text)
+
+            if "You are affected by:" not in cleanedText or "You are affected by:\n" == cleanedText or "You are affected by: \n" == cleanedText:
+                return (False, [], (-1, -1))
+
+            affects: list[Affect] = []
+            for line in Parser.ParseAffect.pattern.finditer(cleanedText):
+                affectName = line.groupdict('affectName')['affectName']
+
+                if line.lastgroup == 'affectName':
+                    affects.append(Affect(affectName, None))
+                else:
+                    timeGroup = line.groupdict('time')
+                    timeHours = int(timeGroup['hours']) * 3600 if timeGroup['hours'].isnumeric() else 0
+                    timeMinutes = int(timeGroup['minutes']) * 60 if timeGroup['minutes'].isnumeric() else 0
+                    timeSeconds = int(timeGroup['seconds']) if timeGroup['seconds'].isnumeric() else 0
+                    durationLength = timeHours + timeMinutes + timeSeconds
+                    affects.append(Affect(affectName, durationLength))
+
+            return True, affects, (startIndex, endIndex)
+
+        def parseAffectTime(self, text: str) -> float | None:
+            match = Parser.ParseAffect.pattern.search(text)
+            if not match:
+                return None
+
+            if match.lastgroup == 'affectName':
+                return None
+
+            hours = int(match.group("hours")) if match.group("hours") else 0
+            minutes = int(match.group("minutes")) if match.group("minutes") else 0
+            seconds = int(match.group("seconds")) if match.group("seconds") else 0
+
+            return hours * 3600 + minutes * 60 + seconds

@@ -1,3 +1,4 @@
+from Wingman.core.affect import Affect
 from Wingman.core.parser import Parser
 from Wingman.core.meditation_display import MeditationDisplay
 from Wingman.core.inventory import Inventory, EquippedGear
@@ -14,3 +15,4 @@ class Model:
         self.includePetsInGroup: bool = False
         self.BuffOrShieldEnding: Parser.ParseBuffOrShieldText | None = None
         self.inventory: Inventory = Inventory(EquippedGear(), [])
+        self.AffectsWithTimeExpiration: list[Affect] = []

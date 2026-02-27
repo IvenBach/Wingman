@@ -1,3 +1,5 @@
+import time
+
 import pytest
 from typing import Callable, List
 from pathlib import Path
@@ -12,7 +14,7 @@ from Wingman.core.status_indicator import StatusIndicator
 from Wingman.core.group import Group
 from Wingman.core.character import Character
 from Wingman.core.item import Item, ItemSlot
-
+from Wingman.core.affect import Affect
 
 @pytest.fixture
 def parser():
@@ -955,3 +957,81 @@ class TestEquippedGearParse:
         assert eg.Jewel2 == None
         assert eg.Body == None
         assert eg.Legs == None
+
+class TestAffectParse:
+    class TestSingleAffect:
+        def test_AffectWithoutEndDuration_MatchesExpectations(self):
+            text = """You are affected by: 
+Bleed.Dot.Resist.V             """
+            isAffect, affects, _ = Parser.ParseAffect().parseAffects(text)
+
+            assert isAffect == True
+            assert len(affects) == 1
+            assert affects[0].Name == "Bleed.Dot.Resist.V"
+            assert affects[0].DurationEndsAt == None
+
+        def test_AffectWithEndDuration_MatchesExpectations(self):
+            text = """You are affected by: 
+Shield.V                  42m 23s """
+            isAffect, affects, _ = Parser.ParseAffect().parseAffects(text)
+            now = time.time()
+
+            assert isAffect == True
+            assert len(affects) == 1
+            assert affects[0].Name == "Shield.V"
+            assert affects[0].DurationEndsAt == pytest.approx(now + 42*60 + 23, rel=1)
+
+    def test_NoAffects_ReturnsFalse(self):
+        text = """You are affected by:
+"""
+        isAffect, affects, _ = Parser.ParseAffect().parseAffects(text)
+
+        assert isAffect == False
+        assert len(affects) == 0
+
+    def test_TwoAffectsWithTimeDurations_ReturnsTwoAffectsWithCorrectNamesAndTimes(self):
+        text = """You are affected by:
+Shield.V                  42m 23s
+Blur.V                    1h 42m 26s"""
+
+        isAffect, affects, _ = Parser.ParseAffect().parseAffects(text)
+        now = time.time()
+
+        assert isAffect == True
+        assert len(affects) == 2
+        assert affects[0].Name == "Shield.V"
+        assert affects[0].DurationEndsAt == pytest.approx(now + 42*60 + 23, rel=1)
+        assert affects[1].Name == "Blur.V"
+        assert affects[1].DurationEndsAt == pytest.approx(now + 60*60 + 42*60 + 26, rel=1)
+
+    def test_AffectsWithValidCombinationOfTimesFor__Hours__Minutes__Seconds(self):
+        text = """You are affected by: 
+Bless.II                                                  
+Percept.Enhance.I         15s                             
+Shield.V                  42m                             
+Blur.V                    1h                              
+Protect.V                 10m 28s                         
+Tough.Skin.V              1h 30s                          
+Regenerate.V              2h 15m                          
+Vitalize.V                4h 28m 12s                      """
+
+        _, affects, _ = Parser.ParseAffect().parseAffects(text)
+        now = time.time()
+
+        assert len(affects) == 8
+        assert affects[0].Name == "Bless.II"
+        assert affects[0].DurationEndsAt == None
+        assert affects[1].Name == "Percept.Enhance.I"
+        assert affects[1].DurationEndsAt == pytest.approx(now + 15, rel=1)
+        assert affects[2].Name == "Shield.V"
+        assert affects[2].DurationEndsAt == pytest.approx(now + 42*60, rel=1)
+        assert affects[3].Name == "Blur.V"
+        assert affects[3].DurationEndsAt == pytest.approx(now + 1*60*60, rel=1)
+        assert affects[4].Name == "Protect.V"
+        assert affects[4].DurationEndsAt == pytest.approx(now + 10*60 + 28, rel=1)
+        assert affects[5].Name == "Tough.Skin.V"
+        assert affects[5].DurationEndsAt == pytest.approx(now + 1*60*60 + 30, rel=1)
+        assert affects[6].Name == "Regenerate.V"
+        assert affects[6].DurationEndsAt == pytest.approx(now + 2*60*60 + 15*60, rel=1)
+        assert affects[7].Name == "Vitalize.V"
+        assert affects[7].DurationEndsAt == pytest.approx(now + 4*60*60 + 28*60 + 12, rel=1)

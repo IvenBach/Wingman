@@ -3,6 +3,7 @@ import re
 import time
 import configparser
 from pathlib import Path
+from Wingman.core.affect import Affect
 from Wingman.core.group import Group
 from Wingman.core.session import GameSession
 from Wingman.core.network_listener import NetworkListener
@@ -42,6 +43,10 @@ class Controller:
         self._PVP_SUPPLIES_TEXT__OPTION = 'PvpSuppliesText'
         self._PVE_SUPPLIES_TEXT__OPTION = 'PveSuppliesText'
         self._ACTIVE_SUPPLIES_TAB__OPTION = 'ActiveSuppliesTab'
+        self._HIDE_DISPLAYED_LABEL_CALLBACK_TIMER_IN_MILLISECONDS__OPTION = 'HideDisplayedLabelCallbackTimerInMilliseconds'
+        self._HIDE_DISPLAYED_LABEL_CALLBACK_TIMER_IN_MILLISECONDS__FALLBACK = 2000
+        self._ALERT_FOR_SPELL_DROPPING_DURATION_IN_MINUTES__OPTION = "AlertForSpellDroppingDurationInMinutes"
+        self._ALERT_FOR_SPELL_DROPPING_DURATION_IN_MINUTES__FALLBACK = 5
 
     @classmethod
     def ForTesting(cls, m: Model | None = None, view = None, listener_target_ip='1.2.3.4', listener_target_port=1234) -> 'Controller':
@@ -109,7 +114,7 @@ v.setup_ui()
             line = self.receiver.dequeue()
             if line is None:
                 break
-            
+
             if isinstance(line, MobsInRoom):
                 self.model.currentMobsInRoom = line.mobs_in_room
                 self.updateMobCountDisplay()
@@ -123,6 +128,15 @@ v.setup_ui()
                 self.model.inventory.EquippedGear_ = line
                 continue
 
+            if isinstance(line, list) and len(line) > 0 and isinstance(line[0], Affect):
+                affectsWithTimeExpiration = [affect for affect in line\
+                                             if isinstance(affect, Affect) and affect.DurationEndsAt is not None]
+                if affectsWithTimeExpiration:
+                    self.hideAffectSpellDropWarningLabel()
+
+                self.model.AffectsWithTimeExpiration = affectsWithTimeExpiration
+                continue
+
             assert isinstance(line, str)
             if needToClearGroupData(line, self.gameSession.group):
                 self.gameSession.group.Disband()
@@ -132,7 +146,7 @@ v.setup_ui()
             if found_members:
                 # Add found members to our "dashboard" list
                 self.gameSession.group.AddMembers(found_members)
-            
+
             leavingMembers = self.model.parser.parse_leaveGroup(line)
             if leavingMembers:
                 self.gameSession.group.RemoveMembers(leavingMembers)
@@ -306,6 +320,16 @@ v.setup_ui()
                 except tk.TclError:
                     self.view.suppliesNotebook.select(0) # Default to first tab if the saved identifier is invalid
 
+                spellDropTimeInMinutes = configParser.getint(self._VIEW_SETTINGS,
+                                                             self._ALERT_FOR_SPELL_DROPPING_DURATION_IN_MINUTES__OPTION,
+                                                             fallback=self._ALERT_FOR_SPELL_DROPPING_DURATION_IN_MINUTES__FALLBACK)
+                self.view.var_timeInMinutesToWarnAboutSpellsDropping.set(spellDropTimeInMinutes)
+
+                hideDisplayCallbackTimerInMilliseconds = configParser.getint(self._VIEW_SETTINGS,
+                                                                             self._HIDE_DISPLAYED_LABEL_CALLBACK_TIMER_IN_MILLISECONDS__OPTION,
+                                                                             fallback=self._HIDE_DISPLAYED_LABEL_CALLBACK_TIMER_IN_MILLISECONDS__FALLBACK)
+                self.view.var_hideDisplayedLabelCallbackTimerInMilliseconds.set(hideDisplayCallbackTimerInMilliseconds)
+
             if configParser.has_section(self._APP_SETTINGS):
                 rootWindowSize = self.view.parent.geometry().split('+')[0]
                 rootWindowPosition = configParser.get(self._APP_SETTINGS, self._ROOT_WINDOW_POSITION__OPTION, fallback='+50+50')
@@ -389,3 +413,8 @@ Returns a `list[Item]` of missing items
 
         missingSupplies = self.check_invasion_supplies(supplyText, inventory)
         self.view.updateMissingSuppliesLabel(tabIndicatorText, missingSupplies)
+
+    def hideAffectSpellDropWarningLabel(self):
+        self.view.hideAffectSpellDropWarningLabel()
+    def displayAffectSpellDropWarningLabel(self, warningText: str):
+        self.view.displayAffectSpellDropWarningLabel(warningText)

@@ -1,6 +1,7 @@
 import re
 from typing import Any, overload
 from collections import deque
+from Wingman.core.affect import Affect
 from Wingman.core.mobs_in_room import MobsInRoom
 from Wingman.core.inventory import Inventory, EquippedGear
 
@@ -17,18 +18,6 @@ class InputReceiver:
         with open(self.stack_log_file, 'w') as f:
             f.write('')  # Clear the contents of the file
 
-    def remove_ANSI_color_codes(self, input_line: str) -> str:
-        '''
-        Cleans the input string by removing ANSI color codes.
-        
-        :param input_line: line of text including ANSI color codes
-        :return: line free of ANSI color codes
-        :rtype: str
-        '''
-        # UPDATED: Now includes \x1b to catch the Escape character too
-        ansi_code_pattern = re.compile(r'\x1b\[\d+(?:;\d+)*m')
-        return ansi_code_pattern.sub('', input_line)
-
     @overload
     def receive(self, input_line: str) -> None: ...
     @overload
@@ -37,6 +26,8 @@ class InputReceiver:
     def receive(self, inventory: Inventory) -> None: ...
     @overload
     def receive(self, equippedGear: EquippedGear) -> None: ...
+    @overload
+    def receive(self, affects: list[Affect]) -> None: ...
 
     def receive(self, input):
         '''

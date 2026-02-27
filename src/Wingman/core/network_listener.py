@@ -3,7 +3,7 @@ from scapy.all import sniff, IP, TCP
 from Wingman.core.input_receiver import InputReceiver
 from Wingman.core.parser import Parser
 from Wingman.core.mobs_in_room import MobsInRoom
-
+from Wingman.core.ansi_code_stripper import remove_ANSI_color_codes
 
 class NetworkListener:
     def __init__(self, input_receiver: InputReceiver, controller, target_ip, target_port):
@@ -35,18 +35,23 @@ class NetworkListener:
                     # Decode and append to buffer immediately
                     chunk = payload_bytes.decode('utf-8', errors='replace')
 
-                    inventory = Parser().parseInventory(self.receiver.remove_ANSI_color_codes(chunk))
+                    inventory = Parser().parseInventory(remove_ANSI_color_codes(chunk))
                     if inventory is not None:
                         self.receiver.receive(inventory)
                         return
 
-                    eg = Parser().parseEquippedGear(self.receiver.remove_ANSI_color_codes(chunk))
+                    eg = Parser().parseEquippedGear(remove_ANSI_color_codes(chunk))
                     if eg is not None:
                         self.receiver.receive(eg)
                         return
 
-                    if Parser().ParseMobs().hasAnsiColorCodedMobs(chunk, predeterminedChunkMobList):
+                    if Parser.ParseMobs().hasAnsiColorCodedMobs(chunk, predeterminedChunkMobList):
                         mobsInRoom = MobsInRoom(predeterminedChunkMobList)
+
+                    isAffect, affects, affectIndices = Parser.ParseAffect().parseAffects(chunk)
+                    if isAffect:
+                        self.receiver.receive(affects)
+                        chunk = chunk[:affectIndices[0]] + chunk[affectIndices[1]:]
 
                     isBuffOrShieldRefreshing, whatIsRefreshing_StartText = Parser().parseBuffOrShieldIsRefreshing(chunk)
                     if isBuffOrShieldRefreshing:
@@ -63,7 +68,7 @@ class NetworkListener:
                         self.receiver.receive(meditationState)
                         chunk = chunk.replace(meditationState.value, '')
 
-                    self._buffer += self.receiver.remove_ANSI_color_codes(chunk)
+                    self._buffer += remove_ANSI_color_codes(chunk)
 
                     # Process buffer: extract complete lines only
                     while '\n' in self._buffer:

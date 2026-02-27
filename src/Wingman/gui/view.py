@@ -45,9 +45,10 @@ class View(tk.Frame):
         self.var_missingPveSupplyValues = tk.StringVar(value="")
         self.var_includePetsInGroup = tk.BooleanVar(value=False)
         self._cachedGroup: Group = Group([])
-        self._hideDisplayedLabelCallbackTimer = 2000 #ms
         self.var_buffOrShieldEndingText = tk.StringVar(value="")
         self.var_spellMitigatesAffectText = tk.StringVar(value="")
+        self.var_spellDropWarningText = tk.StringVar(value="")
+        #controller dependent *Var fields are applied in `set_controller`
 
         self.style = ttk.Style()
         self.style.theme_use('clam')
@@ -74,6 +75,9 @@ c = Controller.ForTesting()
         # 1. Initialize "Always on Top" variable
         self.var_always_on_top = tk.BooleanVar(value=True)
         self.parent.attributes("-topmost", self.var_always_on_top.get())
+
+        self.var_hideDisplayedLabelCallbackTimerInMilliseconds = tk.IntVar(value=self._controller._HIDE_DISPLAYED_LABEL_CALLBACK_TIMER_IN_MILLISECONDS__FALLBACK)
+        self.var_timeInMinutesToWarnAboutSpellsDropping = tk.IntVar(value=self._controller._ALERT_FOR_SPELL_DROPPING_DURATION_IN_MINUTES__FALLBACK)
 
     def setup_ui(self):
         """
@@ -167,14 +171,15 @@ c = Controller.ForTesting()
         self._pet_or_mobs_display_settings_window.protocol("WM_DELETE_WINDOW", self._withdraw_pet_or_mobs_display_settings_window)  # Hide on close
         self._pet_or_mobs_display_settings_window.withdraw()  # Start hidden
         self._pet_or_mobs_display_settings_window.title("Mob/Pet Settings")
+        self._pet_or_mobs_display_settings_window.grid_columnconfigure(1, weight=1)
         self._pet_or_mobs_display_settings_window.bind("<Escape>", lambda e: self._withdraw_pet_or_mobs_display_settings_window())
         ttk.Label(self._pet_or_mobs_display_settings_window, 
-                  text="Ignore mobs/pets in room\n(comma-separated):")\
+                  text="Ignore mobs/pets in room\n(comma-separated):", anchor=tk.E)\
             .grid(row=0, column=0, sticky=tk.W, padx=10, pady=(10, 0))
         self.ignoredMobsPetsCsv = ttk.Entry(self._pet_or_mobs_display_settings_window, 
                                        textvariable=self.var_ignoredMobPetsCsv, 
                                        width=50)
-        self.ignoredMobsPetsCsv.grid(row=0, column=1, sticky=tk.W, padx=10)
+        self.ignoredMobsPetsCsv.grid(row=0, column=1, sticky=tk.EW, padx=(0, 10))
         # helpful lambda explanation: https://stackoverflow.com/a/55093731
         self.ignoredMobsPetsCsv.bind("<FocusOut>", # Without the lambda the function is never invoked.
                                 lambda e: self._controller.updateIgnoredMobsPets(self.var_ignoredMobPetsCsv.get()))
@@ -184,7 +189,22 @@ c = Controller.ForTesting()
         self.includeMobsInGroupCheckButton = ttk.Checkbutton(self._pet_or_mobs_display_settings_window, 
                                                         variable=self.var_includePetsInGroup, 
                                                         command=lambda: self.update_display_of_pets_in_group_window(self.var_includePetsInGroup.get()))
-        self.includeMobsInGroupCheckButton.grid(row=1, column=1, sticky=tk.W, padx=10, pady=(0, 10))
+        self.includeMobsInGroupCheckButton.grid(row=1, column=1, sticky=tk.W)
+        ttk.Label(self._pet_or_mobs_display_settings_window,
+                  text="Time, in milliseconds, for alerts to be displayed:")\
+            .grid(row=2, column=0, sticky=tk.W, padx=10)
+        self.alertLabelDurationDisplayEntry = ttk.Entry(self._pet_or_mobs_display_settings_window,
+                                                  textvariable=self.var_hideDisplayedLabelCallbackTimerInMilliseconds,
+                                                  width=10)\
+            .grid(row=2, column=1, sticky=tk.W)
+        ttk.Label(self._pet_or_mobs_display_settings_window,
+                  text="Time, in minutes, to alert before affects drop:")\
+            .grid(row=3, column=0, sticky=tk.W, padx=10, pady=(0, 10))
+        self.affectDropWarningDurationEntry = ttk.Entry(self._pet_or_mobs_display_settings_window,
+                                                  textvariable=self.var_timeInMinutesToWarnAboutSpellsDropping,
+                                                  width=10)\
+            .grid(row=3, column=1, sticky=tk.W, pady=(0, 10))
+
 
         self.menu_settings.add_command(label="Check Supplies", command=self.open_suppliesWindow)
         self._supplyCheckerWindow.attributes("-topmost", self.var_always_on_top.get())
@@ -286,11 +306,16 @@ c = Controller.ForTesting()
         self.buffOrShieldEndedLabel.grid(row=0, column=0, sticky=tk.W)
         self.buffOrShieldEndedLabel.grid_remove()
 
-        self.spellMitigatesAffectsLabel = ttk.Label(_statusFooter, 
+        self.spellMitigatesAffectsLabel = ttk.Label(_statusFooter,
                                                     textvariable=self.var_spellMitigatesAffectText, 
                                                     style=statusFooterStyleName)
         self.spellMitigatesAffectsLabel.grid(row=3, column=1)
 
+        self.spellDropWarningLabel = ttk.Label(_statusFooter,
+                                                textvariable=self.var_spellDropWarningText,
+                                                style=statusFooterStyleName)
+        self.spellDropWarningLabel.grid(row=3, column=2, sticky=tk.E)
+        self.spellDropWarningLabel.grid_remove()
 
     def apply_theme(self):
         if self.dark_mode:
@@ -395,6 +420,15 @@ c = Controller.ForTesting()
 
         self.updateMobCountDisplay()
 
+        if self._controller.model.AffectsWithTimeExpiration:
+            affectNamesEndingSoon = [affect.Name for affect in self._controller.model.AffectsWithTimeExpiration \
+                                    if affect.timeRemainingInSeconds() <= 60 * self.var_timeInMinutesToWarnAboutSpellsDropping.get() ]
+            if affectNamesEndingSoon:
+                warningText = ", ".join(affectNamesEndingSoon)
+                self._controller.displayAffectSpellDropWarningLabel(warningText)
+            else:
+                self._controller.hideAffectSpellDropWarningLabel()
+
     def updateTimeRelatedValues(self, currentTime: float):
         current_rate = self._controller.gameSession.get_xp_per_hour()
         self.var_xp_hr.set(f"{current_rate:,} xp / hr")
@@ -467,7 +501,7 @@ c = Controller.ForTesting()
 
     def displayFullPowerLabel(self):
         self._fullPowerLabel.grid()
-        self.after(self._hideDisplayedLabelCallbackTimer, self.hideFullPowerLabel)
+        self.after(self.var_hideDisplayedLabelCallbackTimerInMilliseconds.get(), self.hideFullPowerLabel)
     def hideFullPowerLabel(self):
         self._fullPowerLabel.grid_remove()
 
@@ -497,7 +531,7 @@ c = Controller.ForTesting()
                                             .replace("Dot", ".")
                                             .replace("_", " "))
         self.buffOrShieldEndedLabel.grid()
-        self.after(self._hideDisplayedLabelCallbackTimer, self.hideBuffOrShieldEndedLabel)
+        self.after(self.var_hideDisplayedLabelCallbackTimerInMilliseconds.get(), self.hideBuffOrShieldEndedLabel)
     def hideBuffOrShieldEndedLabel(self):
         self.buffOrShieldEndedLabel.grid_remove()
 
@@ -505,7 +539,7 @@ c = Controller.ForTesting()
         self.var_spellMitigatesAffectText.set(spellMitigationAffectMember.name
                                               .replace("Dot", "."))
         self.spellMitigatesAffectsLabel.grid()
-        self.after(self._hideDisplayedLabelCallbackTimer, self.hideSpellMitigatesAffect)
+        self.after(self.var_hideDisplayedLabelCallbackTimerInMilliseconds.get(), self.hideSpellMitigatesAffect)
     def hideSpellMitigatesAffect(self):
         self.spellMitigatesAffectsLabel.grid_remove()
 
@@ -530,7 +564,7 @@ c = Controller.ForTesting()
             value = args[1]
             if len(value) == 0:
                 displayText = "All items are present for invading!"
-                self.after(self._hideDisplayedLabelCallbackTimer, lambda: self.var_missingSupplyValues.set("")) # Clear the label after a delay
+                self.after(self.var_hideDisplayedLabelCallbackTimerInMilliseconds.get(), lambda: self.var_missingSupplyValues.set("")) # Clear the label after a delay
             else:
                 displayText = f"Missing '{tabIndicatorText}' Supplies:\n  " + "\n  ".join([f"{item}" for item in value])
 
@@ -541,3 +575,9 @@ c = Controller.ForTesting()
         totalTabs = len(self.suppliesNotebook.tabs())
         newTabIndex = (currentTab + direction.value) % totalTabs
         self.suppliesNotebook.select(newTabIndex)
+
+    def displayAffectSpellDropWarningLabel(self, warningText: str):
+        self.var_spellDropWarningText.set(f"{warningText} dropping in less than {self.var_timeInMinutesToWarnAboutSpellsDropping.get()} minutes!")
+        self.spellDropWarningLabel.grid()
+    def hideAffectSpellDropWarningLabel(self):
+        self.spellDropWarningLabel.grid_remove()
