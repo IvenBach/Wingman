@@ -1035,3 +1035,57 @@ Vitalize.V                4h 28m 12s                      """
         assert affects[6].DurationEndsAt == pytest.approx(now + 2*60*60 + 15*60, rel=1)
         assert affects[7].Name == "Vitalize.V"
         assert affects[7].DurationEndsAt == pytest.approx(now + 4*60*60 + 28*60 + 12, rel=1)
+
+class TestDroppedItemParse:
+    @pytest.mark.parametrize("text, expected", [("A stone giant drops a bright ironwood white-oak staff.", "a bright ironwood white-oak staff"),
+                                        ("A Tiny Mouse drops giant candycane, dangerously sharp.", "giant candycane, dangerously sharp"),
+                                        ("A white dragon elder drops a elder's pendant of dedication.", "a elder's pendant of dedication"),
+                                        ("A blood stirge drops a blood-drinker's stiletto.", "a blood-drinker's stiletto"),
+                                        ],
+                                        ids=["Dash",
+                                            "Comma",
+                                            "Apostrophe",
+                                            "Dash then Comma"])
+    def test_NameWithSpecialCharacters_IsParsedCorrectly(self, text: str, expected: str):
+        _, itemName = Parser.parseMobDroppedItem(text)
+
+        assert itemName == expected
+
+    @pytest.mark.parametrize("text, expected", [("A Tamian peasant drops a few silver coins.", "a few silver coins"),
+                                                ("A Tamian Trapper drops a bag of silver.", "a bag of silver")],
+                                            ids=["A few coins",
+                                                 "Bag of silver"])
+    def test_DropsSilver_IsParsedCorrectly(self, text: str, expected: str):
+        _, itemName = Parser.parseMobDroppedItem(text)
+
+        assert itemName == expected
+
+    def test_DropsItem_IsParsedCorrectly(self):
+        text = "A greater obsidian basilisk drops a hardened black basilisk boots."
+
+        _, itemName = Parser.parseMobDroppedItem(text)
+
+        assert itemName == "a hardened black basilisk boots"
+
+    @pytest.mark.parametrize("shapeshiftedWerewolfName", ["A small wolf",
+                                                            "A fierce wolf",
+                                                            "A berserking wolf",
+                                                            "A crimson-furred wolf",
+                                                            "An ebon-furred stonewolf",
+                                                            "An ice-blue frostwolf",
+                                                            "A fiery-maned hellwolf",
+                                                            "An arctic ghostwolf",
+                                                            "A white-fanged banewolf",
+                                                            "An ethereal wraithwolf",
+                                                            "A storm-grey thunderwolf",
+                                                            "An icy cobalt tundrawolf",
+                                                            "A fierce ancient ba'alwolf",
+                                                            "A vapor-shrouded mistwolf",
+                                                            "An azure-eyed stormwolf",
+                                                            "A primeval eldritch voidwolf"])
+    def test_ShapeshiftedWerewolf_DropsItem_NotConsideredDropByMob(self, shapeshiftedWerewolfName):
+        text = f"{shapeshiftedWerewolfName} drops item for testing."
+
+        isMobDroppedItem, _ = Parser.parseMobDroppedItem(text)
+
+        assert not isMobDroppedItem

@@ -114,7 +114,7 @@ class TestProcessQueue():
             assert c.model.currentMobsInRoom == []
 
     class TestPlayerMovement:
-        def test_PlayerMovement_ClearsMobsInRoomAndHidesMobCountInView(self):
+        def test_ClearsMobsInRoomAndHidesMobCountInView(self):
             c = Controller.ForTesting()
             
             c.receiver.receive("Obvious exits: east, northwest, and a small, smelly hut.")
@@ -124,6 +124,25 @@ class TestProcessQueue():
             
             mockedClear.assert_called_once_with()
             mockedUpdate.assert_called_once_with()
+
+        def test_MobCountUpdated(self):
+            c = Controller.ForTesting()
+
+            c.receiver.receive("Obvious exits: east, northwest, and a small, smelly hut.")
+            with patch.object(c, c.updateMobCountDisplay.__name__) as mockedUpdate:
+                c.process_queue()
+
+            mockedUpdate.assert_called_once_with()
+
+        def test_ClearsSoughtAfterItemsThatDropped(self):
+            c = Controller.ForTesting()
+            c.model.SoughtAfterItemsThatDropped = ['A foo bar']
+
+            c.receiver.receive("Obvious exits: east, northwest, and a small, smelly hut.")
+            with patch.object(c, c.clearSoughtAfterItemsThatDropped.__name__) as mockedClear:
+                c.process_queue()
+
+            mockedClear.assert_called_once_with()
 
     class TestModelUpdates:
         def test_InventoryCommand__THEN__EquipmentCommand_EquippedGearCorrectlyOverwritesAssumedInventoryPositions(self):
@@ -221,6 +240,21 @@ Blur.V                         4m 5s                """
             argument = mockedDisplay.mock_calls[0].args[0]
             assert 'Shield.V' in argument
             assert 'Blur.V' in argument
+
+    class TestAlertingItemDrops:
+        def test_ItemDropsThatIsSoughtAfter_DisplaysDropAlertLabel(self):
+            c = Controller.ForTesting()
+            c.model.SoughtAfterItems = set(['a fire root'])
+            text = "A simple mob drops a fire root."
+
+            c.receiver.receive(text)
+            c.process_queue()
+
+            with patch.object(c, c.displayDropAlertLabel.__name__) as mockedDisplay:
+                c.view.update_gui()
+
+            mockedDisplay.assert_called_once_with("a fire root")
+
 
 class TestGrouping:
     def test_GainNewFollower_NewFollowerAddedToGroupForDisplay(self):
@@ -794,3 +828,61 @@ class TestApplySettings:
         c.applySettings(cp)
 
         assert c.view.var_timeInMinutesToWarnAboutSpellsDropping.get() == 10
+
+    class TestSoughtAfterItems:
+        def test_ZeroLengthString_ModelHasEmptySet(self):
+            cp = configparser.ConfigParser()
+            c = Controller.ForTesting()
+            cp[c._VIEW_SETTINGS] = {
+                c._SOUGHT_AFTER_ITEMS__OPTION: ""
+            }
+
+            c.applySettings(cp)
+
+            assert c.model.SoughtAfterItems == set()
+
+        def test_SingleItem_ModelHasSetWithSingleItem(self):
+            cp = configparser.ConfigParser()
+            c = Controller.ForTesting()
+            cp[c._VIEW_SETTINGS] = {
+                c._SOUGHT_AFTER_ITEMS__OPTION: "a fire root"
+            }
+
+            c.applySettings(cp)
+
+            assert c.model.SoughtAfterItems == set(['a fire root'])
+
+        def test_SequenceOfCsvValues_AddedToSet(self):
+            cp = configparser.ConfigParser()
+            c = Controller.ForTesting()
+            cp[c._VIEW_SETTINGS] = {
+                c._SOUGHT_AFTER_ITEMS__OPTION: "a fire root, a water root, a spirit root"
+            }
+
+            c.applySettings(cp)
+
+            assert c.model.SoughtAfterItems == set(['a fire root', 'a water root', 'a spirit root'])
+
+        def test_SequenceOfCsvValuesWithWhitespaceBetweenSomeCommas_WhitespaceValuesStrippedOutAndNotAddedToSet(self):
+            cp = configparser.ConfigParser()
+            c = Controller.ForTesting()
+            cp[c._VIEW_SETTINGS] = {
+                c._SOUGHT_AFTER_ITEMS__OPTION: "a fire root,, , a water root, , a spirit root, "
+            }
+
+            c.applySettings(cp)
+
+            assert c.model.SoughtAfterItems == set(['a fire root', 'a water root', 'a spirit root'])
+
+class TestIsLookingForItem:
+    def test_ItemInModel_ReturnsTrue(self):
+        c = Controller.ForTesting()
+        c.model.SoughtAfterItems = set(['A darkspawned blackened fish fillet'])
+
+        assert c.IsLookingForItem('A darkspawned blackened fish fillet')
+
+    def test_ItemNotInModel_ReturnsFalse(self):
+        c = Controller.ForTesting()
+        c.model.SoughtAfterItems = set(['A darkspawned blackened fish fillet'])
+
+        assert not c.IsLookingForItem('A goblet of zombie blood')

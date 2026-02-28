@@ -47,6 +47,7 @@ class Controller:
         self._HIDE_DISPLAYED_LABEL_CALLBACK_TIMER_IN_MILLISECONDS__FALLBACK = 2000
         self._ALERT_FOR_SPELL_DROPPING_DURATION_IN_MINUTES__OPTION = "AlertForSpellDroppingDurationInMinutes"
         self._ALERT_FOR_SPELL_DROPPING_DURATION_IN_MINUTES__FALLBACK = 5
+        self._SOUGHT_AFTER_ITEMS__OPTION = "SoughtAfterItems"
 
     @classmethod
     def ForTesting(cls, m: Model | None = None, view = None, listener_target_ip='1.2.3.4', listener_target_port=1234) -> 'Controller':
@@ -109,7 +110,7 @@ v.setup_ui()
 
             return False
 
-        # Process everything currently in the stack
+        # Process everything currently in the queue
         while True:
             line = self.receiver.dequeue()
             if line is None:
@@ -159,6 +160,11 @@ v.setup_ui()
                 log_entry = f"[{timestamp}] +{xp_gain:,} XP"
                 logs.append(log_entry)
 
+            isMobDroppedItem, droppedItem = self.model.parser.parseMobDroppedItem(line)
+            if isMobDroppedItem and droppedItem is not None:
+                if self.IsLookingForItem(droppedItem.Name):
+                    self.model.SoughtAfterItemsThatDropped.append(droppedItem.Name)
+
             afkRelated = self.model.parser.parseAfkStatus(line)
             match afkRelated:
                 case True:
@@ -199,6 +205,7 @@ v.setup_ui()
             if self.model.parser.ParseMovement().playerMovement(line):
                 self.clearCountOfMobsInRoom()
                 self.updateMobCountDisplay()
+                self.clearSoughtAfterItemsThatDropped()
 
             mobMovementRelated, movement, mobName = self.model.parser.ParseMovement().mobRelatedMovement(line, self.model.currentMobsInRoom)
             if mobMovementRelated:
@@ -210,7 +217,7 @@ v.setup_ui()
                     case MobMovement.LEAVING:
                         self.model.currentMobsInRoom.remove(mobName)
                         self.updateMobCountDisplay()
-            
+
             isBuffOrShieldRefreshing, whatEnded = self.model.parser.parseBuffOrShieldIsRefreshing(line)
             if isBuffOrShieldRefreshing == False:
                 self.model.BuffOrShieldEnding = whatEnded
@@ -219,6 +226,9 @@ v.setup_ui()
             if isSpellMitigationAffect and mitigatingAffect is not None:
                 self.view.displaySpellMitigatesAffectLabel(mitigatingAffect)
         return logs
+    
+    def IsLookingForItem(self, itemName: str) -> bool:
+        return itemName in self.model.SoughtAfterItems
 
     def updateMeditationDisplayValue(self):
         '''Method used to inform subscribers of `MeditationDisplay.attach(...)` that a change has occurred.'''
@@ -232,7 +242,7 @@ v.setup_ui()
     def clearCountOfMobsInRoom(self):
         self.model.currentMobsInRoom.clear()
     
-    def open_ignore_mobs_window(self):
+    def open_miscellaneousSettings_window(self):
         self.view.open_pet_or_mobs_display_settings_window()
     
     def updateIgnoredMobsPets(self, csvMobList: str):
@@ -264,18 +274,19 @@ v.setup_ui()
             self._DISPLAY_PETS_IN_GROUP__OPTION: str(self.model.includePetsInGroup),
             self._PVP_SUPPLIES_TEXT__OPTION: str(self.view.pvpSuppliesText.get("1.0", tk.END)),
             self._PVE_SUPPLIES_TEXT__OPTION: str(self.view.pveSuppliesText.get("1.0", tk.END)),
-            self._ACTIVE_SUPPLIES_TAB__OPTION: str(self.view.suppliesNotebook.select())
+            self._ACTIVE_SUPPLIES_TAB__OPTION: str(self.view.suppliesNotebook.select()),
+            self._SOUGHT_AFTER_ITEMS__OPTION: self.view.var_soughtAfterItems.get(),
         }
 
         cp[self._APP_SETTINGS] = {
             self._ROOT_WINDOW_POSITION__OPTION: '+' + self.view.parent.geometry().split('+', 1)[1],
-            self._IGNORED_MOBS_WINDOW_POSITION__OPTION: '+' + self.view._pet_or_mobs_display_settings_window.geometry().split('+', 1)[1],
+            self._IGNORED_MOBS_WINDOW_POSITION__OPTION: '+' + self.view._miscellaneousSettings.geometry().split('+', 1)[1],
             self._CHECK_SUPPLIES_WINDOW_POSITION__OPTION: '+' + self.view._supplyCheckerWindow.geometry().split('+', 1)[1],
         }
 
         srcDirectory = self.settingsFilePath()
         self._writeSettingsToFile(cp, srcDirectory, self._SETTINGS_FILE_NAME)
-    
+
     def settingsFilePath(self) -> Path:
         return Path(__file__).parent.parent.resolve()
 
@@ -286,12 +297,12 @@ v.setup_ui()
         fullPath = filePath.joinpath(fileName).resolve()
         with open(fullPath, 'w') as f:
             configParser.write(f)
-    
+
     def loadSettings(self) -> configparser.ConfigParser:
         cp = configparser.ConfigParser()
         cp.read(self.settingsFilePath().joinpath(self._SETTINGS_FILE_NAME))
         return cp
-        
+
     def applySettings(self, configParser: configparser.ConfigParser):       
         try:
             if configParser.has_section(self._VIEW_SETTINGS):
@@ -330,14 +341,18 @@ v.setup_ui()
                                                                              fallback=self._HIDE_DISPLAYED_LABEL_CALLBACK_TIMER_IN_MILLISECONDS__FALLBACK)
                 self.view.var_hideDisplayedLabelCallbackTimerInMilliseconds.set(hideDisplayCallbackTimerInMilliseconds)
 
+                soughtAfterItems = configParser.get(self._VIEW_SETTINGS, self._SOUGHT_AFTER_ITEMS__OPTION, fallback='')
+                self.view.var_soughtAfterItems.set(soughtAfterItems)
+                self.model.SoughtAfterItems = set(item.strip() for item in soughtAfterItems.split(',') if item.strip() != '')
+
             if configParser.has_section(self._APP_SETTINGS):
                 rootWindowSize = self.view.parent.geometry().split('+')[0]
                 rootWindowPosition = configParser.get(self._APP_SETTINGS, self._ROOT_WINDOW_POSITION__OPTION, fallback='+50+50')
                 self.view.parent.geometry(rootWindowSize + rootWindowPosition)
 
-                petOrMobDisplaySettingsWindowSize = self.view._pet_or_mobs_display_settings_window.geometry().split('+')[0]
+                petOrMobDisplaySettingsWindowSize = self.view._miscellaneousSettings.geometry().split('+')[0]
                 petOrMobDisplaySettingsWindowPosition = configParser.get(self._APP_SETTINGS, self._IGNORED_MOBS_WINDOW_POSITION__OPTION, fallback='+50+50')
-                self.view._pet_or_mobs_display_settings_window.geometry(petOrMobDisplaySettingsWindowSize + petOrMobDisplaySettingsWindowPosition)
+                self.view._miscellaneousSettings.geometry(petOrMobDisplaySettingsWindowSize + petOrMobDisplaySettingsWindowPosition)
 
                 invasionSuppliesWindowSize = self.view._supplyCheckerWindow.geometry().split('+')[0]
                 invasionSuppliesWindowPosition = configParser.get(self._APP_SETTINGS, self._CHECK_SUPPLIES_WINDOW_POSITION__OPTION, fallback='+50+50')
@@ -348,7 +363,7 @@ v.setup_ui()
             with open(self.settingsFilePath().joinpath('No settings file.txt'), 'w') as f:
                 f.write("No settings file found or failed to load. Default settings have been used.\n")
                 f.write(f"This file can be deleted if a `{self._SETTINGS_FILE_NAME}` file exists in the same folder.\n")
-        
+
     def update_display_of_pets_in_group_window(self, displayMobsInGroupWindow: bool):
         """
         Updates displayed members in the group. A `False` value will remove any pets from the group.
@@ -418,3 +433,11 @@ Returns a `list[Item]` of missing items
         self.view.hideAffectSpellDropWarningLabel()
     def displayAffectSpellDropWarningLabel(self, warningText: str):
         self.view.displayAffectSpellDropWarningLabel(warningText)
+
+    def displayDropAlertLabel(self, text: str):
+        self.view.displayDropAlertLabel(text)
+    def hideDropAlertLabel(self):
+        self.view.hideDropAlertLabel()
+
+    def clearSoughtAfterItemsThatDropped(self):
+        self.model.SoughtAfterItemsThatDropped.clear()

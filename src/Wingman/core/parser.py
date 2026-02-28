@@ -657,3 +657,35 @@ Assumes any item lacking quantity parenthesis to be a non-quantity item and assi
             seconds = int(match.group("seconds")) if match.group("seconds") else 0
 
             return hours * 3600 + minutes * 60 + seconds
+
+    @staticmethod
+    def parseMobDroppedItem(text: str) -> tuple[bool, Item | None]:
+        '''Parses text for a dropped item.
+- First Tuple Part: `bool` - `True` = text contains a dropped item, `False` = text does not contain a dropped item
+- Second Tuple Part: `Item` - the Item object parsed from the text, or `None` if no dropped item is found.'''
+        dropPattern = re.compile(r"(A|An) (?P<mobName>" +  Parser.mobNameRegexList +  r") drops (?P<itemName>[a-zA-Z ',\-]+?)\.")
+        match = dropPattern.search(text)
+        if not match:
+            return False, None
+        
+        shapeshiftedWerewolfNames = set(["small wolf",
+                                        "fierce wolf",
+                                        "berserking wolf",
+                                        "crimson-furred wolf",
+                                        "ebon-furred stonewolf",
+                                        "ice-blue frostwolf",
+                                        "fiery-maned hellwolf",
+                                        "arctic ghostwolf",
+                                        "white-fanged banewolf",
+                                        "ethereal wraithwolf",
+                                        "storm-grey thunderwolf",
+                                        "icy cobalt tundrawolf",
+                                        "fierce ancient ba'alwolf",
+                                        "vapor-shrouded mistwolf",
+                                        "azure-eyed stormwolf",
+                                        "primeval eldritch voidwolf"])
+        if match.group("mobName") in shapeshiftedWerewolfNames:
+            return False, None
+
+        itemName = match.group("itemName")
+        return True, Item(itemName)

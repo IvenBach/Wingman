@@ -39,7 +39,7 @@ class View(tk.Frame):
         self.groupTreeview: ttk.Treeview
         self.menu_settings: tk.Menu
         self.var_ignoredMobPetsCsv = tk.StringVar(value="")
-        self._pet_or_mobs_display_settings_window = tk.Toplevel(parent, name="petOrMobsDisplaySettingsWindow")
+        self._miscellaneousSettings = tk.Toplevel(parent, name="petOrMobsDisplaySettingsWindow")
         self._supplyCheckerWindow = tk.Toplevel(parent, name="supplyCheckerWindow")
         self.var_missingSupplyValues = tk.StringVar(value="")
         self.var_missingPveSupplyValues = tk.StringVar(value="")
@@ -48,13 +48,14 @@ class View(tk.Frame):
         self.var_buffOrShieldEndingText = tk.StringVar(value="")
         self.var_spellMitigatesAffectText = tk.StringVar(value="")
         self.var_spellDropWarningText = tk.StringVar(value="")
+        self.var_soughtAfterItems = tk.StringVar(value="")
         #controller dependent *Var fields are applied in `set_controller`
 
         self.style = ttk.Style()
         self.style.theme_use('clam')
 
         self._TopLevelWidgets: list[tk.Tk | tk.Toplevel] = [self.parent,
-                                                            self._pet_or_mobs_display_settings_window,
+                                                            self._miscellaneousSettings,
                                                             self._supplyCheckerWindow]
 
     @classmethod
@@ -132,6 +133,12 @@ c = Controller.ForTesting()
         self._fullPowerLabel.grid(row=0, column=0)
         self._fullPowerLabel.grid_remove()
 
+        self._dropAlertLabel = ttk.Label(centerFrame, name='dropAlertLabel',
+                                            textvariable=self.var_spellDropWarningText,
+                                            style=centralLabelStyleName)
+        self._dropAlertLabel.grid(row=0, column=0)
+        self._dropAlertLabel.grid_remove()
+
         self._hidingLabel = ttk.Label(main_frame, text="Hiding", anchor=tk.CENTER)
         self._hidingLabel.grid(row=1, column=0, sticky=tk.EW)
         self._hidingLabel.grid_remove()
@@ -166,45 +173,56 @@ c = Controller.ForTesting()
         self.menu_settings.add_separator()
         self.menu_settings.add_command(label="Reset Stats", command=self._controller.reset_stats)
         self.menu_settings.add_separator()
-        self.menu_settings.add_command(label="Mobs/Pet settings", command=self._controller.open_ignore_mobs_window)
-        self._pet_or_mobs_display_settings_window.attributes("-topmost", self.var_always_on_top.get())
-        self._pet_or_mobs_display_settings_window.protocol("WM_DELETE_WINDOW", self._withdraw_pet_or_mobs_display_settings_window)  # Hide on close
-        self._pet_or_mobs_display_settings_window.withdraw()  # Start hidden
-        self._pet_or_mobs_display_settings_window.title("Mob/Pet Settings")
-        self._pet_or_mobs_display_settings_window.grid_columnconfigure(1, weight=1)
-        self._pet_or_mobs_display_settings_window.bind("<Escape>", lambda e: self._withdraw_pet_or_mobs_display_settings_window())
-        ttk.Label(self._pet_or_mobs_display_settings_window, 
+        self.menu_settings.add_command(label="Miscellaneous settings", command=self._controller.open_miscellaneousSettings_window)
+        self._miscellaneousSettings.attributes("-topmost", self.var_always_on_top.get())
+        self._miscellaneousSettings.protocol("WM_DELETE_WINDOW", self._withdraw_miscellaneous_settings_window)  # Hide on close
+        self._miscellaneousSettings.withdraw()  # Start hidden
+        self._miscellaneousSettings.title("Miscellaneous Settings")
+        self._miscellaneousSettings.grid_columnconfigure(1, weight=1)
+        self._miscellaneousSettings.bind("<Escape>", lambda e: self._withdraw_miscellaneous_settings_window())
+        ttk.Label(self._miscellaneousSettings,
                   text="Ignore mobs/pets in room\n(comma-separated):", anchor=tk.E)\
-            .grid(row=0, column=0, sticky=tk.W, padx=10, pady=(10, 0))
-        self.ignoredMobsPetsCsv = ttk.Entry(self._pet_or_mobs_display_settings_window, 
-                                       textvariable=self.var_ignoredMobPetsCsv, 
+            .grid(row=0, column=0, sticky=tk.E, padx=10, pady=(10, 0))
+        self.ignoredMobsPetsCsv = ttk.Entry(self._miscellaneousSettings,
+                                       textvariable=self.var_ignoredMobPetsCsv,
                                        width=50)
-        self.ignoredMobsPetsCsv.grid(row=0, column=1, sticky=tk.EW, padx=(0, 10))
+        self.ignoredMobsPetsCsv.grid(row=0, column=1, sticky=tk.W, padx=(0, 10))
         # helpful lambda explanation: https://stackoverflow.com/a/55093731
         self.ignoredMobsPetsCsv.bind("<FocusOut>", # Without the lambda the function is never invoked.
                                 lambda e: self._controller.updateIgnoredMobsPets(self.var_ignoredMobPetsCsv.get()))
-        ttk.Label(self._pet_or_mobs_display_settings_window,
+        ttk.Label(self._miscellaneousSettings,
                   text="Include mobs in group window: ")\
-            .grid(row=1, column=0, sticky=tk.W, padx=10)
-        self.includeMobsInGroupCheckButton = ttk.Checkbutton(self._pet_or_mobs_display_settings_window, 
-                                                        variable=self.var_includePetsInGroup, 
+            .grid(row=1, column=0, sticky=tk.E, padx=10)
+        self.includeMobsInGroupCheckButton = ttk.Checkbutton(self._miscellaneousSettings,
+                                                        variable=self.var_includePetsInGroup,
                                                         command=lambda: self.update_display_of_pets_in_group_window(self.var_includePetsInGroup.get()))
         self.includeMobsInGroupCheckButton.grid(row=1, column=1, sticky=tk.W)
-        ttk.Label(self._pet_or_mobs_display_settings_window,
+        ttk.Label(self._miscellaneousSettings,
                   text="Time, in milliseconds, for alerts to be displayed:")\
-            .grid(row=2, column=0, sticky=tk.W, padx=10)
-        self.alertLabelDurationDisplayEntry = ttk.Entry(self._pet_or_mobs_display_settings_window,
+            .grid(row=2, column=0, sticky=tk.E, padx=10)
+        self.alertLabelDurationDisplayEntry = ttk.Entry(self._miscellaneousSettings,
                                                   textvariable=self.var_hideDisplayedLabelCallbackTimerInMilliseconds,
-                                                  width=10)\
-            .grid(row=2, column=1, sticky=tk.W)
-        ttk.Label(self._pet_or_mobs_display_settings_window,
+                                                  width=10)
+        self.alertLabelDurationDisplayEntry.grid(row=2, column=1, sticky=tk.W)
+        ttk.Label(self._miscellaneousSettings,
                   text="Time, in minutes, to alert before affects drop:")\
-            .grid(row=3, column=0, sticky=tk.W, padx=10, pady=(0, 10))
-        self.affectDropWarningDurationEntry = ttk.Entry(self._pet_or_mobs_display_settings_window,
+            .grid(row=3, column=0, sticky=tk.E, padx=10)
+        self.affectDropWarningDurationEntry = ttk.Entry(self._miscellaneousSettings,
                                                   textvariable=self.var_timeInMinutesToWarnAboutSpellsDropping,
-                                                  width=10)\
-            .grid(row=3, column=1, sticky=tk.W, pady=(0, 10))
+                                                  width=10)
+        self.affectDropWarningDurationEntry.grid(row=3, column=1, sticky=tk.W)
+        ttk.Label(self._miscellaneousSettings,
+                  text="Item sought after (comma-separated):")\
+            .grid(row=4, column=0, sticky=tk.E, padx=10, pady=(0, 10))
 
+        #https://stackoverflow.com/a/4140988
+        validateSoughtAfterItemsCommand = (self.register(self.validateSoughtAfterItemsEntry), '%P')
+        self.soughtAFterItemsEntry = ttk.Entry(self._miscellaneousSettings,
+                                               textvariable=self.var_soughtAfterItems,
+                                               validate='key',
+                                               validatecommand=validateSoughtAfterItemsCommand,
+                                               width=50)
+        self.soughtAFterItemsEntry.grid(row=4, column=1, sticky=tk.W, padx=(0, 10), pady=(0, 10))
 
         self.menu_settings.add_command(label="Check Supplies", command=self.open_suppliesWindow)
         self._supplyCheckerWindow.attributes("-topmost", self.var_always_on_top.get())
@@ -429,6 +447,13 @@ c = Controller.ForTesting()
             else:
                 self._controller.hideAffectSpellDropWarningLabel()
 
+        #TODO: ¿Find correct way to update? - Feels like a hacky workaround. Don't know how to properly check this.
+        self._controller.model.SoughtAfterItems = {soughtItem.strip() for soughtItem in self.var_soughtAfterItems.get().split(',')}
+
+        if self._controller.model.SoughtAfterItemsThatDropped:
+            self._controller.displayDropAlertLabel(", ".join(self._controller.model.SoughtAfterItemsThatDropped))
+            self._controller.model.SoughtAfterItemsThatDropped.clear()
+
     def updateTimeRelatedValues(self, currentTime: float):
         current_rate = self._controller.gameSession.get_xp_per_hour()
         self.var_xp_hr.set(f"{current_rate:,} xp / hr")
@@ -518,10 +543,10 @@ c = Controller.ForTesting()
             self.var_count_of_mobs_in_room.set(f"Mobs in Room: {len(self._controller.model.currentMobsInRoom)}")
 
     def open_pet_or_mobs_display_settings_window(self):
-        self._pet_or_mobs_display_settings_window.deiconify()
+        self._miscellaneousSettings.deiconify()
 
-    def _withdraw_pet_or_mobs_display_settings_window(self):
-        self._pet_or_mobs_display_settings_window.withdraw()
+    def _withdraw_miscellaneous_settings_window(self):
+        self._miscellaneousSettings.withdraw()
 
     def update_display_of_pets_in_group_window(self, displayMobsInGroupWindow: bool):
         self._controller.update_display_of_pets_in_group_window(displayMobsInGroupWindow)
@@ -581,3 +606,15 @@ c = Controller.ForTesting()
         self.spellDropWarningLabel.grid()
     def hideAffectSpellDropWarningLabel(self):
         self.spellDropWarningLabel.grid_remove()
+
+    def displayDropAlertLabel(self, text: str):
+        self.var_spellDropWarningText.set("Dropped: " + text)
+        self._dropAlertLabel.grid()
+        self.after(self.var_hideDisplayedLabelCallbackTimerInMilliseconds.get(), self.hideDropAlertLabel)
+    def hideDropAlertLabel(self):
+        self._dropAlertLabel.grid_remove()
+
+    def validateSoughtAfterItemsEntry(self, proposedValue: str) -> bool:
+        self._controller.model.SoughtAfterItems = {item.strip() for item in proposedValue.split(',')}
+
+        return True

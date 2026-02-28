@@ -16,3 +16,5 @@ class Model:
         self.BuffOrShieldEnding: Parser.ParseBuffOrShieldText | None = None
         self.inventory: Inventory = Inventory(EquippedGear(), [])
         self.AffectsWithTimeExpiration: list[Affect] = []
+        self.SoughtAfterItemsThatDropped: list[str] = []
+        self.SoughtAfterItems: set[str] = set()
