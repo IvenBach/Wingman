@@ -1,7 +1,7 @@
 from Wingman.core.affect import Affect
 from Wingman.core.parser import Parser
 from Wingman.core.meditation_display import MeditationDisplay
-from Wingman.core.inventory import Inventory, EquippedGear
+from Wingman.core.inventory import Inventory, Equipment
 
 class Model:
     def __init__(self, parser: Parser):
@@ -14,7 +14,7 @@ class Model:
         self.ignoreTheseMobsInCurrentRoom: list[str] = []
         self.includePetsInGroup: bool = False
         self.BuffOrShieldEnding: Parser.ParseBuffOrShieldText | None = None
-        self.inventory: Inventory = Inventory(EquippedGear(), [])
+        self.inventory: Inventory = Inventory(Equipment(), [])
         self.AffectsWithTimeExpiration: list[Affect] = []
         self.SoughtAfterItemsThatDropped: list[str] = []
         self.SoughtAfterItems: set[str] = set()

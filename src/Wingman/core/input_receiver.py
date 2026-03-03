@@ -3,7 +3,8 @@ from typing import Any, overload
 from collections import deque
 from Wingman.core.affect import Affect
 from Wingman.core.mobs_in_room import MobsInRoom
-from Wingman.core.inventory import Inventory, EquippedGear
+from Wingman.core.inventory import Inventory
+from Wingman.core.equipment import Equipment
 
 class InputReceiver:
     '''Accepts input lines and queues them for processing.'''
@@ -25,7 +26,7 @@ class InputReceiver:
     @overload
     def receive(self, inventory: Inventory) -> None: ...
     @overload
-    def receive(self, equippedGear: EquippedGear) -> None: ...
+    def receive(self, equippedGear: Equipment) -> None: ...
     @overload
     def receive(self, affects: list[Affect]) -> None: ...
 

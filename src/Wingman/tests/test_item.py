@@ -1,5 +1,5 @@
 import pytest
-from Wingman.core.item import Item, QuantityComparer
+from Wingman.core.item import Item, ItemSlot, QuantityComparer
 
 def test_NonQuantityStringName_MatchesItemName_ReturnsTrue():    
     line = "A goblet of zombie blood"
@@ -104,3 +104,26 @@ class TestQuantityComparer:
         assert a.QuantityComparison(b) == QuantityComparer.LESS_THAN
         assert b.QuantityComparison(c) == QuantityComparer.LESS_THAN
         assert a.QuantityComparison(c) == QuantityComparer.LESS_THAN
+
+class TestOrderingBySlot:
+    def test_SetDifference_SortedBySlot(self):
+        set1 = set([Item('a', slot=ItemSlot.HEAD),
+                    Item('z', slot=ItemSlot.JEWEL),
+                    Item('b', slot=ItemSlot.HANDS),
+                    Item('d', slot=ItemSlot.FEET),
+                    Item('f', slot=ItemSlot.JEWEL),
+        ])
+
+        set2 = ([Item('b', slot=ItemSlot.HANDS),
+                 Item('c', slot=ItemSlot.BODY),
+                 Item('e', slot=ItemSlot.LEGS),
+                 Item('g', slot=ItemSlot.CLOAK),
+        ])
+
+        missingItems = Item.orderBySlot(set1.difference(set2))
+
+        assert len(missingItems) == 4
+        assert missingItems[0] == Item('a', slot=ItemSlot.HEAD)
+        assert missingItems[1] == Item('z', slot=ItemSlot.JEWEL)
+        assert missingItems[2] == Item('f', slot=ItemSlot.JEWEL)
+        assert missingItems[3] == Item('d', slot=ItemSlot.FEET)

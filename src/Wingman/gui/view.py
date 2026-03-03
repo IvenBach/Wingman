@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import ttk
 import time
 import ctypes
-from typing import overload
+from typing import overload, Callable
 from enum import Enum
 from Wingman.core.controller import Controller
 from Wingman.core.group import Group
@@ -17,14 +17,14 @@ class SuppliesPaneChangeDirection(Enum):
     NEXT = 1
 
 class View(tk.Frame):
-    def __init__(self, parent: tk.Tk | tk.Toplevel):
-        super().__init__(parent)
+    def __init__(self, root: tk.Tk | tk.Toplevel):
+        super().__init__(root)
 
         self.grid(row=0, column=0, sticky=tk.NSEW)
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
-        self.parent = parent
+        self.root = root
         # State
         self.var_total_xp = tk.StringVar(value="Total XP: 0")
         self.var_xp_hr = tk.StringVar(value="XP/Hr: 0")
@@ -39,8 +39,10 @@ class View(tk.Frame):
         self.groupTreeview: ttk.Treeview
         self.menu_settings: tk.Menu
         self.var_ignoredMobPetsCsv = tk.StringVar(value="")
-        self._miscellaneousSettings = tk.Toplevel(parent, name="petOrMobsDisplaySettingsWindow")
-        self._supplyCheckerWindow = tk.Toplevel(parent, name="supplyCheckerWindow")
+        self._miscellaneousSettings = tk.Toplevel(root, name="petOrMobsDisplaySettingsWindow")
+        self._supplyCheckerWindow = tk.Toplevel(root, name="supplyCheckerWindow")
+        self._gearSetsWindow = tk.Toplevel(root, name="gearSetsWindow")
+        self.var_missingGearSetItems = tk.StringVar(value="")
         self.var_missingSupplyValues = tk.StringVar(value="")
         self.var_missingPveSupplyValues = tk.StringVar(value="")
         self.var_includePetsInGroup = tk.BooleanVar(value=False)
@@ -54,9 +56,10 @@ class View(tk.Frame):
         self.style = ttk.Style()
         self.style.theme_use('clam')
 
-        self._TopLevelWidgets: list[tk.Tk | tk.Toplevel] = [self.parent,
+        self._TopLevelWidgets: list[tk.Tk | tk.Toplevel] = [self.root,
                                                             self._miscellaneousSettings,
-                                                            self._supplyCheckerWindow]
+                                                            self._supplyCheckerWindow,
+                                                            self._gearSetsWindow]
 
     @classmethod
     def ForTesting(cls):
@@ -75,7 +78,7 @@ c = Controller.ForTesting()
         self._controller = controller
         # 1. Initialize "Always on Top" variable
         self.var_always_on_top = tk.BooleanVar(value=True)
-        self.parent.attributes("-topmost", self.var_always_on_top.get())
+        self.root.attributes("-topmost", self.var_always_on_top.get())
 
         self.var_hideDisplayedLabelCallbackTimerInMilliseconds = tk.IntVar(value=self._controller._HIDE_DISPLAYED_LABEL_CALLBACK_TIMER_IN_MILLISECONDS__FALLBACK)
         self.var_timeInMinutesToWarnAboutSpellsDropping = tk.IntVar(value=self._controller._ALERT_FOR_SPELL_DROPPING_DURATION_IN_MINUTES__FALLBACK)
@@ -91,6 +94,11 @@ c = Controller.ForTesting()
         main_frame.grid_rowconfigure(2, weight=1)
         main_frame.grid_columnconfigure(0, weight=1)
 
+        self._setUpUi_StatsRow(main_frame)
+        self._setUpUi_GroupDisplay(main_frame)
+        self._setUpUi_StatusFooter(main_frame)
+
+    def _setUpUi_StatsRow(self, main_frame: ttk.Frame):
         # --- Top Stats Row ---
         stats_frame = ttk.Frame(main_frame, name="stats_frame", height=100)
         stats_frame.grid(row=0, column=0, pady=(0, 10), sticky=tk.EW)
@@ -115,20 +123,20 @@ c = Controller.ForTesting()
         #Immediately removed/hidden, only to be shown when predicate conditions are satisfied.
         self._healGroupLabel.grid(row=0, column=0)
         self._healGroupLabel.grid_remove()
-        
+
         centralLabelStyleName = 'centralLabel.TLabel'
         self._afkImageLabel = ttk.Label(centerFrame, name='afkStatusLabel', text="AFK", style=centralLabelStyleName)
         self._afkImageLabel.grid(row=0, column=0)
         self._afkImageLabel.grid_remove()
 
-        self._meditatingLabel = ttk.Label(centerFrame, name='meditationStatusLabel', 
-                                          textvariable=self.var_meditationRegenDisplay, 
+        self._meditatingLabel = ttk.Label(centerFrame, name='meditationStatusLabel',
+                                          textvariable=self.var_meditationRegenDisplay,
                                           style=centralLabelStyleName)
         self._meditatingLabel.grid(row=0, column=0)
         self._meditatingLabel.grid_remove()
 
-        self._fullPowerLabel = ttk.Label(centerFrame, name='fullPowerStatusLabel', 
-                                         text="Full Power!", 
+        self._fullPowerLabel = ttk.Label(centerFrame, name='fullPowerStatusLabel',
+                                         text="Full Power!",
                                          style=centralLabelStyleName)
         self._fullPowerLabel.grid(row=0, column=0)
         self._fullPowerLabel.grid_remove()
@@ -150,8 +158,6 @@ c = Controller.ForTesting()
         # Control Buttons Frame
         btns_frame = ttk.Frame(pauseSettingsTimerFrame)
         btns_frame.grid(row=1, column=0, sticky=tk.E)
-
-        # Pause Button (Updated width to 8 per previous request)
         self.btn_pause = ttk.Button(btns_frame, text="Pause", command=self.toggle_pause, width=8)
         self.btn_pause.grid(row=0, column=0, sticky=tk.W, padx=(0, 2))
 
@@ -174,10 +180,9 @@ c = Controller.ForTesting()
         self.menu_settings.add_command(label="Reset Stats", command=self._controller.reset_stats)
         self.menu_settings.add_separator()
         self.menu_settings.add_command(label="Miscellaneous settings", command=self._controller.open_miscellaneousSettings_window)
-        self._miscellaneousSettings.attributes("-topmost", self.var_always_on_top.get())
-        self._miscellaneousSettings.protocol("WM_DELETE_WINDOW", self._withdraw_miscellaneous_settings_window)  # Hide on close
-        self._miscellaneousSettings.withdraw()  # Start hidden
-        self._miscellaneousSettings.title("Miscellaneous Settings")
+        self.mb_settings["menu"] = self.menu_settings
+
+        self._setUpTopLevelWindow(self._miscellaneousSettings, "Miscellaneous Settings", "<Escape>", self._withdraw_miscellaneous_settings_window)
         self._miscellaneousSettings.grid_columnconfigure(1, weight=1)
         self._miscellaneousSettings.bind("<Escape>", lambda e: self._withdraw_miscellaneous_settings_window())
         ttk.Label(self._miscellaneousSettings,
@@ -224,59 +229,172 @@ c = Controller.ForTesting()
                                                width=50)
         self.soughtAFterItemsEntry.grid(row=4, column=1, sticky=tk.W, padx=(0, 10), pady=(0, 10))
 
-        self.menu_settings.add_command(label="Check Supplies", command=self.open_suppliesWindow)
-        self._supplyCheckerWindow.attributes("-topmost", self.var_always_on_top.get())
-        self._supplyCheckerWindow.protocol("WM_DELETE_WINDOW", self._withdraw_suppliesWindow)  # Hide on close
-        self._supplyCheckerWindow.withdraw()
-        self._supplyCheckerWindow.title("Supply Checker")
-        self._supplyCheckerWindow.bind("<Escape>", lambda e: self._withdraw_suppliesWindow())
-        self._supplyCheckerWindow.minsize(450, 280)
-        self._supplyCheckerWindow.grid_rowconfigure(1, weight=1)
-        self._supplyCheckerWindow.grid_columnconfigure(0, weight=1)
-        self._supplyCheckerWindow.bind("<Control-Next>",
-                lambda _: self.change_page_in_supplies_window(direction=SuppliesPaneChangeDirection.NEXT))
-        self._supplyCheckerWindow.bind("<Control-Prior>",
-                lambda _: self.change_page_in_supplies_window(direction=SuppliesPaneChangeDirection.PREVIOUS))
+        self.menu_settings.add_command(label="Gear sets", command=self.open_gearSetsWindow)
 
+
+        gearSetsFrame = ttk.Frame(self._gearSetsWindow, name="gearSetsFrame")
+        gearSetsFrame.grid(row=0, column=0, sticky=tk.NSEW)
+        gearSetsFrame.grid_rowconfigure(0, weight=1)
+        gearSetsFrame.grid_columnconfigure(0, weight=1)
+        ttk.Label(gearSetsFrame, text="Dependent on current `equipment` in client.\nExecute `equipment` in the client to update cached values.")\
+            .grid(row=0, column=0, sticky=tk.EW, padx=10, pady=(10, 0))
+        self.gearSetsNotebook = ttk.Notebook(gearSetsFrame, name="gearSetsNotebook")
+        self.gearSetsNotebook.grid(row=1, column=0, sticky=tk.NSEW, padx=10, pady=10)
+        self.gearSetsNotebook.bind("<Button-3>", self.showGearSetsContextMenu)
+        #https://pythonexamples.org/python-tkinter-context-menu/
+        self.gearSetsContextMenu = tk.Menu(self._gearSetsWindow, tearoff=False)
+        self.gearSetsContextMenu.add_command(label="Copy PvP -> PvE", command=self._controller.copyPvpGearSetToPve)
+        self.gearSetsContextMenu.add_command(label="Copy PvE -> PvP", command=self._controller.copyPveGearSetToPvp)
+
+        gearSetsPvpFrame = ttk.Frame(self.gearSetsNotebook, name="gearSetsPvpFrame")
+        gearSetsPveFrame = ttk.Frame(self.gearSetsNotebook, name="gearSetsPveFrame")
+        self.gearSetsNotebook.add(gearSetsPvpFrame, text="PvP")
+        self.gearSetsNotebook.add(gearSetsPveFrame, text="PvE")
+        self._setUpTopLevelWindow(self._gearSetsWindow, "Gear Sets", "<Escape>", self._withdraw_gearSetsWindow)
+        self._gearSetsWindow.grid_columnconfigure(0, weight=1)
+        self.bindPageUpAndPageDownToChangePanesInNotebook(self._gearSetsWindow, self.gearSetsNotebook)
+
+        ttk.Label(gearSetsPvpFrame, text="On Head:").grid(row=0, column=0, sticky=tk.E)
+        self.gearSetsPvpHeadEntry = ttk.Entry(gearSetsPvpFrame, width=50)
+        self.gearSetsPvpHeadEntry.grid(row=0, column=1, sticky=tk.EW)
+        ttk.Label(gearSetsPvpFrame, text="On Jewel:").grid(row=1, column=0, sticky=tk.E)
+        self.gearSetsPvpJewel1Entry = ttk.Entry(gearSetsPvpFrame)
+        self.gearSetsPvpJewel1Entry.grid(row=1, column=1, sticky=tk.EW)
+        ttk.Label(gearSetsPvpFrame, text="On Jewel:").grid(row=2, column=0, sticky=tk.E)
+        self.gearSetsPvpJewel2Entry = ttk.Entry(gearSetsPvpFrame)
+        self.gearSetsPvpJewel2Entry.grid(row=2, column=1, sticky=tk.EW)
+        ttk.Label(gearSetsPvpFrame, text="On Cloak:").grid(row=3, column=0, sticky=tk.E)
+        self.gearSetsPvpCloakEntry = ttk.Entry(gearSetsPvpFrame)
+        self.gearSetsPvpCloakEntry.grid(row=3, column=1, sticky=tk.EW)
+        ttk.Label(gearSetsPvpFrame, text="On Body:").grid(row=4, column=0, sticky=tk.E)
+        self.gearSetsPvpBodyEntry = ttk.Entry(gearSetsPvpFrame)
+        self.gearSetsPvpBodyEntry.grid(row=4, column=1, sticky=tk.EW)
+        ttk.Label(gearSetsPvpFrame, text="On Hands:").grid(row=5, column=0, sticky=tk.E)
+        self.gearSetsPvpHandsEntry = ttk.Entry(gearSetsPvpFrame)
+        self.gearSetsPvpHandsEntry.grid(row=5, column=1, sticky=tk.EW)
+        ttk.Label(gearSetsPvpFrame, text="On Legs:").grid(row=6, column=0, sticky=tk.E)
+        self.gearSetsPvpLegsEntry = ttk.Entry(gearSetsPvpFrame)
+        self.gearSetsPvpLegsEntry.grid(row=6, column=1, sticky=tk.EW)
+        ttk.Label(gearSetsPvpFrame, text="On Feet:").grid(row=7, column=0, sticky=tk.E)
+        self.gearSetsPvpFeetEntry = ttk.Entry(gearSetsPvpFrame)
+        self.gearSetsPvpFeetEntry.grid(row=7, column=1, sticky=tk.EW)
+        ttk.Label(gearSetsPvpFrame, text="Held Right:").grid(row=8, column=0, sticky=tk.E)
+        self.gearSetsPvpHeldRightEntry = ttk.Entry(gearSetsPvpFrame)
+        self.gearSetsPvpHeldRightEntry.grid(row=8, column=1, sticky=tk.EW)
+        ttk.Label(gearSetsPvpFrame, text="Held Left:").grid(row=9, column=0, sticky=tk.E)
+        self.gearSetsPvpHeldLeftEntry = ttk.Entry(gearSetsPvpFrame)
+        self.gearSetsPvpHeldLeftEntry.grid(row=9, column=1, sticky=tk.EW)
+
+        ttk.Label(gearSetsPveFrame, text="On Head:").grid(row=0, column=0, sticky=tk.E)
+        self.gearSetsPveHeadEntry = ttk.Entry(gearSetsPveFrame, width=50)
+        self.gearSetsPveHeadEntry.grid(row=0, column=1, sticky=tk.EW)
+        ttk.Label(gearSetsPveFrame, text="On Jewel:").grid(row=1, column=0, sticky=tk.E)
+        self.gearSetsPveJewel1Entry = ttk.Entry(gearSetsPveFrame)
+        self.gearSetsPveJewel1Entry.grid(row=1, column=1, sticky=tk.EW)
+        ttk.Label(gearSetsPveFrame, text="On Jewel:").grid(row=2, column=0, sticky=tk.E)
+        self.gearSetsPveJewel2Entry = ttk.Entry(gearSetsPveFrame)
+        self.gearSetsPveJewel2Entry.grid(row=2, column=1, sticky=tk.EW)
+        ttk.Label(gearSetsPveFrame, text="On Cloak:").grid(row=3, column=0, sticky=tk.E)
+        self.gearSetsPveCloakEntry = ttk.Entry(gearSetsPveFrame)
+        self.gearSetsPveCloakEntry.grid(row=3, column=1, sticky=tk.EW)
+        ttk.Label(gearSetsPveFrame, text="On Body:").grid(row=4, column=0, sticky=tk.E)
+        self.gearSetsPveBodyEntry = ttk.Entry(gearSetsPveFrame)
+        self.gearSetsPveBodyEntry.grid(row=4, column=1, sticky=tk.EW)
+        ttk.Label(gearSetsPveFrame, text="On Hands:").grid(row=5, column=0, sticky=tk.E)
+        self.gearSetsPveHandsEntry = ttk.Entry(gearSetsPveFrame)
+        self.gearSetsPveHandsEntry.grid(row=5, column=1, sticky=tk.EW)
+        ttk.Label(gearSetsPveFrame, text="On Legs:").grid(row=6, column=0, sticky=tk.E)
+        self.gearSetsPveLegsEntry = ttk.Entry(gearSetsPveFrame)
+        self.gearSetsPveLegsEntry.grid(row=6, column=1, sticky=tk.EW)
+        ttk.Label(gearSetsPveFrame, text="On Feet:").grid(row=7, column=0, sticky=tk.E)
+        self.gearSetsPveFeetEntry = ttk.Entry(gearSetsPveFrame)
+        self.gearSetsPveFeetEntry.grid(row=7, column=1, sticky=tk.EW)
+        ttk.Label(gearSetsPveFrame, text="Held Right:").grid(row=8, column=0, sticky=tk.E)
+        self.gearSetsPveHeldRightEntry = ttk.Entry(gearSetsPveFrame)
+        self.gearSetsPveHeldRightEntry.grid(row=8, column=1, sticky=tk.EW)
+        ttk.Label(gearSetsPveFrame, text="Held Left:").grid(row=9, column=0, sticky=tk.E)
+        self.gearSetsPveHeldLeftEntry = ttk.Entry(gearSetsPveFrame)
+        self.gearSetsPveHeldLeftEntry.grid(row=9, column=1, sticky=tk.EW)
+
+        pasteFrame = ttk.Frame(gearSetsFrame)
+        pasteFrame.grid(row=2, column=0, sticky=tk.NSEW, pady=(0, 10))
+        gearSetsPasteAreaText = tk.Text(pasteFrame, height=5, width=10, name='gearSetsPasteAreaText')
+        gearSetsPasteAreaText.grid(row=0, column=0, sticky=tk.EW, padx=(10, 5), pady=(0, 5),
+                                   columnspan=2, rowspan=2)
+        gearSetsCopyPastedTextToEntriesButton = ttk.Button(pasteFrame,
+                                                           text="Copy text to above entries",
+                                                           command=lambda: self._controller.copyPastedGearSetTextToActiveTabEntries(gearSetsPasteAreaText.get("1.0", tk.END)))
+        gearSetsCopyPastedTextToEntriesButton.grid(row=0, column=2, sticky=tk.W)
+        ttk.Label(pasteFrame, text="<----- Area to the side for pasting into\nthen clicking the button to copy into entries.")\
+            .grid(row=1, column=2, sticky=tk.W)
+
+        gearSetsFooterFrame = ttk.Frame(gearSetsFrame)
+        gearSetsFooterFrame.grid(row=3, column=0, sticky=tk.EW)
+        ttk.Button(gearSetsFooterFrame, text="Check Gear Set",
+                   command=lambda: self._controller.checkGearSet(self._controller.activeGearSetTabEquipment(),
+                                                                 self._controller.model.inventory.EquippedGear_))\
+            .grid(row=0, column=0, sticky=tk.E, padx=10, pady=(0, 10))
+        ttk.Button(gearSetsFooterFrame, text="Withdraw Text - Clipboard", command=self._controller.sendBankWithdrawTextToClipboard)\
+            .grid(row=0, column=1, sticky=tk.W, padx=10, pady=(0, 10))
+        ttk.Button(gearSetsFooterFrame, text="Clear Set", command=self._controller.clearGearSetEntriesOnActiveTab)\
+            .grid(row=0, column=2, sticky=tk.W, padx=10, pady=(0, 10))
+
+        self.missingGearSetItemsLabel = ttk.Label(gearSetsFooterFrame, textvariable=self.var_missingGearSetItems, name="missingGearSetItemsLabel")
+        self.missingGearSetItemsLabel.grid(row=1, column=0, columnspan=3, sticky=tk.W, padx=10)
+
+        self.menu_settings.add_command(label="Check Supplies", command=self.open_suppliesWindow)
         suppliesFrame = ttk.Frame(self._supplyCheckerWindow, name="suppliesFrame")
         suppliesFrame.grid(row=0, column=0, sticky=tk.NSEW)
         suppliesFrame.grid_rowconfigure(1, weight=1)
         suppliesFrame.grid_columnconfigure(0, weight=1)
-
 
         ttk.Label(suppliesFrame,
                   text="List of items to have in your inventory.")\
             .grid(row=0, column=0, sticky=tk.W, padx=10, pady=(10, 0))
         self.suppliesNotebook = ttk.Notebook(suppliesFrame, name="suppliesNotebook")
         self.suppliesNotebook.grid(row=1, column=0, sticky=tk.NSEW, padx=10, pady=5)
-        pvpFrame = ttk.Frame(self.suppliesNotebook, name="pvpSuppliesFrame")
-        pvpFrame.grid_columnconfigure(0, weight=1)
-        pveFrame = ttk.Frame(self.suppliesNotebook, name="pveSuppliesFrame")
-        pveFrame.grid_columnconfigure(0, weight=1)
-        self.suppliesNotebook.add(pvpFrame, text="PvP")
-        self.pvpSuppliesText = tk.Text(pvpFrame, width=60, height=10)
+        suppliesPvpFrame = ttk.Frame(self.suppliesNotebook, name="pvpSuppliesFrame")
+        suppliesPvpFrame.grid_columnconfigure(0, weight=1)
+        suppliesPveFrame = ttk.Frame(self.suppliesNotebook, name="pveSuppliesFrame")
+        suppliesPveFrame.grid_columnconfigure(0, weight=1)
+        self.suppliesNotebook.add(suppliesPvpFrame, text="PvP")
+        self.pvpSuppliesText = tk.Text(suppliesPvpFrame, width=60, height=10)
         self.pvpSuppliesText.grid(row=0, column=0, sticky=tk.NSEW)
-
-        self.suppliesNotebook.add(pveFrame, text="PvE")
-        self.pveSuppliesText = tk.Text(pveFrame, width=60, height=10)
+        self.suppliesNotebook.add(suppliesPveFrame, text="PvE")
+        self.pveSuppliesText = tk.Text(suppliesPveFrame, width=60, height=10)
         self.pveSuppliesText.grid(row=0, column=0, sticky=tk.NSEW)
+
+        self._setUpTopLevelWindow(self._supplyCheckerWindow, "Supply Checker", "<Escape>", self._withdraw_suppliesWindow)
+        self._supplyCheckerWindow.minsize(450, 280)
+        self._supplyCheckerWindow.grid_rowconfigure(1, weight=1)
+        self._supplyCheckerWindow.grid_columnconfigure(0, weight=1)
+        self.bindPageUpAndPageDownToChangePanesInNotebook(self._supplyCheckerWindow, self.suppliesNotebook)
 
         supplyCheckerFooterFrame = ttk.Frame(suppliesFrame)
         supplyCheckerFooterFrame.grid(row=2, column=0, sticky=tk.EW)
         ttk.Button(supplyCheckerFooterFrame,
-                   text="Check Inventory",
-                   command=lambda: self._controller.updateMissingSuppliesLabel(self.suppliesNotebook.tab(self.suppliesNotebook.select(), option="text"),
-                                                                               self._controller.suppliesTextBasedOnActiveTab(),
-                                                                               self._controller.model.inventory))\
+                text="Check Inventory",
+                command=lambda: self._controller.updateMissingSuppliesLabel(self._controller.activeTabTextInNotebook(self.suppliesNotebook),
+                                                                            self._controller.suppliesTextFromTab(self._controller.activeTabTextInNotebook(self.suppliesNotebook)),
+                                                                            self._controller.model.inventory))\
             .grid(row=0, column=0, sticky=tk.NW, padx=10, pady=5)
         ttk.Label(supplyCheckerFooterFrame,
-                  textvariable=self.var_missingSupplyValues,
-                  wraplength=475)\
+                textvariable=self.var_missingSupplyValues,
+                wraplength=475)\
             .grid(row=0, column=1, sticky=tk.EW, padx=5, pady=5)
 
+    def _setUpTopLevelWindow(self, window: tk.Toplevel, title: str, bindKey: str, withdrawWindowCallback: Callable[[], None]):
+        window.attributes("-topmost", self.var_always_on_top.get())
+        window.protocol("WM_DELETE_WINDOW", withdrawWindowCallback)  # Hide on close
+        window.withdraw() # Start hidden
+        window.title(title)
+        window.bind(bindKey, lambda e: withdrawWindowCallback())
 
-        self.mb_settings["menu"] = self.menu_settings
+    def showGearSetsContextMenu(self, event):
+        self.gearSetsContextMenu.tk_popup(event.x_root, event.y_root)
+        self.gearSetsContextMenu.grab_release()
 
+    def _setUpUi_GroupDisplay(self, main_frame: ttk.Frame):
         # --- Group Dashboard (Treeview) ---
         lbl_dash = ttk.Label(main_frame, name="groupStatusLabel", text="Group Status:", font=("Segoe UI", 10, "bold"))
         lbl_dash.grid(row=1, column=0, sticky=tk.W, pady=(5, 0))
@@ -307,6 +425,7 @@ c = Controller.ForTesting()
 
         self.groupTreeview.grid(row=2, column=0, pady=5, sticky=tk.NSEW)
 
+    def _setUpUi_StatusFooter(self, main_frame: ttk.Frame):
         #region Shield/Buff Ending Labels
         _statusFooter = ttk.Frame(main_frame, name="statusFooter")
         _statusFooter.grid(row=3, column=0, sticky=tk.EW)
@@ -348,7 +467,7 @@ c = Controller.ForTesting()
             field_bg = "#ffffff"
             select_bg = "#0078d7"
             self.set_windows_titlebar_color(False)
-        
+
         for window in self._TopLevelWidgets:
             window.configure(bg=bg_color)
 
@@ -464,7 +583,7 @@ c = Controller.ForTesting()
     def apply_topmost(self, value: bool):
         """Applies the current state of the BooleanVar to the window."""
         self.var_always_on_top.set(value)
-        self.parent.attributes("-topmost", value)
+        self.root.attributes("-topmost", value)
         for widget in self._TopLevelWidgets:
             widget.attributes("-topmost", value)
 
@@ -576,7 +695,7 @@ c = Controller.ForTesting()
     @overload
     def updateMissingSuppliesLabel(self, displayText: str): ...
     @overload
-    def updateMissingSuppliesLabel(self, tabIndicatorText: str, missingSuppliesList: list[Item]): ...
+    def updateMissingSuppliesLabel(self, tabIndicator: str, missingSuppliesList: list[Item]): ...
 
     def updateMissingSuppliesLabel(self, *args):
         if len(args) == 1 and isinstance(args[0], str):
@@ -595,11 +714,19 @@ c = Controller.ForTesting()
 
             self.var_missingSupplyValues.set(displayText)
 
-    def change_page_in_supplies_window(self, direction: SuppliesPaneChangeDirection):
-        currentTab = self.suppliesNotebook.index(self.suppliesNotebook.select())
-        totalTabs = len(self.suppliesNotebook.tabs())
+    def bindPageUpAndPageDownToChangePanesInNotebook(self, window: tk.Toplevel, notebook: ttk.Notebook):
+        window.bind("<Control-Next>",
+                lambda _: self.change_page_in_notebook(notebook=notebook,
+                                                       direction=SuppliesPaneChangeDirection.NEXT))
+        window.bind("<Control-Prior>",
+                lambda _: self.change_page_in_notebook(notebook=notebook,
+                                                       direction=SuppliesPaneChangeDirection.PREVIOUS))
+
+    def change_page_in_notebook(self, notebook: ttk.Notebook, direction: SuppliesPaneChangeDirection):
+        currentTab = notebook.index(notebook.select())
+        totalTabs = len(notebook.tabs())
         newTabIndex = (currentTab + direction.value) % totalTabs
-        self.suppliesNotebook.select(newTabIndex)
+        notebook.select(newTabIndex)
 
     def displayAffectSpellDropWarningLabel(self, warningText: str):
         self.var_spellDropWarningText.set(f"{warningText} dropping in less than {self.var_timeInMinutesToWarnAboutSpellsDropping.get()} minutes!")
@@ -618,3 +745,37 @@ c = Controller.ForTesting()
         self._controller.model.SoughtAfterItems = {item.strip() for item in proposedValue.split(',')}
 
         return True
+
+    def open_gearSetsWindow(self):
+        self._gearSetsWindow.deiconify()
+    def _withdraw_gearSetsWindow(self):
+        self._gearSetsWindow.withdraw()
+
+    def clearPvpSetEntries(self):
+        self.gearSetsPvpHeadEntry.delete(0, tk.END)
+        self.gearSetsPvpJewel1Entry.delete(0, tk.END)
+        self.gearSetsPvpJewel2Entry.delete(0, tk.END)
+        self.gearSetsPvpCloakEntry.delete(0, tk.END)
+        self.gearSetsPvpBodyEntry.delete(0, tk.END)
+        self.gearSetsPvpHandsEntry.delete(0, tk.END)
+        self.gearSetsPvpLegsEntry.delete(0, tk.END)
+        self.gearSetsPvpFeetEntry.delete(0, tk.END)
+        self.gearSetsPvpHeldRightEntry.delete(0, tk.END)
+        self.gearSetsPvpHeldLeftEntry.delete(0, tk.END)
+    def clearPveSetEntries(self):
+        self.gearSetsPveHeadEntry.delete(0, tk.END)
+        self.gearSetsPveJewel1Entry.delete(0, tk.END)
+        self.gearSetsPveJewel2Entry.delete(0, tk.END)
+        self.gearSetsPveCloakEntry.delete(0, tk.END)
+        self.gearSetsPveBodyEntry.delete(0, tk.END)
+        self.gearSetsPveHandsEntry.delete(0, tk.END)
+        self.gearSetsPveLegsEntry.delete(0, tk.END)
+        self.gearSetsPveFeetEntry.delete(0, tk.END)
+        self.gearSetsPveHeldRightEntry.delete(0, tk.END)
+        self.gearSetsPveHeldLeftEntry.delete(0, tk.END)
+
+    def displayMissingGearSetItemsLabel(self, value: str):
+        self.var_missingGearSetItems.set(value)
+        self.missingGearSetItemsLabel.grid()
+    def hideMissingGearSetItemsLabel(self):
+        self.missingGearSetItemsLabel.grid_remove()

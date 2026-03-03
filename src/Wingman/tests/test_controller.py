@@ -5,6 +5,7 @@ from pathlib import Path
 import sys
 import configparser
 import tkinter as tk
+import tkinter.messagebox
 
 if __name__ == "__main__":
     srcDirectory = Path(__file__).parent.parent.parent.resolve()
@@ -13,12 +14,19 @@ if __name__ == "__main__":
 from Wingman.core.controller import Controller
 from Wingman.core.parser import Parser
 from Wingman.core.health_Tagger import HealthTagger
-from Wingman.core.inventory import EquippedGear, Inventory
+from Wingman.core.inventory import Equipment, Inventory
 from Wingman.core.item import Item
 
+@pytest.fixture(scope="function")
+def testController():
+    c = Controller.ForTesting()
+    yield c
+
+    c.view.root.destroy()
+
 class TestProcessQueue():
-    def test_process_queue_calculates_xp(self):
-        c = Controller.ForTesting()
+    def test_process_queue_calculates_xp(self, testController: Controller):
+        c = testController
         inputs = ["You gain 1000 experience points.", "Garbage line."]
         for x in inputs:
             c.receiver.receive(x)
@@ -29,8 +37,8 @@ class TestProcessQueue():
         assert len(logs) == 1
 
     class TestMobRoomMovement:
-        def test_MobMovement_Enters_EmptyRoom_DisplayUpdatesAndMobsInRoomMatchesExpected(self):
-            c = Controller.ForTesting()
+        def test_MobMovement_Enters_EmptyRoom_DisplayUpdatesAndMobsInRoomMatchesExpected(self, testController: Controller):
+            c = testController
             c.model.currentMobsInRoom = []
             v = c.view
 
@@ -43,8 +51,8 @@ class TestProcessQueue():
             mockedDisplay.assert_called_once_with()
             assert c.model.currentMobsInRoom == ['a windfang hatchling']
 
-        def test_MobMovement_ArrivesFrom_With2Mobs_DisplayUpdatesAndMobsInRoomMatchesExpected(self):
-            c = Controller.ForTesting()
+        def test_MobMovement_ArrivesFrom_With2Mobs_DisplayUpdatesAndMobsInRoomMatchesExpected(self, testController: Controller):
+            c = testController
             c.model.currentMobsInRoom = ['a foo bar', 'a bar foo']
             v = c.view
 
@@ -57,8 +65,8 @@ class TestProcessQueue():
             mockedDisplay.assert_called_once_with()
             assert c.model.currentMobsInRoom == ['a foo bar', 'a bar foo', 'a windfang hatchling']
 
-        def test_MobMovement_ChasesIn_With1Mob_DisplayUpdatesAndMobsInRoomMatchesExpected(self):
-            c = Controller.ForTesting()
+        def test_MobMovement_ChasesIn_With1Mob_DisplayUpdatesAndMobsInRoomMatchesExpected(self, testController: Controller):
+            c = testController
             c.model.currentMobsInRoom = ['a foo bar']
             v = c.view
 
@@ -71,8 +79,8 @@ class TestProcessQueue():
             mockedDisplay.assert_called_once_with()
             assert c.model.currentMobsInRoom == ['a foo bar', 'a windfang hatchling']
 
-        def test_MobMovement_Dies_With2MobsInRoom_DisplayUpdatesAndMobsInRoomMatchesExpected(self):
-            c = Controller.ForTesting()
+        def test_MobMovement_Dies_With2MobsInRoom_DisplayUpdatesAndMobsInRoomMatchesExpected(self, testController: Controller):
+            c = testController
             c.model.currentMobsInRoom = ['a foo bar', 'a windfang hatchling']
             v = c.view
 
@@ -85,8 +93,8 @@ class TestProcessQueue():
             mockedDisplay.assert_called_once_with()
             assert c.model.currentMobsInRoom == ['a foo bar']
 
-        def test_MobMovement_Leaves_With5MobsInRoom_DisplayUpdatesAndMobsInRoomMatchesExpected(self):
-            c = Controller.ForTesting()
+        def test_MobMovement_Leaves_With5MobsInRoom_DisplayUpdatesAndMobsInRoomMatchesExpected(self, testController: Controller):
+            c = testController
             c.model.currentMobsInRoom = ['a foo bar', 'a bar foo', 'a dog', 'a cat', 'a windfang hatchling']
             v = c.view
 
@@ -99,8 +107,8 @@ class TestProcessQueue():
             mockedDisplay.assert_called_once_with()
             assert c.model.currentMobsInRoom == ['a foo bar', 'a bar foo', 'a dog', 'a windfang hatchling']
 
-        def test_MobMovement_ChasesOut_AsOnlyMobInTheRoom_DisplayUpdatesAndMobsInRoomMatchesExpected(self):
-            c = Controller.ForTesting()
+        def test_MobMovement_ChasesOut_AsOnlyMobInTheRoom_DisplayUpdatesAndMobsInRoomMatchesExpected(self, testController: Controller):
+            c = testController
             c.model.currentMobsInRoom = ['a windfang hatchling']
             v = c.view
 
@@ -114,19 +122,19 @@ class TestProcessQueue():
             assert c.model.currentMobsInRoom == []
 
     class TestPlayerMovement:
-        def test_ClearsMobsInRoomAndHidesMobCountInView(self):
-            c = Controller.ForTesting()
-            
+        def test_ClearsMobsInRoomAndHidesMobCountInView(self, testController: Controller):
+            c = testController
+
             c.receiver.receive("Obvious exits: east, northwest, and a small, smelly hut.")
             with patch.object(c, c.clearCountOfMobsInRoom.__name__) as mockedClear:
                 with patch.object(c, c.updateMobCountDisplay.__name__) as mockedUpdate:
                     c.process_queue()
-            
+
             mockedClear.assert_called_once_with()
             mockedUpdate.assert_called_once_with()
 
-        def test_MobCountUpdated(self):
-            c = Controller.ForTesting()
+        def test_MobCountUpdated(self, testController: Controller):
+            c = testController
 
             c.receiver.receive("Obvious exits: east, northwest, and a small, smelly hut.")
             with patch.object(c, c.updateMobCountDisplay.__name__) as mockedUpdate:
@@ -134,8 +142,8 @@ class TestProcessQueue():
 
             mockedUpdate.assert_called_once_with()
 
-        def test_ClearsSoughtAfterItemsThatDropped(self):
-            c = Controller.ForTesting()
+        def test_ClearsSoughtAfterItemsThatDropped(self, testController: Controller):
+            c = testController
             c.model.SoughtAfterItemsThatDropped = ['A foo bar']
 
             c.receiver.receive("Obvious exits: east, northwest, and a small, smelly hut.")
@@ -145,8 +153,8 @@ class TestProcessQueue():
             mockedClear.assert_called_once_with()
 
     class TestModelUpdates:
-        def test_InventoryCommand__THEN__EquipmentCommand_EquippedGearCorrectlyOverwritesAssumedInventoryPositions(self):
-            expectedEG = EquippedGear(head=Item("A WISPWEAVE spellbinder's crown"),
+        def test_InventoryCommand__THEN__EquipmentCommand_EquippedGearCorrectlyOverwritesAssumedInventoryPositions(self, testController: Controller):
+            expectedEG = Equipment(head=Item("A WISPWEAVE spellbinder's crown"),
                                         jewel1=Item("A mark of vigilance"),
                                         jewel2=Item("A twisted gold torc"),
                                         cloak=Item("A GLOWING worldwalker's cloak"),
@@ -167,7 +175,7 @@ class TestProcessQueue():
                         Item("A scroll of lesser resurrection", quantity=2)]
             expectedInv = Inventory(expectedEG, expectedBackpack)
 
-            c = Controller.ForTesting()
+            c = testController
             inventoryText = """Inventory:
   (w) A WISPWEAVE spellbinder's crown
   (w) A mark of vigilance
@@ -207,8 +215,8 @@ class TestProcessQueue():
             assert c.model.inventory == expectedInv
 
     class TestAffectLabelDisplay:
-        def test_AffectsWithoutDuration_NoDisplayedAffectSpellDropLabel(self):
-            c = Controller.ForTesting()
+        def test_AffectsWithoutDuration_NoDisplayedAffectSpellDropLabel(self, testController: Controller):
+            c = testController
             v = c.view
 
             text = """You are affected by: 
@@ -222,8 +230,8 @@ Bless.II                                                  """
 
             mockedDisplay.assert_not_called()
 
-        def test_AffectsWithDuration_DisplayAffectSpellDropLabel(self):
-            c = Controller.ForTesting()
+        def test_AffectsWithDuration_DisplayAffectSpellDropLabel(self, testController: Controller):
+            c = testController
             v = c.view
 
             text = """You are affected by: 
@@ -242,8 +250,8 @@ Blur.V                         4m 5s                """
             assert 'Blur.V' in argument
 
     class TestAlertingItemDrops:
-        def test_ItemDropsThatIsSoughtAfter_DisplaysDropAlertLabel(self):
-            c = Controller.ForTesting()
+        def test_ItemDropsThatIsSoughtAfter_DisplaysDropAlertLabel(self, testController: Controller):
+            c = testController
             c.model.SoughtAfterItems = set(['a fire root'])
             text = "A simple mob drops a fire root."
 
@@ -257,8 +265,8 @@ Blur.V                         4m 5s                """
 
 
 class TestGrouping:
-    def test_GainNewFollower_NewFollowerAddedToGroupForDisplay(self):
-        c = Controller.ForTesting()
+    def test_GainNewFollower_NewFollowerAddedToGroupForDisplay(self, testController: Controller):
+        c = testController
         c.receiver.receive("""Beautiful's group:
 
 [ Class        Lvl] Status     Name                 Hits               Fat                Power            
@@ -273,8 +281,8 @@ class TestGrouping:
         assert groupCountBeforeNewFollower == 2
         assert groupCountAfterNewFollower == 3
     
-    def test_LoseFollower_FollowerRemovedFromGroupForDisplay(self):
-        c = Controller.ForTesting()
+    def test_LoseFollower_FollowerRemovedFromGroupForDisplay(self, testController: Controller):
+        c = testController
         c.receiver.receive("""Beautiful's group:
 
 [ Class        Lvl] Status     Name                 Hits               Fat                Power            
@@ -291,8 +299,8 @@ class TestGrouping:
         assert groupCountBeforeLosingFollower == 3
         assert groupCountAfterLosingFollower == 2
     
-    def test_GainNewFollowerAndLoseFollower_WithoutInvokingGroupCommand_CountsCorrectlyForAdditionAndRemoval(self):        
-        c = Controller.ForTesting()
+    def test_GainNewFollowerAndLoseFollower_WithoutInvokingGroupCommand_CountsCorrectlyForAdditionAndRemoval(self, testController: Controller):
+        c = testController
         c.receiver.receive("""Beautiful's group:
 
 [ Class        Lvl] Status     Name                 Hits               Fat                Power            
@@ -313,8 +321,8 @@ class TestGrouping:
         assert groupCountAfterNewFollower == 3
         assert groupCountAfterLosingFollower == 2
 
-    def test_FollowedByTwoIdenticallyDisguisedCharacters_BothAddedToGroupForDisplay(self):
-        c = Controller.ForTesting()
+    def test_FollowedByTwoIdenticallyDisguisedCharacters_BothAddedToGroupForDisplay(self, testController: Controller):
+        c = testController
         c.receiver.receive("""Beautiful's group:
 
 [ Class        Lvl] Status     Name                 Hits               Fat                Power            
@@ -334,8 +342,8 @@ class TestGrouping:
         assert groupCountAfterFirstFollower == 2
         assert groupCountAfterSecondFollower == 3    
 
-    def test_GroupMemberZeroed_DisplaysZeroedFormatting(self):
-        c = Controller.ForTesting()
+    def test_GroupMemberZeroed_DisplaysZeroedFormatting(self, testController: Controller):
+        c = testController
         c.receiver.receive("""Foo's group:
 [ Class        Lvl] Status     Name                 Hits               Fat                Power            
 [Bar            01]            Foo                 1/ 500 (  0%)      497/ 500 ( 99%)    592/ 707 ( 83%)   """)
@@ -346,8 +354,8 @@ class TestGrouping:
 
         assert HealthTagger.HealthLevels.ZEROED.value in healthTags
     
-    def test_GroupMemberInRedHealth_DisplaysRedHealthFormatting(self):
-        c = Controller.ForTesting()
+    def test_GroupMemberInRedHealth_DisplaysRedHealthFormatting(self, testController: Controller):
+        c = testController
         c.receiver.receive("[Bar            01]            Foo                 25/ 100 (  0%)      497/ 500 ( 99%)    592/ 707 ( 83%)   """)
         c.view.update_gui()
         member = c.view.groupTreeview.get_children()[0]
@@ -356,8 +364,8 @@ class TestGrouping:
 
         assert HealthTagger.HealthLevels.AT_OR_BELOW_25.value in healthTags
 
-    def test_GroupMemberInYellowHealth_DisplaysYellowHealthFormatting(self):
-        c = Controller.ForTesting()
+    def test_GroupMemberInYellowHealth_DisplaysYellowHealthFormatting(self, testController: Controller):
+        c = testController
         c.receiver.receive("[Bar            01]            Foo                 50/ 100 (  0%)      497/ 500 ( 99%)    592/ 707 ( 83%)   ")
         c.view.update_gui()
         member = c.view.groupTreeview.get_children()[0]
@@ -366,8 +374,8 @@ class TestGrouping:
 
         assert HealthTagger.HealthLevels.AT_OR_BELOW_50.value in healthTags
     
-    def test_GroupMemberInGoodHealth_DisplaysNoHealthFormatting(self):
-        c = Controller.ForTesting()
+    def test_GroupMemberInGoodHealth_DisplaysNoHealthFormatting(self, testController: Controller):
+        c = testController
         c.receiver.receive("[Bar            01]            Foo                 51/ 100 (  0%)      497/ 500 ( 99%)    592/ 707 ( 83%)   ")
         c.view.update_gui()
         member = c.view.groupTreeview.get_children()[0]
@@ -376,16 +384,16 @@ class TestGrouping:
 
         assert HealthTagger.HealthLevels.HEALTHY.value in healthTags
 
-    def test_UngroupedCharacterGainsNewFollower_NewFollowerAddedToLatestGroupData(self):
-        c = Controller.ForTesting()
+    def test_UngroupedCharacterGainsNewFollower_NewFollowerAddedToLatestGroupData(self, testController: Controller):
+        c = testController
 
         c.receiver.receive("FooBar follows you")
         c.process_queue()
 
         assert c.gameSession.group.Count == 1
 
-    def test_LeaderGainsNewFollower_NewFollowerAddedToLatestGroupData(self):
-        c = Controller.ForTesting()
+    def test_LeaderGainsNewFollower_NewFollowerAddedToLatestGroupData(self, testController: Controller):
+        c = testController
         groupCommandText = """Beautiful's group:
 
 [ Class        Lvl] Status     Name                 Hits               Fat                Power            
@@ -402,8 +410,8 @@ class TestGrouping:
         assert groupCountBeforeNewFollower == 2
         assert c.gameSession.group.Count == 3
 
-    def test_LeavingGroup_ClearsLatestGroupData(self):
-        c = Controller.ForTesting()
+    def test_LeavingGroup_ClearsLatestGroupData(self, testController: Controller):
+        c = testController
         
         groupCommandText = """Foo's group:
 
@@ -423,8 +431,8 @@ class TestGrouping:
         assert groupCountWhileMemberOfGroup == 2
         assert c.gameSession.group.Count == 0
     
-    def test_nonGroupLeaderLeavesGroup_IsRemovedFromLatestGroupData(self):
-        c = Controller.ForTesting()
+    def test_nonGroupLeaderLeavesGroup_IsRemovedFromLatestGroupData(self, testController: Controller):
+        c = testController
 
         groupText = """Foo's group:
 
@@ -444,8 +452,8 @@ class TestGrouping:
         assert initialGroupSize == 3
         assert c.gameSession.group.Count == 2
     
-    def test_IncludeMobsInGroup_MobsDisplayInGroupDisplay(self):
-        c = Controller.ForTesting()
+    def test_IncludeMobsInGroup_MobsDisplayInGroupDisplay(self, testController: Controller):
+        c = testController
         c.model.includePetsInGroup = True
         text = """Beautiful's group:
 
@@ -460,8 +468,8 @@ class TestGrouping:
         assert c.gameSession.group.Count == 2
 
 class TestDisplayingCentralColumnLabelInView:
-    def test_DisplayAfkLabel(self):
-        c = Controller.ForTesting()
+    def test_DisplayAfkLabel(self, testController: Controller):
+        c = testController
         v = c.view
         c.receiver.receive(Parser.AfkStatus.BeginAfk.value)
         c.process_queue()
@@ -471,8 +479,8 @@ class TestDisplayingCentralColumnLabelInView:
 
         mockedMethod.assert_called_once_with()
     
-    def test_HideAfkLabel(self):
-        c = Controller.ForTesting()
+    def test_HideAfkLabel(self, testController: Controller):
+        c = testController
         v = c.view
         c.receiver.receive(Parser.AfkStatus.EndAfk.value)
         c.process_queue()
@@ -482,8 +490,8 @@ class TestDisplayingCentralColumnLabelInView:
 
         mockedMethod.assert_called_once_with()
 
-    def test_BeginMeditating_MeditationLabelDisplayedInView(self):
-        c = Controller.ForTesting()
+    def test_BeginMeditating_MeditationLabelDisplayedInView(self, testController: Controller):
+        c = testController
         v = c.view
         c.receiver.receive(Parser.MeditationState.Begin.value)
         c.process_queue()
@@ -495,8 +503,8 @@ class TestDisplayingCentralColumnLabelInView:
 
     @pytest.mark.parametrize("input_line", [Parser.MeditationState.Termination_ByStanding.value, Parser.MeditationState.Termination_ByInterruption.value],
                                         ids=['VoluntaryTermination', 'NonVoluntaryTermination'])
-    def test_StopMeditating_MeditationLabelHiddenInView(self, input_line):
-        c = Controller.ForTesting()
+    def test_StopMeditating_MeditationLabelHiddenInView(self, input_line, testController):
+        c = testController
         v = c.view
         c.receiver.receive(input_line)
         c.process_queue()
@@ -506,8 +514,8 @@ class TestDisplayingCentralColumnLabelInView:
 
         mockedMethod.assert_called_once_with()
 
-    def test_MeditationNotAffectedByNonMeditationInput_NeitherDisplayNorHideInvoked(self):
-        c = Controller.ForTesting()
+    def test_MeditationNotAffectedByNonMeditationInput_NeitherDisplayNorHideInvoked(self, testController: Controller):
+        c = testController
         v = c.view
         c.receiver.receive("Any text not relating to meditation.")
 
@@ -520,8 +528,8 @@ class TestDisplayingCentralColumnLabelInView:
         mockedDisplay.assert_not_called()
         mockedHide.assert_not_called()
 
-    def test_MeditationRegenValueChanges_ObserverNotified(self):
-        c = Controller.ForTesting()
+    def test_MeditationRegenValueChanges_ObserverNotified(self, testController: Controller):
+        c = testController
         c.receiver.receive(Parser.MeditationState.Begin.value)
         c.process_queue()
         md = c.model.meditationDisplay
@@ -529,8 +537,8 @@ class TestDisplayingCentralColumnLabelInView:
             mockedDuration.return_value = 40
 
 
-    def test_BeginHiding_HideLabelDisplayedInView(self):
-        c = Controller.ForTesting()
+    def test_BeginHiding_HideLabelDisplayedInView(self, testController: Controller):
+        c = testController
         v = c.view
         c.receiver.receive(Parser.HideStatus.Begin.value)
         c.process_queue()
@@ -540,8 +548,8 @@ class TestDisplayingCentralColumnLabelInView:
 
         mockedMethod.assert_called_once_with()
 
-    def test_StopHiding_HideLabelHiddenInView(self):
-        c = Controller.ForTesting()
+    def test_StopHiding_HideLabelHiddenInView(self, testController: Controller):
+        c = testController
         v = c.view
         c.receiver.receive(Parser.HideStatus.EndHiding.value)
         c.process_queue()
@@ -551,8 +559,8 @@ class TestDisplayingCentralColumnLabelInView:
 
         mockedMethod.assert_called_once_with()
     
-    def test_HidingNotAffectedByNonHidingInput_NeitherDisplayNorHideInvoked(self):
-        c = Controller.ForTesting()
+    def test_HidingNotAffectedByNonHidingInput_NeitherDisplayNorHideInvoked(self, testController: Controller):
+        c = testController
         v = c.view
         c.receiver.receive("Any text not relating to hiding.")
         c.process_queue()
@@ -560,35 +568,35 @@ class TestDisplayingCentralColumnLabelInView:
         with patch.object(v, v.displayHidingLabel.__name__) as mockedDisplay:
             with patch.object(v, v.hideHidingLabel.__name__) as mockedHide:
                 v.update_gui()
-        
+
         mockedDisplay.assert_not_called()
         mockedHide.assert_not_called()
 
 class TestIgnoredMobsInRoom:
-    def test_UpdatingIgnoredMobsPets_WithCsvIncludingWhitespace_WhitespaceTrimmedAndNotIncludedInModel(self):
-        c = Controller.ForTesting()
+    def test_UpdatingIgnoredMobsPets_WithCsvIncludingWhitespace_WhitespaceTrimmedAndNotIncludedInModel(self, testController: Controller):
+        c = testController
         c.updateIgnoredMobsPets(' foo, bar ,baz ')
 
         assert c.model.ignoreTheseMobsInCurrentRoom == ['foo', 'bar', 'baz']
 
-    def test_UpdatingIgnoredMobsPets_WithEmptyInput_ClearsIgnoredMobs(self):
-        c = Controller.ForTesting()
+    def test_UpdatingIgnoredMobsPets_WithEmptyInput_ClearsIgnoredMobs(self, testController: Controller):
+        c = testController
         c.updateIgnoredMobsPets('foo,bar,baz')
 
         c.updateIgnoredMobsPets('')
-        
+
         assert c.model.ignoreTheseMobsInCurrentRoom == []
 
-    def test_UpdatingIgnoredMobsPets_WhenDifferentCsvMobsEntered_ClearsOldValuesLeavingOnlyNew(self):
-        c = Controller.ForTesting()
+    def test_UpdatingIgnoredMobsPets_WhenDifferentCsvMobsEntered_ClearsOldValuesLeavingOnlyNew(self, testController: Controller):
+        c = testController
         c.updateIgnoredMobsPets('foo,bar,baz')
-        
+
         c.updateIgnoredMobsPets('a, b, c, d')
 
         assert c.model.ignoreTheseMobsInCurrentRoom == ['a', 'b', 'c', 'd']
 
-    def test_InvokingUpdateMobsInRoom_WhenCurrentRoomHasMobListedInIgnoredMobs__RemovesMobFromCurrentRoomMobsOnModel(self):
-        c = Controller.ForTesting()
+    def test_InvokingUpdateMobsInRoom_WhenCurrentRoomHasMobListedInIgnoredMobs__RemovesMobFromCurrentRoomMobsOnModel(self, testController: Controller):
+        c = testController
         c.model.currentMobsInRoom = ['a foo', 'a bar', 'a baz']
         c.updateIgnoredMobsPets('a foo')
 
@@ -596,8 +604,8 @@ class TestIgnoredMobsInRoom:
 
         assert c.model.currentMobsInRoom == ['a bar', 'a baz']
 
-    def test_ClearingCountOfMobsInRoom_ReflectedInModel(self):
-        c = Controller.ForTesting()
+    def test_ClearingCountOfMobsInRoom_ReflectedInModel(self, testController: Controller):
+        c = testController
         c.model.currentMobsInRoom = ['a foo', 'a bar', 'a baz']
 
         c.clearCountOfMobsInRoom()
@@ -605,40 +613,40 @@ class TestIgnoredMobsInRoom:
         assert c.model.currentMobsInRoom == []
 
 class TestSettings:
-    def test_ApplySettings_WhenSettingsFileIsMissingAKey_FallbackValueIsUsed_OpenNotInvokedToWriteFile(self):
-        c = Controller.ForTesting()
+    def test_ApplySettings_WhenSettingsFileIsMissingAKey_FallbackValueIsUsed_OpenNotInvokedToWriteFile(self, testController: Controller):
+        c = testController
 
         with patch('builtins.open', new_callable=unittest.mock.mock_open()) as mockedOpen:
             c.applySettings(configParser=configparser.ConfigParser())
-        
+
         mockedOpen.assert_not_called()
-    
-    def test_SaveSettings_OpenInvoked(self):
-        c = Controller.ForTesting()
+
+    def test_SaveSettings_OpenInvoked(self, testController: Controller):
+        c = testController
 
         with patch('builtins.open', new_callable=unittest.mock.mock_open()) as mockedOpen:
             c.saveSettings()
         
         mockedOpen.assert_called_once_with(unittest.mock.ANY, 'w')
 
-    def test_LoadSettings_AppliesMobPetIgnore(self):
-        c = Controller.ForTesting()
+    def test_LoadSettings_AppliesMobPetIgnore(self, testController: Controller):
+        c = testController
         cp = configparser.ConfigParser()
         cp.add_section(c._VIEW_SETTINGS)
         cp.add_section(c._APP_SETTINGS)
         cp[c._VIEW_SETTINGS][c._IGNORED_MOB_PETS_CSV__OPTION] = 'foo, bar, baz'
-        
+
         with patch.object(c, c.updateIgnoredMobsPets.__name__) as mockedUpdateIgnoredMobsPets:
             with patch('builtins.open', new_callable=unittest.mock.mock_open()) as mockedOpen:
                 c.applySettings(cp)
-        
+
         mockedOpen.assert_not_called()
         mockedUpdateIgnoredMobsPets.assert_called_once_with('foo, bar, baz')
 
 class TestCheckInvasionSupplies:
-    def test_HavingEqualItemInSupplyList_NoEntries(self):
-        c = Controller.ForTesting()
-        inventory = Inventory(EquippedGear(),
+    def test_HavingEqualItemInSupplyList_NoEntries(self, testController: Controller):
+        c = testController
+        inventory = Inventory(Equipment(),
                       [Parser.parseQuantityItem("(2) A darkspawned black fish fillet")])
         supplyText = "( 2) A darkspawned black fish fillet"
 
@@ -647,9 +655,9 @@ class TestCheckInvasionSupplies:
 
         assert len(items) == 0
 
-    def test_HavingLessThanItemInSupplyList_ReturnsMissingQuantity(self):
-        c = Controller.ForTesting()
-        inventory = Inventory(EquippedGear(),
+    def test_HavingLessThanItemInSupplyList_ReturnsMissingQuantity(self, testController: Controller):
+        c = testController
+        inventory = Inventory(Equipment(),
                       [Parser.parseQuantityItem("(1) A darkspawned black fish fillet")])
         supplyText = "( 2) A darkspawned black fish fillet"
 
@@ -660,9 +668,9 @@ class TestCheckInvasionSupplies:
         assert items[0].Name == "A darkspawned black fish fillet"
         assert items[0].Quantity == 1
 
-    def test_HavingMoreThanItemInSupplyList_NoEntries(self):
-        c = Controller.ForTesting()
-        inventory = Inventory(EquippedGear(),
+    def test_HavingMoreThanItemInSupplyList_NoEntries(self, testController: Controller):
+        c = testController
+        inventory = Inventory(Equipment(),
                       [Parser.parseQuantityItem("(5) A darkspawned black fish fillet")])
         supplyText = "( 2) A darkspawned black fish fillet"
 
@@ -671,9 +679,9 @@ class TestCheckInvasionSupplies:
 
         assert len(items) == 0
 
-    def test_NotHavingItemInSupplyList_ReturnsItemAndQuantityFromSupplyList(self):
-        c = Controller.ForTesting()
-        inventory = Inventory(EquippedGear(),
+    def test_NotHavingItemInSupplyList_ReturnsItemAndQuantityFromSupplyList(self, testController: Controller):
+        c = testController
+        inventory = Inventory(Equipment(),
                       [Parser.parseQuantityItem("(3) A darkspawned black fish fillet")])
         supplyText = "( 2) A goblet of zombie blood"
 
@@ -684,14 +692,14 @@ class TestCheckInvasionSupplies:
         assert items[0].Name == "A goblet of zombie blood"
         assert items[0].Quantity == 2
 
-    def test_AlreadyHaveSomeItems_LackingSomeOnSupplyList_ReturnsOnlyMissingItemsAndTheirQuantities(self):
-        c = Controller.ForTesting()
+    def test_AlreadyHaveSomeItems_LackingSomeOnSupplyList_ReturnsOnlyMissingItemsAndTheirQuantities(self, testController: Controller):
+        c = testController
         backpack = [Parser.parseQuantityItem("( 2) A goblet of zombie blood"),
                     Parser.parseQuantityItem("( 4) A darkspawned blackened fish fillet"),
                     Parser.parseQuantityItem("( 2) A bunch of restorative roots"),
                     Parser.parseQuantityItem("( 2) A ticket to Arnak's Plague"),
                     Parser.parseQuantityItem("( 6) A scroll of minor resurrection")]
-        inventory = Inventory(EquippedGear(), backpack)
+        inventory = Inventory(Equipment(), backpack)
         supplyText = """( 9) A goblet of zombie blood
 ( 3) A darkspawned blackened fish fillet
 (15) A bunch of restorative roots
@@ -709,10 +717,10 @@ class TestCheckInvasionSupplies:
         assert items[2].Quantity == 1
 
 class TestSuppliesList:
-    def test_EmptySupplyList_AlertsViewOfEmptySupplyList(self):
-        c = Controller.ForTesting()
+    def test_EmptySupplyList_AlertsViewOfEmptySupplyList(self, testController: Controller):
+        c = testController
         v = c.view
-        inv = Inventory(EquippedGear(), [])
+        inv = Inventory(Equipment(), [])
         with patch.object(v, v.updateMissingSuppliesLabel.__name__) as mockedUpdateLabel:
             c.updateMissingSuppliesLabel("N/A", "", inv)
 
@@ -720,10 +728,10 @@ class TestSuppliesList:
         assert '***' in userHelpfulText
         assert type(userHelpfulText) == str
 
-    def test_EmptyBackpack_AlertsViewThatBackpackIsEmpty(self):
-        c = Controller.ForTesting()
+    def test_EmptyBackpack_AlertsViewThatBackpackIsEmpty(self, testController: Controller):
+        c = testController
         v = c.view
-        inv = Inventory(EquippedGear(), [])
+        inv = Inventory(Equipment(), [])
         with patch.object(v, v.updateMissingSuppliesLabel.__name__) as mockedUpdateLabel:
             c.updateMissingSuppliesLabel("N/A", "( 2) A goblet of zombie blood", inv)
 
@@ -734,34 +742,34 @@ class TestSuppliesList:
     @pytest.mark.parametrize("pvpText, pveText, activeTabIndex", [("( 2) A goblet of zombie blood", "", 0),
                                                             ("", "( 2) A goblet of zombie blood", 1)],
                                                         ids=['PvpSuppliesText', 'PvESuppliesText'])
-    def test_CorrectSuppliesTextPulledFromSuppliesActiveTab(self, pvpText: str, pveText: str, activeTabIndex: int):
-        c = Controller.ForTesting()
+    def test_CorrectSuppliesTextPulledFromSuppliesActiveTab(self, testController: Controller, pvpText: str, pveText: str, activeTabIndex: int):
+        c = testController
         v = c.view
-        c.model.inventory = Inventory(EquippedGear(),
+        c.model.inventory = Inventory(Equipment(),
                                         [Item("Any item to not have an empty backpack.")])
 
         v.pvpSuppliesText.insert('1.0', pvpText) #Index0
         v.pveSuppliesText.insert('1.0', pveText) #Index1
 
         v.suppliesNotebook.select(activeTabIndex)
-        actualText =c.suppliesTextBasedOnActiveTab()
+        actualText =c.suppliesTextFromTab(c.activeTabTextInNotebook(v.suppliesNotebook))
 
         assert actualText == "( 2) A goblet of zombie blood\n"
 
-    def test_TextSuppliesAccessFromUnexpectedTab_RaisesValueError(self):
-        c = Controller.ForTesting()
+    def test_TextSuppliesAccessFromUnexpectedTab_RaisesValueError(self, testController: Controller):
+        c = testController
         v = c.view
         mockedTab = MagicMock()
         mockedTab.return_value = 'UnexpectedTab'
         v.suppliesNotebook.tab = mockedTab
 
         with pytest.raises(ValueError):
-            c.suppliesTextBasedOnActiveTab()
+            c.suppliesTextFromTab(c.activeTabTextInNotebook(v.suppliesNotebook))
 
 class TestApplySettings:
-    def test_IgnoredMobsPetsCsv(self):
+    def test_IgnoredMobsPetsCsv(self, testController: Controller):
         cp = configparser.ConfigParser()
-        c = Controller.ForTesting()
+        c = testController
         cp[c._VIEW_SETTINGS] = {
             c._IGNORED_MOB_PETS_CSV__OPTION: "foo, bar, baz"
         }
@@ -772,10 +780,9 @@ class TestApplySettings:
         assert appliedText == "foo, bar, baz"
         assert c.model.ignoreTheseMobsInCurrentRoom == ['foo', 'bar', 'baz']
 
-
-    def test_PvpSupplies(self):
+    def test_PvpSupplies(self, testController: Controller):
         cp = configparser.ConfigParser()
-        c = Controller.ForTesting()
+        c = testController
         cp[c._VIEW_SETTINGS] = {
             c._PVP_SUPPLIES_TEXT__OPTION: "A safety blanket"
         }
@@ -785,9 +792,9 @@ class TestApplySettings:
 
         assert appliedText == "A safety blanket\n"
 
-    def test_PveSupplies(self):
+    def test_PveSupplies(self, testController: Controller):
         cp = configparser.ConfigParser()
-        c = Controller.ForTesting()
+        c = testController
         cp[c._VIEW_SETTINGS] = {
             c._PVE_SUPPLIES_TEXT__OPTION: "( 2) A goblet of zombie blood"
         }
@@ -797,9 +804,9 @@ class TestApplySettings:
 
         assert appliedText == "( 2) A goblet of zombie blood\n"
 
-    def test_NotebookTabIdentifierNotFound_GracefullyContinuesUsingDefaultIndex_Zero(self):
+    def test_NotebookTabIdentifierNotFound_GracefullyContinuesUsingDefaultIndex_Zero(self, testController: Controller):
         cp = configparser.ConfigParser()
-        c = Controller.ForTesting()
+        c = testController
         cp[c._VIEW_SETTINGS] = {
             c._ACTIVE_SUPPLIES_TAB__OPTION: "`TclError` producing identifier"
         }
@@ -807,9 +814,9 @@ class TestApplySettings:
         c.applySettings(cp)
         #Gracefully applied settings
 
-    def test_HideDisplayedLabelCallbackTimer(self):
+    def test_HideDisplayedLabelCallbackTimer(self, testController: Controller):
         cp = configparser.ConfigParser()
-        c = Controller.ForTesting()
+        c = testController
         cp[c._VIEW_SETTINGS] = {
             c._HIDE_DISPLAYED_LABEL_CALLBACK_TIMER_IN_MILLISECONDS__OPTION: str(5000)
         }
@@ -818,9 +825,9 @@ class TestApplySettings:
 
         assert c.view.var_hideDisplayedLabelCallbackTimerInMilliseconds.get() == 5000
 
-    def test_AlertForSpellsDropping(self):
+    def test_AlertForSpellsDropping(self, testController: Controller):
         cp = configparser.ConfigParser()
-        c = Controller.ForTesting()
+        c = testController
         cp[c._VIEW_SETTINGS] = {
             c._ALERT_FOR_SPELL_DROPPING_DURATION_IN_MINUTES__OPTION: str(10)
         }
@@ -829,10 +836,59 @@ class TestApplySettings:
 
         assert c.view.var_timeInMinutesToWarnAboutSpellsDropping.get() == 10
 
-    class TestSoughtAfterItems:
-        def test_ZeroLengthString_ModelHasEmptySet(self):
+    class TestWindowPosition:
+        def test_RootPosition(self, testController: Controller):
             cp = configparser.ConfigParser()
-            c = Controller.ForTesting()
+            c = testController
+            cp[c._APP_SETTINGS] = {
+                c._ROOT_WINDOW_POSITION__OPTION: "+1108+856"
+            }
+
+            c.applySettings(cp)
+            actual = c.view.root.geometry()
+
+            assert "+1108+856" in actual
+
+        def test_MiscellaneousSettingsPosition(self, testController: Controller):
+            cp = configparser.ConfigParser()
+            c = testController
+            cp[c._APP_SETTINGS] = {
+                c._MISCELLANEOUS_SETTINGS_WINDOW_POSITION__OPTION: "+1108+856"
+            }
+
+            c.applySettings(cp)
+            actual = c.view._miscellaneousSettings.geometry()
+
+            assert "+1108+856" in actual
+
+        def test_SupplyCheckerPosition(self, testController: Controller):
+            cp = configparser.ConfigParser()
+            c = testController
+            cp[c._APP_SETTINGS] = {
+                c._SUPPLY_CHECKER_WINDOW_POSITION__OPTION: "+1108+856"
+            }
+
+            c.applySettings(cp)
+            actual = c.view._supplyCheckerWindow.geometry()
+
+            assert "+1108+856" in actual
+
+        def test_GearSetPosition(self, testController: Controller):
+            cp = configparser.ConfigParser()
+            c = testController
+            cp[c._APP_SETTINGS] = {
+                c._GEAR_SETS_WINDOW_POSITION__OPTION: "+1108+856"
+            }
+
+            c.applySettings(cp)
+            actual = c.view._gearSetsWindow.geometry()
+
+            assert "+1108+856" in actual
+
+    class TestSoughtAfterItems:
+        def test_ZeroLengthString_ModelHasEmptySet(self, testController: Controller):
+            cp = configparser.ConfigParser()
+            c = testController
             cp[c._VIEW_SETTINGS] = {
                 c._SOUGHT_AFTER_ITEMS__OPTION: ""
             }
@@ -841,9 +897,9 @@ class TestApplySettings:
 
             assert c.model.SoughtAfterItems == set()
 
-        def test_SingleItem_ModelHasSetWithSingleItem(self):
+        def test_SingleItem_ModelHasSetWithSingleItem(self, testController: Controller):
             cp = configparser.ConfigParser()
-            c = Controller.ForTesting()
+            c = testController
             cp[c._VIEW_SETTINGS] = {
                 c._SOUGHT_AFTER_ITEMS__OPTION: "a fire root"
             }
@@ -852,9 +908,9 @@ class TestApplySettings:
 
             assert c.model.SoughtAfterItems == set(['a fire root'])
 
-        def test_SequenceOfCsvValues_AddedToSet(self):
+        def test_SequenceOfCsvValues_AddedToSet(self, testController: Controller):
             cp = configparser.ConfigParser()
-            c = Controller.ForTesting()
+            c = testController
             cp[c._VIEW_SETTINGS] = {
                 c._SOUGHT_AFTER_ITEMS__OPTION: "a fire root, a water root, a spirit root"
             }
@@ -863,9 +919,9 @@ class TestApplySettings:
 
             assert c.model.SoughtAfterItems == set(['a fire root', 'a water root', 'a spirit root'])
 
-        def test_SequenceOfCsvValuesWithWhitespaceBetweenSomeCommas_WhitespaceValuesStrippedOutAndNotAddedToSet(self):
+        def test_SequenceOfCsvValuesWithWhitespaceBetweenSomeCommas_WhitespaceValuesStrippedOutAndNotAddedToSet(self, testController: Controller):
             cp = configparser.ConfigParser()
-            c = Controller.ForTesting()
+            c = testController
             cp[c._VIEW_SETTINGS] = {
                 c._SOUGHT_AFTER_ITEMS__OPTION: "a fire root,, , a water root, , a spirit root, "
             }
@@ -874,15 +930,555 @@ class TestApplySettings:
 
             assert c.model.SoughtAfterItems == set(['a fire root', 'a water root', 'a spirit root'])
 
+    class TestGearSets:
+        def test_LastActiveTabInGearSetsNotebook_RestoredToActiveTab(self, testController: Controller):
+            cp = configparser.ConfigParser()
+            c = testController
+            c.view.gearSetsNotebook.select(1)
+            cp[c._VIEW_SETTINGS] = {
+                c._GEAR_SETS_LAST_ACTIVE_TAB_INDEX__OPTION: c.view.gearSetsNotebook.index(c.view.gearSetsNotebook.select())
+            }
+
+            c.applySettings(cp)
+            actual = c.activeTabTextInNotebook(c.view.gearSetsNotebook)
+
+            assert actual == "PvE"
+        class TestPvpGearSet:
+            def test_PvpGearSetOptionEntry_Head(self, testController: Controller):
+                cp = configparser.ConfigParser()
+                c = testController
+                cp[c._VIEW_SETTINGS] = {
+                    c._PVP_GEAR_SET_HEAD__OPTION: "a helmet",
+                }
+
+                c.applySettings(cp)
+
+                assert c.view.gearSetsPvpHeadEntry.get() == "a helmet"
+
+            def test_PvpGearSetOptionEntry_Jewel1(self, testController: Controller):
+                cp = configparser.ConfigParser()
+                c = testController
+                cp[c._VIEW_SETTINGS] = {
+                    c._PVP_GEAR_SET_JEWEL1__OPTION: "a necklace",
+                }
+
+                c.applySettings(cp)
+
+                assert c.view.gearSetsPvpJewel1Entry.get() == "a necklace"
+
+            def test_PvpGearSetOptionEntry_Jewel2(self, testController: Controller):
+                cp = configparser.ConfigParser()
+                c = testController
+                cp[c._VIEW_SETTINGS] = {
+                    c._PVP_GEAR_SET_JEWEL2__OPTION: "a ring",
+                }
+
+                c.applySettings(cp)
+
+                assert c.view.gearSetsPvpJewel2Entry.get() == "a ring"
+
+            def test_PvpGearSetOptionEntry_Cloak(self, testController: Controller):
+                cp = configparser.ConfigParser()
+                c = testController
+                cp[c._VIEW_SETTINGS] = {
+                    c._PVP_GEAR_SET_CLOAK__OPTION: "a cloak",
+                }
+
+                c.applySettings(cp)
+
+                assert c.view.gearSetsPvpCloakEntry.get() == "a cloak"
+
+            def test_PvpGearSetOptionEntry_Body(self, testController: Controller):
+                cp = configparser.ConfigParser()
+                c = testController
+                cp[c._VIEW_SETTINGS] = {
+                    c._PVP_GEAR_SET_BODY__OPTION: "a robe",
+                }
+
+                c.applySettings(cp)
+
+                assert c.view.gearSetsPvpBodyEntry.get() == "a robe"
+
+            def test_PvpGearSetOptionEntry_Hands(self, testController: Controller):
+                cp = configparser.ConfigParser()
+                c = testController
+                cp[c._VIEW_SETTINGS] = {
+                    c._PVP_GEAR_SET_HANDS__OPTION: "a pair of gloves",
+                }
+
+                c.applySettings(cp)
+
+                assert c.view.gearSetsPvpHandsEntry.get() == "a pair of gloves"
+
+            def test_PvpGearSetOptionEntry_Legs(self, testController: Controller):
+                cp = configparser.ConfigParser()
+                c = testController
+                cp[c._VIEW_SETTINGS] = {
+                    c._PVP_GEAR_SET_LEGS__OPTION: "a pair of pants",
+                }
+
+                c.applySettings(cp)
+
+                assert c.view.gearSetsPvpLegsEntry.get() == "a pair of pants"
+
+            def test_PvpGearSetOptionEntry_Feet(self, testController: Controller):
+                cp = configparser.ConfigParser()
+                c = testController
+                cp[c._VIEW_SETTINGS] = {
+                    c._PVP_GEAR_SET_FEET__OPTION: "a pair of boots",
+                }
+
+                c.applySettings(cp)
+
+                assert c.view.gearSetsPvpFeetEntry.get() == "a pair of boots"
+
+            def test_PvpGearSetOptionEntry_HeldRight(self, testController: Controller):
+                cp = configparser.ConfigParser()
+                c = testController
+                cp[c._VIEW_SETTINGS] = {
+                    c._PVP_GEAR_SET_HELD_RIGHT__OPTION: "a sword",
+                }
+
+                c.applySettings(cp)
+
+                assert c.view.gearSetsPvpHeldRightEntry.get() == "a sword"
+
+            def test_PvpGearSetOptionEntry_HeldLeft(self, testController: Controller):
+                cp = configparser.ConfigParser()
+                c = testController
+                cp[c._VIEW_SETTINGS] = {
+                    c._PVP_GEAR_SET_HELD_LEFT__OPTION: "a shield",
+                }
+
+                c.applySettings(cp)
+
+                assert c.view.gearSetsPvpHeldLeftEntry.get() == "a shield"
+
+        class TestPveGearSet:
+            def test_PveGearSetOptionEntry_Head(self, testController: Controller):
+                cp = configparser.ConfigParser()
+                c = testController
+                cp[c._VIEW_SETTINGS] = {
+                    c._PVE_GEAR_SET_HEAD__OPTION: "a helmet",
+                }
+
+                c.applySettings(cp)
+
+                assert c.view.gearSetsPveHeadEntry.get() == "a helmet"
+
+            def test_PveGearSetOptionEntry_Jewel1(self, testController: Controller):
+                cp = configparser.ConfigParser()
+                c = testController
+                cp[c._VIEW_SETTINGS] = {
+                    c._PVE_GEAR_SET_JEWEL1__OPTION: "a necklace",
+                }
+
+                c.applySettings(cp)
+
+                assert c.view.gearSetsPveJewel1Entry.get() == "a necklace"
+
+            def test_PveGearSetOptionEntry_Jewel2(self, testController: Controller):
+                cp = configparser.ConfigParser()
+                c = testController
+                cp[c._VIEW_SETTINGS] = {
+                    c._PVE_GEAR_SET_JEWEL2__OPTION: "a ring",
+                }
+
+                c.applySettings(cp)
+
+                assert c.view.gearSetsPveJewel2Entry.get() == "a ring"
+
+            def test_PveGearSetOptionEntry_Cloak(self, testController: Controller):
+                cp = configparser.ConfigParser()
+                c = testController
+                cp[c._VIEW_SETTINGS] = {
+                    c._PVE_GEAR_SET_CLOAK__OPTION: "a cloak",
+                }
+
+                c.applySettings(cp)
+
+                assert c.view.gearSetsPveCloakEntry.get() == "a cloak"
+
+            def test_PveGearSetOptionEntry_Body(self, testController: Controller):
+                cp = configparser.ConfigParser()
+                c = testController
+                cp[c._VIEW_SETTINGS] = {
+                    c._PVE_GEAR_SET_BODY__OPTION: "a robe",
+                }
+
+                c.applySettings(cp)
+
+                assert c.view.gearSetsPveBodyEntry.get() == "a robe"
+
+            def test_PveGearSetOptionEntry_Hands(self, testController: Controller):
+                cp = configparser.ConfigParser()
+                c = testController
+                cp[c._VIEW_SETTINGS] = {
+                    c._PVE_GEAR_SET_HANDS__OPTION: "a pair of gloves",
+                }
+
+                c.applySettings(cp)
+
+                assert c.view.gearSetsPveHandsEntry.get() == "a pair of gloves"
+
+            def test_PveGearSetOptionEntry_Legs(self, testController: Controller):
+                cp = configparser.ConfigParser()
+                c = testController
+                cp[c._VIEW_SETTINGS] = {
+                    c._PVE_GEAR_SET_LEGS__OPTION: "a pair of pants",
+                }
+
+                c.applySettings(cp)
+
+                assert c.view.gearSetsPveLegsEntry.get() == "a pair of pants"
+
+            def test_PveGearSetOptionEntry_Feet(self, testController: Controller):
+                cp = configparser.ConfigParser()
+                c = testController
+                cp[c._VIEW_SETTINGS] = {
+                    c._PVE_GEAR_SET_FEET__OPTION: "a pair of boots",
+                }
+
+                c.applySettings(cp)
+
+                assert c.view.gearSetsPveFeetEntry.get() == "a pair of boots"
+
+            def test_PveGearSetOptionEntry_HeldRight(self, testController: Controller):
+                cp = configparser.ConfigParser()
+                c = testController
+                cp[c._VIEW_SETTINGS] = {
+                    c._PVE_GEAR_SET_HELD_RIGHT__OPTION: "a sword",
+                }
+
+                c.applySettings(cp)
+
+                assert c.view.gearSetsPveHeldRightEntry.get() == "a sword"
+
+            def test_PveGearSetOptionEntry_HeldLeft(self, testController: Controller):
+                cp = configparser.ConfigParser()
+                c = testController
+                cp[c._VIEW_SETTINGS] = {
+                    c._PVE_GEAR_SET_HELD_LEFT__OPTION: "a shield",
+                }
+
+                c.applySettings(cp)
+
+                assert c.view.gearSetsPveHeldLeftEntry.get() == "a shield"
+
 class TestIsLookingForItem:
-    def test_ItemInModel_ReturnsTrue(self):
-        c = Controller.ForTesting()
+    def test_ItemInModel_ReturnsTrue(self, testController: Controller):
+        c = testController
         c.model.SoughtAfterItems = set(['A darkspawned blackened fish fillet'])
 
         assert c.IsLookingForItem('A darkspawned blackened fish fillet')
 
-    def test_ItemNotInModel_ReturnsFalse(self):
-        c = Controller.ForTesting()
+    def test_ItemNotInModel_ReturnsFalse(self, testController: Controller):
+        c = testController
         c.model.SoughtAfterItems = set(['A darkspawned blackened fish fillet'])
 
         assert not c.IsLookingForItem('A goblet of zombie blood')
+
+class TestGearSets:
+    class TestBankWithdrawalText:
+        def test_gearSetWithNoEntriesFilled_DisplaysMessageBoxToUser(self, testController: Controller):
+            c = testController
+            text: str
+            with patch.object(tkinter.messagebox, tkinter.messagebox.showinfo.__name__) as mockedShowInfo:
+                text =c.gearSetBankWidthdrawalTextFromActiveGearSetTab()
+
+            assert text == ''
+            mockedShowInfo.assert_called()
+
+        def test_gearSetWithAllEntriesFilled_CreatesWithdrawalText(self, testController: Controller):
+            expected = 'withdraw ' + ', withdraw '.join(["a wispweave spellbinder's crown",
+                                                        "a mark of vigilance",
+                                                        "a twisted gold torc",
+                                                        "a glowing worldwalker's cloak",
+                                                        "a gossamer noble's gleaming raiment of evasion",
+                                                        "a gossamer noble's gleaming gloves of intelligence",
+                                                        "a glowing gossamer hierophant's legwraps",
+                                                        "a glowing wispweave dragon-wing boots",
+                                                        "a bright jeweled greatsword of the phoenix"])
+
+            c = testController
+            v = c.view
+
+            #deliberate use of non-default index to avoid false positive
+            v.gearSetsNotebook.select(0)
+            v.gearSetsPvpHeadEntry.insert(0, "A WISPWEAVE spellbinder's crown")
+            v.gearSetsPvpJewel1Entry.insert(0, "A mark of vigilance")
+            v.gearSetsPvpJewel2Entry.insert(0, "A twisted gold torc")
+            v.gearSetsPvpCloakEntry.insert(0, "A GLOWING worldwalker's cloak")
+            v.gearSetsPvpBodyEntry.insert(0, "a GOSSAMER noble's gleaming raiment of evasion")
+            v.gearSetsPvpHandsEntry.insert(0, "A GOSSAMER noble's gleaming gloves of intelligence")
+            v.gearSetsPvpLegsEntry.insert(0, "A GLOWING GOSSAMER hierophant's legwraps")
+            v.gearSetsPvpFeetEntry.insert(0, "A GLOWING WISPWEAVE dragon-wing boots")
+            v.gearSetsPvpHeldRightEntry.insert(0, "A bright jeweled greatsword of the phoenix")
+            v.gearSetsPvpHeldLeftEntry.insert(0, "A bright jeweled greatsword of the phoenix")
+
+            actualText = c.gearSetBankWidthdrawalTextFromActiveGearSetTab()
+            assert actualText == expected
+
+        def test_gearSetWithSomeEntriesFilled_CreatesWithdrawalTextWithOnlyFilledEntries(self, testController: Controller):
+            expected = 'withdraw ' + ', withdraw '.join(["a wispweave spellbinder's crown",
+                                                        "a gossamer noble's gleaming gloves of intelligence",
+                                                        "a glowing wispweave dragon-wing boots"])
+
+            c = testController
+            v = c.view
+
+            #deliberate use of non-default index to avoid false positive
+            v.gearSetsNotebook.select(0)
+            v.gearSetsPvpHeadEntry.insert(0, "A WISPWEAVE spellbinder's crown")
+            v.gearSetsPvpHandsEntry.insert(0, "A GOSSAMER noble's gleaming gloves of intelligence")
+            v.gearSetsPvpFeetEntry.insert(0, "A GLOWING WISPWEAVE dragon-wing boots")
+
+            actualText = c.gearSetBankWidthdrawalTextFromActiveGearSetTab()
+            assert actualText == expected
+
+    class TestCopyingPastedEquipmentTextToEntryInputs:
+        def test_NothingPastedIntoText_DisplaysMessageBoxToUser(self, testController: Controller):
+            c = testController
+
+            with patch.object(tkinter.messagebox, tkinter.messagebox.showinfo.__name__) as mockedShowInfo:
+                c.copyPastedGearSetTextToActiveTabEntries('')
+
+            argument = mockedShowInfo.mock_calls[0].args[0]
+
+            assert argument == "No pasted text"
+
+        def test_NothingEquipped_DisplaysMessageBoxToUser(self, testController: Controller):
+            c = testController
+            text = """     On Head:  nothing
+    On Jewel:  nothing
+    On Jewel:  nothing
+    On Cloak:  nothing
+     On Body:  nothing
+    On Hands:  nothing
+     On Legs:  nothing
+     On Feet:  nothing
+  Held Right:  nothing
+   Held Left:  nothing"""
+
+            with patch.object(tkinter.messagebox, tkinter.messagebox.showinfo.__name__) as mockedShowInfo:
+                c.copyPastedGearSetTextToActiveTabEntries(text)
+
+            argument = mockedShowInfo.mock_calls[0].args[0]
+
+            assert argument == "No gear worn"
+
+        @pytest.mark.parametrize('clearMethod, tabIndex', [(Controller.ForTesting().view.clearPveSetEntries, 1),
+                                                           (Controller.ForTesting().view.clearPvpSetEntries, 0)],
+                                                ids=['PveTab', 'PvpTab'])
+        def test_PriorEntriesCleared_BeforeCopyingPastedTextToEntries(self, testController, clearMethod, tabIndex):
+            c = testController
+            text = """     On Cloak:  A valid cloak"""
+
+            c.view.gearSetsNotebook.select(tabIndex)
+            with patch.object(c.view, clearMethod.__name__) as mockedClearMethod:
+                c.copyPastedGearSetTextToActiveTabEntries(text)
+
+            mockedClearMethod.assert_called_once()
+
+        def test_SomeGearEquipped_PastedIntoCorrespondingInput(self, testController: Controller):
+            c = testController
+            text = """     On Head:  nothing
+    On Jewel:  nothing
+    On Jewel:  A rag doll
+    On Cloak:  nothing
+     On Body:  nothing
+    On Hands:  nothing
+     On Legs:  Leggings of the Quackhead
+     On Feet:  nothing
+  Held Right:  nothing
+   Held Left:  nothing"""
+
+            c.view.gearSetsNotebook.select(1)
+            c.copyPastedGearSetTextToActiveTabEntries(text)
+
+            assert c.view.gearSetsPveJewel1Entry.get() == "A rag doll"
+            assert c.view.gearSetsPveLegsEntry.get() == "Leggings of the Quackhead"
+
+        def test_FullGearSetEquipped_AllPastedIntoCorrespondingInputs(self, testController: Controller):
+            c = testController
+            text = """     On Head:  hat
+    On Jewel:  necklace
+    On Jewel:  secondNecklace
+    On Cloak:  cloak
+     On Body:  shirt
+    On Hands:  gloves
+     On Legs:  pants
+     On Feet:  shoes
+  Held Right:  knife
+   Held Left:  shield"""
+
+            c.view.gearSetsNotebook.select(1)
+            c.copyPastedGearSetTextToActiveTabEntries(text)
+
+            assert c.view.gearSetsPveHeadEntry.get() == "hat"
+            assert c.view.gearSetsPveJewel1Entry.get() == "necklace"
+            assert c.view.gearSetsPveJewel2Entry.get() == "secondNecklace"
+            assert c.view.gearSetsPveCloakEntry.get() == "cloak"
+            assert c.view.gearSetsPveBodyEntry.get() == "shirt"
+            assert c.view.gearSetsPveHandsEntry.get() == "gloves"
+            assert c.view.gearSetsPveLegsEntry.get() == "pants"
+            assert c.view.gearSetsPveFeetEntry.get() == "shoes"
+            assert c.view.gearSetsPveHeldRightEntry.get() == "knife"
+            assert c.view.gearSetsPveHeldLeftEntry.get() == "shield"
+
+    class TestClearingGearSetEntries:
+        def test_PveSetsLeavesInputsEmpty(self, testController: Controller):
+            c = testController
+            v = c.view
+
+            v.gearSetsNotebook.select(1)
+            v.gearSetsPveHeadEntry.insert(0, "Any")
+            v.gearSetsPveJewel1Entry.insert(0, "text")
+            v.gearSetsPveJewel2Entry.insert(0, "to")
+            v.gearSetsPveCloakEntry.insert(0, "test")
+            v.gearSetsPveBodyEntry.insert(0, "clearing")
+            v.gearSetsPveHandsEntry.insert(0, "the")
+            v.gearSetsPveLegsEntry.insert(0, "gear")
+            v.gearSetsPveFeetEntry.insert(0, "set")
+            v.gearSetsPveHeldRightEntry.insert(0, "input")
+            v.gearSetsPveHeldLeftEntry.insert(0, "fields")
+
+            c.clearGearSetEntriesOnActiveTab()
+
+            assert v.gearSetsPveHeadEntry.get() == ""
+            assert v.gearSetsPveJewel1Entry.get() == ""
+            assert v.gearSetsPveJewel2Entry.get() == ""
+            assert v.gearSetsPveCloakEntry.get() == ""
+            assert v.gearSetsPveBodyEntry.get() == ""
+            assert v.gearSetsPveHandsEntry.get() == ""
+            assert v.gearSetsPveLegsEntry.get() == ""
+            assert v.gearSetsPveFeetEntry.get() == ""
+            assert v.gearSetsPveHeldRightEntry.get() == ""
+            assert v.gearSetsPveHeldLeftEntry.get() == ""
+
+        def test_PvpSetsLeavesInputsEmpty(self, testController: Controller):
+            c = testController
+            v = c.view
+
+            v.gearSetsNotebook.select(0)
+            v.gearSetsPvpHeadEntry.insert(0, "Any")
+            v.gearSetsPvpJewel1Entry.insert(0, "text")
+            v.gearSetsPvpJewel2Entry.insert(0, "to")
+            v.gearSetsPvpCloakEntry.insert(0, "test")
+            v.gearSetsPvpBodyEntry.insert(0, "clearing")
+            v.gearSetsPvpHandsEntry.insert(0, "the")
+            v.gearSetsPvpLegsEntry.insert(0, "gear")
+            v.gearSetsPvpFeetEntry.insert(0, "set")
+            v.gearSetsPvpHeldRightEntry.insert(0, "input")
+            v.gearSetsPvpHeldLeftEntry.insert(0, "fields")
+
+            c.clearGearSetEntriesOnActiveTab()
+
+            assert v.gearSetsPvpHeadEntry.get() == ""
+            assert v.gearSetsPvpJewel1Entry.get() == ""
+            assert v.gearSetsPvpJewel2Entry.get() == ""
+            assert v.gearSetsPvpCloakEntry.get() == ""
+            assert v.gearSetsPvpBodyEntry.get() == ""
+            assert v.gearSetsPvpHandsEntry.get() == ""
+            assert v.gearSetsPvpLegsEntry.get() == ""
+            assert v.gearSetsPvpFeetEntry.get() == ""
+            assert v.gearSetsPvpHeldRightEntry.get() == ""
+            assert v.gearSetsPvpHeldLeftEntry.get() == ""
+
+    def test_CopyingPvpGearSetToPve(self, testController: Controller):
+        c = testController
+        v = c.view
+
+        v.gearSetsPvpHeadEntry.insert(0, "hat")
+        v.gearSetsPvpJewel1Entry.insert(0, "necklace")
+        v.gearSetsPvpJewel2Entry.insert(0, "secondNecklace")
+        v.gearSetsPvpCloakEntry.insert(0, "cloak")
+        v.gearSetsPvpBodyEntry.insert(0, "shirt")
+        v.gearSetsPvpHandsEntry.insert(0, "gloves")
+        v.gearSetsPvpLegsEntry.insert(0, "pants")
+        v.gearSetsPvpFeetEntry.insert(0, "shoes")
+        v.gearSetsPvpHeldRightEntry.insert(0, "knife")
+        v.gearSetsPvpHeldLeftEntry.insert(0, "shield")
+
+        c.copyPvpGearSetToPve()
+
+        assert c.view.gearSetsPveHeadEntry.get() == "hat"
+        assert c.view.gearSetsPveJewel1Entry.get() == "necklace"
+        assert c.view.gearSetsPveJewel2Entry.get() == "secondNecklace"
+        assert c.view.gearSetsPveCloakEntry.get() == "cloak"
+        assert c.view.gearSetsPveBodyEntry.get() == "shirt"
+        assert c.view.gearSetsPveHandsEntry.get() == "gloves"
+        assert c.view.gearSetsPveLegsEntry.get() == "pants"
+        assert c.view.gearSetsPveFeetEntry.get() == "shoes"
+        assert c.view.gearSetsPveHeldRightEntry.get() == "knife"
+        assert c.view.gearSetsPveHeldLeftEntry.get() == "shield"
+
+    def test_CopyingPveGearSetToPvp(self, testController: Controller):
+        c = testController
+        v = c.view
+
+        v.gearSetsPveHeadEntry.insert(0, "hat")
+        v.gearSetsPveJewel1Entry.insert(0, "necklace")
+        v.gearSetsPveJewel2Entry.insert(0, "secondNecklace")
+        v.gearSetsPveCloakEntry.insert(0, "cloak")
+        v.gearSetsPveBodyEntry.insert(0, "shirt")
+        v.gearSetsPveHandsEntry.insert(0, "gloves")
+        v.gearSetsPveLegsEntry.insert(0, "pants")
+        v.gearSetsPveFeetEntry.insert(0, "shoes")
+        v.gearSetsPveHeldRightEntry.insert(0, "knife")
+        v.gearSetsPveHeldLeftEntry.insert(0, "shield")
+
+        c.copyPveGearSetToPvp()
+
+        assert c.view.gearSetsPvpHeadEntry.get() == "hat"
+        assert c.view.gearSetsPvpJewel1Entry.get() == "necklace"
+        assert c.view.gearSetsPvpJewel2Entry.get() == "secondNecklace"
+        assert c.view.gearSetsPvpCloakEntry.get() == "cloak"
+        assert c.view.gearSetsPvpBodyEntry.get() == "shirt"
+        assert c.view.gearSetsPvpHandsEntry.get() == "gloves"
+        assert c.view.gearSetsPvpLegsEntry.get() == "pants"
+        assert c.view.gearSetsPvpFeetEntry.get() == "shoes"
+        assert c.view.gearSetsPvpHeldRightEntry.get() == "knife"
+        assert c.view.gearSetsPvpHeldLeftEntry.get() == "shield"
+
+    class TestCheckGearSetAgainstWornItems:
+        def test_NoGearWorn(self, testController: Controller):
+            c = testController
+
+            with patch.object(tkinter.messagebox, tkinter.messagebox.showinfo.__name__) as mockedShowInfo:
+                c.checkGearSet(Equipment(), Equipment())
+
+            mockedShowInfo.assert_called_once()
+
+        def test_NoGearMissingFromGearSet(self, testController: Controller):
+            c = testController
+            v = c.view
+            viewEq = Equipment(Item("hat"))
+            wornEq = Equipment(Item("hat"))
+            with patch.object(v, v.displayMissingGearSetItemsLabel.__name__) as mockedDisplay:
+                c.checkGearSet(viewEq, wornEq)
+
+            mockedDisplay.assert_called_once_with('')
+
+        def test_GearMissingFromGearSet(self, testController: Controller):
+            c = testController
+            v = c.view
+            viewEq = Equipment(Item("hat"), Item("cloak"))
+            wornEq = Equipment(Item("hat"))
+
+            with patch.object(v, v.displayMissingGearSetItemsLabel.__name__) as mockedDisplay:
+                c.checkGearSet(viewEq, wornEq)
+            argument = mockedDisplay.mock_calls[0].args[0]
+
+            assert 'Missing' in argument
+
+        def test_MoreGearWornThanInGearSet_NoMissingGearDisplayed(self, testController: Controller):
+            c = testController
+            v = c.view
+            viewEq = Equipment(Item("hat"))
+            wornEq = Equipment(Item("hat"), Item("cloak"))
+
+            with patch.object(v, v.displayMissingGearSetItemsLabel.__name__) as mockedDisplay:
+                c.checkGearSet(viewEq, wornEq)
+
+            mockedDisplay.assert_called_once_with('')

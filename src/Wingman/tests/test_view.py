@@ -9,7 +9,13 @@ if __name__ == "__main__":
 from Wingman.gui.view import View, SuppliesPaneChangeDirection
 from Wingman.core.controller import Controller
 from Wingman.core.parser import Parser
-from Wingman.core.model import Model
+
+@pytest.fixture
+def testController():
+    c = Controller.ForTesting()
+    yield c
+
+    c.view.root.destroy()
 
 class TestView():
     def test_SettingController(self):
@@ -18,8 +24,8 @@ class TestView():
         assert isinstance(v, View)
 
     class TestHealGroupLabelDisplay:
-        def test_HealGroupIcon_DisplaysWhenAnyGroupMemberZeroed(self):
-            c = Controller.ForTesting()
+        def test_HealGroupIcon_DisplaysWhenAnyGroupMemberZeroed(self, testController: Controller):
+            c = testController
             v = c.view
             c.receiver.receive("""Foo's group:
     [Bar            01]            Foo                 51/ 100 (  0%)      497/ 500 ( 99%)    592/ 707 ( 83%)   
@@ -28,13 +34,12 @@ class TestView():
             
             with patch.object(v, f'{v.displayHealGroupImage.__name__}') as mockedMethod:
                 v.update_gui()
-            
-            
+
             assert v._healGroupLabel.winfo_viewable() == 0  # display updates aren't performed (unreliable state) until `mainloop` is able to run freely
             mockedMethod.assert_called_once_with()
 
-        def test_HealGroupIcon_WhileInitiallyDisplayed_RemovedAfterHealthGuiUpdateShowsNonZeroed(self):
-            c = Controller.ForTesting()
+        def test_HealGroupIcon_WhileInitiallyDisplayed_RemovedAfterHealthGuiUpdateShowsNonZeroed(self, testController: Controller):
+            c = testController
             v = c.view
             c.receiver.receive('[Baz            01]            Fuzz                 1/ 50  (  0%)       50/  50 (100%)     50/ 50  (100%)')
             v.update_gui()
@@ -53,48 +58,49 @@ class TestView():
             v.update_gui()
 
     class TestAfkLabelDisplay:
-        def test_AfkLabelDisplays_WhenAfkStatusReceived(self):
-            c = Controller.ForTesting()
+        def test_AfkLabelDisplays_WhenAfkStatusReceived(self, testController: Controller):
+            c = testController
             v = c.view
             c.receiver.receive(Parser.AfkStatus.BeginAfk.value)
 
             with patch.object(v, f'{View.displayAfkLabel.__name__}') as mockedDisplay:
                 v.update_gui()
-            
+
             mockedDisplay.assert_called_once_with()
-        
-        def test_AfkLabelHides_WhenNoLongerAfkStatusReceived(self):
-            c = Controller.ForTesting()
+
+        def test_AfkLabelHides_WhenNoLongerAfkStatusReceived(self, testController: Controller):
+            c = testController
             v = c.view
             c.receiver.receive(Parser.AfkStatus.EndAfk.value)
 
             with patch.object(v, f'{View.hideAfkLabel.__name__}') as mockedHide:
                 v.update_gui()
-            
+
             # Edge case of moving while AFK will overwrite the models AFK state before gui can update.
             # Called as part of `update_gui` and inside view._controller.process_queue
             # that is why `assert_called_with()` is used instead of `assert_called_once_with()`
             mockedHide.assert_called_with()
             assert mockedHide.call_args_list == [call(), call()]
 
-        def test_NonAfkInput_NeitherDisplayNorHideInvoked(self):
-            c = Controller.ForTesting()
+        def test_NonAfkInput_NeitherDisplayNorHideInvoked(self, testController: Controller):
+            c = testController
             v = c.view
             c.receiver.receive("AFK in input but nothing invoked.")
 
             with patch.object(v, f'{View.displayAfkLabel.__name__}') as mockedDisplay:
                 with patch.object(v, f'{View.hideAfkLabel.__name__}') as mockedHide:
                     v.update_gui()
-            
+
             mockedDisplay.assert_not_called()
             mockedHide.assert_not_called()
 
-    def test_ViewInitiallyIncludesPets_DeselectedFromView_WhenUpdateMethodInvokedPetsAreRemoved(self):
-        m = Model(Parser())
+    def test_ViewInitiallyIncludesPets_DeselectedFromView_WhenUpdateMethodInvokedPetsAreRemoved(self, testController: Controller):
+        c = testController
+        m = c.model
         m.includePetsInGroup = True
-        v = View(tk.Toplevel())
+        v = c.view
         v.var_includePetsInGroup.set(True)
-        c = Controller.ForTesting(m, v)
+
         c.receiver.receive("""Beautiful's group:
 
 [ Class      Lv] Status   Name              Hits            Fat             Power         
@@ -107,12 +113,12 @@ class TestView():
         # Checking for change on button state is done directly on the backing `BooleanVar`.
         v.var_includePetsInGroup.set(False) 
         v.update_display_of_pets_in_group_window(v.var_includePetsInGroup.get())
-        
+
         assert groupCountWithPetsIncluded == 2
         assert c.gameSession.group.Count == 1
 
-    def test_CachedGroupMatchesCurrentGroup_GroupDisplayNotRefreshed(self):
-        c = Controller.ForTesting()
+    def test_CachedGroupMatchesCurrentGroup_GroupDisplayNotRefreshed(self, testController: Controller):
+        c = testController
         v = c.view
         c.receiver.receive("""Beautiful's group:
 
@@ -126,8 +132,8 @@ class TestView():
 
         mockedRefresh.assert_not_called()
 
-    def test_CachedGroupDoesNotMatchCurrentGroup_GroupDisplayRefreshed(self):
-        c = Controller.ForTesting()
+    def test_CachedGroupDoesNotMatchCurrentGroup_GroupDisplayRefreshed(self, testController: Controller):
+        c = testController
         v = c.view
         c.receiver.receive("""Beautiful's group:
 
@@ -181,8 +187,8 @@ class TestView():
                                                         "Evil - Vitalize refresh"
                                                     ]
         )
-        def test_BuffOrShieldEnds_LabelDisplayed(self, endingEnumMember: Parser.ParseBuffOrShieldText):
-            c = Controller.ForTesting()
+        def test_BuffOrShieldEnds_LabelDisplayed(self, testController: Controller, endingEnumMember: Parser.ParseBuffOrShieldText):
+            c = testController
             v = c.view
             c.receiver.receive(endingEnumMember.value)
 
@@ -224,8 +230,8 @@ class TestView():
                                             "Evil - Vitalize refresh"
                                         ]
         )
-        def test_BuffOrShieldRefreshed_LabelNotDisplayed(self, text):
-            c = Controller.ForTesting()
+        def test_BuffOrShieldRefreshed_LabelNotDisplayed(self, testController: Controller, text: str):
+            c = testController
             v = c.view
             c.receiver.receive(text)
 
@@ -234,8 +240,8 @@ class TestView():
 
             mockedDisplay.assert_not_called()
 
-        def test_NonBuffOrShieldText_LabelNeitherDisplayedNorHidden(self):
-            c = Controller.ForTesting()
+        def test_NonBuffOrShieldText_LabelNeitherDisplayedNorHidden(self, testController: Controller):
+            c = testController
             v = c.view
             c.receiver.receive("Text not related to buff or shield ending.")
 
@@ -250,19 +256,19 @@ class TestView():
                                                              (Parser.ParseBuffOrShieldText.Bless_Ended.value, "Bless Ended")],
                                             ids=["`Dot` in name replaced with `.` (period) character.",
                                                  "`_` (underscore) in name replaced with ` ` (space) character."])
-        def test_BuffOrShieldEnded_LabelToBeUpdatedWithEnumMemberValueContaining__SpecificString__ReplacedWith__ExpectedCharacter(self, input, expectedToContain):
-            c = Controller.ForTesting()
+        def test_BuffOrShieldEnded_LabelToBeUpdatedWithEnumMemberValueContaining__SpecificString__ReplacedWith__ExpectedCharacter(self, testController: Controller, input: str, expectedToContain: str):
+            c = testController
             v = c.view
             c.receiver.receive(input)
 
             v.update_gui()
             actualText = v.var_buffOrShieldEndingText.get()
 
-            assert actualText.__contains__(expectedToContain)
+            assert expectedToContain in actualText
 
     class TestSpellMitigationDisplay:
-        def test_SpellMitigationInputReceived_LabelDisplayed(self):
-            c = Controller.ForTesting()
+        def test_SpellMitigationInputReceived_LabelDisplayed(self, testController: Controller):
+            c = testController
             v = c.view
             c.receiver.receive(Parser.SpellMitigationAffect.BleedDotResist.value)
 
@@ -271,8 +277,8 @@ class TestView():
 
             assert actualText.__contains__("Bleed.Resist")
 
-        def test_NonSpellMitigationText_LabelNotDisplayed(self):
-            c = Controller.ForTesting()
+        def test_NonSpellMitigationText_LabelNotDisplayed(self, testController: Controller):
+            c = testController
             v = c.view
             c.receiver.receive("Text not related to spell mitigation.")
 
@@ -282,8 +288,8 @@ class TestView():
             mockedDisplay.assert_not_called()
 
     class TestMeditationDisplayLabels:
-        def test_MeditationEndsByStanding_FullPowerLabelNotDisplayed(self):
-            c = Controller.ForTesting()
+        def test_MeditationEndsByStanding_FullPowerLabelNotDisplayed(self, testController: Controller):
+            c = testController
             v = c.view
             c.receiver.receive(Parser.MeditationState.Termination_ByStanding.value)
 
@@ -292,8 +298,8 @@ class TestView():
 
             mockedDisplay.assert_not_called()
         
-        def test_MeditationEndsByStanding_MeditationLabelHidden(self):
-            c = Controller.ForTesting()
+        def test_MeditationEndsByStanding_MeditationLabelHidden(self, testController: Controller):
+            c = testController
             v = c.view
             c.receiver.receive(Parser.MeditationState.Begin.value)
             c.receiver.receive(Parser.MeditationState.Termination_ByStanding.value)
@@ -303,8 +309,8 @@ class TestView():
 
             mockedHide.assert_called_once_with()
 
-        def test_MeditationEndsOnItsOwn_FullPowerLabelDisplayed(self):
-            c = Controller.ForTesting()
+        def test_MeditationEndsOnItsOwn_FullPowerLabelDisplayed(self, testController: Controller):
+            c = testController
             v = c.view
             c.receiver.receive(Parser.MeditationState.Termination_ByFullPower.value)
 
@@ -313,8 +319,8 @@ class TestView():
 
             mockedDisplay.assert_called_once_with()
 
-        def test_MeditationEndsOnItsOwn_MeditationLabelHidden(self):
-            c = Controller.ForTesting()
+        def test_MeditationEndsOnItsOwn_MeditationLabelHidden(self, testController: Controller):
+            c = testController
             v = c.view
             c.receiver.receive(Parser.MeditationState.Begin.value)
             c.receiver.receive(Parser.MeditationState.Termination_ByFullPower.value)
@@ -329,8 +335,65 @@ class TestView():
             v = View.ForTesting()
             initiallySelectedPane = v.suppliesNotebook.select()
 
-            v.change_page_in_supplies_window(SuppliesPaneChangeDirection.NEXT)
+            v.change_page_in_notebook(v.suppliesNotebook, SuppliesPaneChangeDirection.NEXT)
 
             newlySelectedPane = v.suppliesNotebook.select()
 
             assert initiallySelectedPane != newlySelectedPane
+
+    class TestGearSet:
+        def test_ClearingPvpEntries(self, testController: Controller):
+            c = testController
+            v = c.view
+
+            v.gearSetsPveHeadEntry.insert(0, "This")
+            v.gearSetsPveJewel1Entry.insert(0, "is")
+            v.gearSetsPveJewel2Entry.insert(0, "a")
+            v.gearSetsPveCloakEntry.insert(0, "test")
+            v.gearSetsPveBodyEntry.insert(0, "to")
+            v.gearSetsPveHandsEntry.insert(0, "clear")
+            v.gearSetsPveLegsEntry.insert(0, "all")
+            v.gearSetsPveFeetEntry.insert(0, "the")
+            v.gearSetsPveHeldRightEntry.insert(0, "entry")
+            v.gearSetsPveHeldLeftEntry.insert(0, "fields")
+
+            v.clearPveSetEntries()
+
+            assert v.gearSetsPveHeadEntry.get() == ""
+            assert v.gearSetsPveJewel1Entry.get() == ""
+            assert v.gearSetsPveJewel2Entry.get() == ""
+            assert v.gearSetsPveCloakEntry.get() == ""
+            assert v.gearSetsPveBodyEntry.get() == ""
+            assert v.gearSetsPveHandsEntry.get() == ""
+            assert v.gearSetsPveLegsEntry.get() == ""
+            assert v.gearSetsPveFeetEntry.get() == ""
+            assert v.gearSetsPveHeldRightEntry.get() == ""
+            assert v.gearSetsPveHeldLeftEntry.get() == ""
+
+        def test_ClearingPveEntries(self, testController: Controller):
+            c = testController
+            v = c.view
+
+            v.gearSetsPveHeadEntry.insert(0, "This")
+            v.gearSetsPveJewel1Entry.insert(0, "is")
+            v.gearSetsPveJewel2Entry.insert(0, "a")
+            v.gearSetsPveCloakEntry.insert(0, "test")
+            v.gearSetsPveBodyEntry.insert(0, "to")
+            v.gearSetsPveHandsEntry.insert(0, "clear")
+            v.gearSetsPveLegsEntry.insert(0, "all")
+            v.gearSetsPveFeetEntry.insert(0, "the")
+            v.gearSetsPveHeldRightEntry.insert(0, "entry")
+            v.gearSetsPveHeldLeftEntry.insert(0, "fields")
+
+            v.clearPveSetEntries()
+
+            assert v.gearSetsPveHeadEntry.get() == ""
+            assert v.gearSetsPveJewel1Entry.get() == ""
+            assert v.gearSetsPveJewel2Entry.get() == ""
+            assert v.gearSetsPveCloakEntry.get() == ""
+            assert v.gearSetsPveBodyEntry.get() == ""
+            assert v.gearSetsPveHandsEntry.get() == ""
+            assert v.gearSetsPveLegsEntry.get() == ""
+            assert v.gearSetsPveFeetEntry.get() == ""
+            assert v.gearSetsPveHeldRightEntry.get() == ""
+            assert v.gearSetsPveHeldLeftEntry.get() == ""

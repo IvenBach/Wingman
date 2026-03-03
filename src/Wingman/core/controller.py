@@ -1,8 +1,10 @@
 import tkinter as tk
+from tkinter import ttk, messagebox
 import re
 import time
 import configparser
 from pathlib import Path
+from typing import Iterable
 from Wingman.core.affect import Affect
 from Wingman.core.group import Group
 from Wingman.core.session import GameSession
@@ -10,8 +12,8 @@ from Wingman.core.network_listener import NetworkListener
 from Wingman.core.model import Model
 from Wingman.core.parser import Parser, MobMovement
 from Wingman.core.mobs_in_room import MobsInRoom
-from Wingman.core.item import Item, QuantityComparer
-from Wingman.core.inventory import Inventory, EquippedGear
+from Wingman.core.item import Item, ItemSlot, QuantityComparer
+from Wingman.core.inventory import Inventory, Equipment
 
 class Controller:
     def __init__(self, model: Model, view, listener_target_ip='18.119.153.121', listener_target_port=4000):
@@ -38,10 +40,36 @@ class Controller:
         self._ALWAYS_ON_TOP__OPTION = 'AlwaysOnTop'
         self._DARK_MODE__OPTION = 'DarkMode'
         self._ROOT_WINDOW_POSITION__OPTION = 'RootWindowPosition'
-        self._IGNORED_MOBS_WINDOW_POSITION__OPTION = 'IgnoredMobsWindowPosition'
-        self._CHECK_SUPPLIES_WINDOW_POSITION__OPTION = 'CheckSuppliesWindowPosition'
+        self._MISCELLANEOUS_SETTINGS_WINDOW_POSITION__OPTION = 'IgnoredMobsWindowPosition'
+        self._GEAR_SETS_WINDOW_POSITION__OPTION = 'GearSetsWindowPosition'
+        self._SUPPLY_CHECKER_WINDOW_POSITION__OPTION = 'CheckSuppliesWindowPosition'
         self._PVP_SUPPLIES_TEXT__OPTION = 'PvpSuppliesText'
         self._PVE_SUPPLIES_TEXT__OPTION = 'PveSuppliesText'
+        #region GearSet related options
+        self._GEAR_SETS_LAST_ACTIVE_TAB_INDEX__OPTION = 'GearSetsLastActiveTab'
+        #Pvp
+        self._PVP_GEAR_SET_HEAD__OPTION = 'PvpGearSetHead'
+        self._PVP_GEAR_SET_JEWEL1__OPTION = 'PvpGearSetJewel1'
+        self._PVP_GEAR_SET_JEWEL2__OPTION = 'PvpGearSetJewel2'
+        self._PVP_GEAR_SET_CLOAK__OPTION = 'PvpGearSetCloak'
+        self._PVP_GEAR_SET_BODY__OPTION = 'PvpGearSetBody'
+        self._PVP_GEAR_SET_HANDS__OPTION = 'PvpGearSetHands'
+        self._PVP_GEAR_SET_LEGS__OPTION = 'PvpGearSetLegs'
+        self._PVP_GEAR_SET_FEET__OPTION = 'PvpGearSetFeet'
+        self._PVP_GEAR_SET_HELD_RIGHT__OPTION = 'PvpGearSetHeldRight'
+        self._PVP_GEAR_SET_HELD_LEFT__OPTION = 'PvpGearSetHeldLeft'
+        #Pve
+        self._PVE_GEAR_SET_HEAD__OPTION = 'PveGearSetHead'
+        self._PVE_GEAR_SET_JEWEL1__OPTION = 'PveGearSetJewel1'
+        self._PVE_GEAR_SET_JEWEL2__OPTION = 'PveGearSetJewel2'
+        self._PVE_GEAR_SET_CLOAK__OPTION = 'PveGearSetCloak'
+        self._PVE_GEAR_SET_BODY__OPTION = 'PveGearSetBody'
+        self._PVE_GEAR_SET_HANDS__OPTION = 'PveGearSetHands'
+        self._PVE_GEAR_SET_LEGS__OPTION = 'PveGearSetLegs'
+        self._PVE_GEAR_SET_FEET__OPTION = 'PveGearSetFeet'
+        self._PVE_GEAR_SET_HELD_RIGHT__OPTION = 'PveGearSetHeldRight'
+        self._PVE_GEAR_SET_HELD_LEFT__OPTION = 'PveGearSetHeldLeft'
+        #endregion
         self._ACTIVE_SUPPLIES_TAB__OPTION = 'ActiveSuppliesTab'
         self._HIDE_DISPLAYED_LABEL_CALLBACK_TIMER_IN_MILLISECONDS__OPTION = 'HideDisplayedLabelCallbackTimerInMilliseconds'
         self._HIDE_DISPLAYED_LABEL_CALLBACK_TIMER_IN_MILLISECONDS__FALLBACK = 2000
@@ -98,7 +126,7 @@ v.setup_ui()
             # NEW: Remove the '^' to allow timestamps before the name
             if "group:" in line and re.search(r"\S+'s group:", line):
                 return True
-            
+
             if "You disband from " in line:
                 return True
 
@@ -125,7 +153,7 @@ v.setup_ui()
                 self.model.inventory = line
                 continue
 
-            if isinstance(line, EquippedGear):
+            if isinstance(line, Equipment):
                 self.model.inventory.EquippedGear_ = line
                 continue
 
@@ -226,7 +254,7 @@ v.setup_ui()
             if isSpellMitigationAffect and mitigatingAffect is not None:
                 self.view.displaySpellMitigatesAffectLabel(mitigatingAffect)
         return logs
-    
+
     def IsLookingForItem(self, itemName: str) -> bool:
         return itemName in self.model.SoughtAfterItems
 
@@ -248,24 +276,28 @@ v.setup_ui()
     def updateIgnoredMobsPets(self, csvMobList: str):
         self.clearIgnoredMobsPets()
 
-        if csvMobList == '':    
+        if csvMobList == '':
             return
-        
+
         values = csvMobList.split(',')
         self.model.ignoreTheseMobsInCurrentRoom.extend(value.strip() for value in values)
-    
+
     def clearIgnoredMobsPets(self):
         self.model.ignoreTheseMobsInCurrentRoom.clear()
-    
+
     def removedIgnoredMobsFromCurrentRoom(self):
         for ignoreMob in self.model.ignoreTheseMobsInCurrentRoom:
             if ignoreMob in self.model.currentMobsInRoom:
                 self.model.currentMobsInRoom.remove(ignoreMob)
-    
+
     def updateMobCountDisplay(self):
         self.view.updateMobCountDisplay()
-    
+
     def saveSettings(self):
+        activeGearSetTabText = self.activeTabTextInNotebook(self.view.gearSetsNotebook)
+        activeGearSetTabIndex = [index for index, tabIdentifier in enumerate(self.view.gearSetsNotebook.tabs())
+            if self.view.gearSetsNotebook.tab(tabIdentifier, "text") == activeGearSetTabText][0]
+
         cp = configparser.ConfigParser()
         cp[self._VIEW_SETTINGS] = {
             self._ALWAYS_ON_TOP__OPTION: str(self.view.var_always_on_top.get()),
@@ -276,12 +308,39 @@ v.setup_ui()
             self._PVE_SUPPLIES_TEXT__OPTION: str(self.view.pveSuppliesText.get("1.0", tk.END)),
             self._ACTIVE_SUPPLIES_TAB__OPTION: str(self.view.suppliesNotebook.select()),
             self._SOUGHT_AFTER_ITEMS__OPTION: self.view.var_soughtAfterItems.get(),
+
+            #region GearSets
+            self._GEAR_SETS_LAST_ACTIVE_TAB_INDEX__OPTION: str(activeGearSetTabIndex),
+
+            self._PVE_GEAR_SET_HEAD__OPTION: self.view.gearSetsPveHeadEntry.get(),
+            self._PVE_GEAR_SET_JEWEL1__OPTION: self.view.gearSetsPveJewel1Entry.get(),
+            self._PVE_GEAR_SET_JEWEL2__OPTION: self.view.gearSetsPveJewel2Entry.get(),
+            self._PVE_GEAR_SET_CLOAK__OPTION: self.view.gearSetsPveCloakEntry.get(),
+            self._PVE_GEAR_SET_BODY__OPTION: self.view.gearSetsPveBodyEntry.get(),
+            self._PVE_GEAR_SET_HANDS__OPTION: self.view.gearSetsPveHandsEntry.get(),
+            self._PVE_GEAR_SET_LEGS__OPTION: self.view.gearSetsPveLegsEntry.get(),
+            self._PVE_GEAR_SET_FEET__OPTION: self.view.gearSetsPveFeetEntry.get(),
+            self._PVE_GEAR_SET_HELD_RIGHT__OPTION: self.view.gearSetsPveHeldRightEntry.get(),
+            self._PVE_GEAR_SET_HELD_LEFT__OPTION: self.view.gearSetsPveHeldLeftEntry.get(),
+
+            self._PVP_GEAR_SET_HEAD__OPTION: self.view.gearSetsPvpHeadEntry.get(),
+            self._PVP_GEAR_SET_JEWEL1__OPTION: self.view.gearSetsPvpJewel1Entry.get(),
+            self._PVP_GEAR_SET_JEWEL2__OPTION: self.view.gearSetsPvpJewel2Entry.get(),
+            self._PVP_GEAR_SET_CLOAK__OPTION: self.view.gearSetsPvpCloakEntry.get(),
+            self._PVP_GEAR_SET_BODY__OPTION: self.view.gearSetsPvpBodyEntry.get(),
+            self._PVP_GEAR_SET_HANDS__OPTION: self.view.gearSetsPvpHandsEntry.get(),
+            self._PVP_GEAR_SET_LEGS__OPTION: self.view.gearSetsPvpLegsEntry.get(),
+            self._PVP_GEAR_SET_FEET__OPTION: self.view.gearSetsPvpFeetEntry.get(),
+            self._PVP_GEAR_SET_HELD_RIGHT__OPTION: self.view.gearSetsPvpHeldRightEntry.get(),
+            self._PVP_GEAR_SET_HELD_LEFT__OPTION: self.view.gearSetsPvpHeldLeftEntry.get(),
+            #endregion
         }
 
         cp[self._APP_SETTINGS] = {
-            self._ROOT_WINDOW_POSITION__OPTION: '+' + self.view.parent.geometry().split('+', 1)[1],
-            self._IGNORED_MOBS_WINDOW_POSITION__OPTION: '+' + self.view._miscellaneousSettings.geometry().split('+', 1)[1],
-            self._CHECK_SUPPLIES_WINDOW_POSITION__OPTION: '+' + self.view._supplyCheckerWindow.geometry().split('+', 1)[1],
+            self._ROOT_WINDOW_POSITION__OPTION: '+' + self.view.root.geometry().split('+', 1)[1],
+            self._MISCELLANEOUS_SETTINGS_WINDOW_POSITION__OPTION: '+' + self.view._miscellaneousSettings.geometry().split('+', 1)[1],
+            self._SUPPLY_CHECKER_WINDOW_POSITION__OPTION: '+' + self.view._supplyCheckerWindow.geometry().split('+', 1)[1],
+            self._GEAR_SETS_WINDOW_POSITION__OPTION: '+' + self.view._gearSetsWindow.geometry().split('+', 1)[1],
         }
 
         srcDirectory = self.settingsFilePath()
@@ -303,7 +362,53 @@ v.setup_ui()
         cp.read(self.settingsFilePath().joinpath(self._SETTINGS_FILE_NAME))
         return cp
 
-    def applySettings(self, configParser: configparser.ConfigParser):       
+    def applySettings(self, configParser: configparser.ConfigParser):
+        def applyGearSets(self: Controller):
+                lastActiveTab = configParser.get(self._VIEW_SETTINGS, self._GEAR_SETS_LAST_ACTIVE_TAB_INDEX__OPTION, fallback='0')
+                self.view.gearSetsNotebook.select(lastActiveTab)
+
+                pvpHead = configParser.get(self._VIEW_SETTINGS, self._PVP_GEAR_SET_HEAD__OPTION, fallback='')
+                self.view.gearSetsPvpHeadEntry.insert(0, pvpHead)
+                pvpJewel1 = configParser.get(self._VIEW_SETTINGS, self._PVP_GEAR_SET_JEWEL1__OPTION, fallback='')
+                self.view.gearSetsPvpJewel1Entry.insert(0, pvpJewel1)
+                pvpJewel2 = configParser.get(self._VIEW_SETTINGS, self._PVP_GEAR_SET_JEWEL2__OPTION, fallback='')
+                self.view.gearSetsPvpJewel2Entry.insert(0, pvpJewel2)
+                pvpCloak = configParser.get(self._VIEW_SETTINGS, self._PVP_GEAR_SET_CLOAK__OPTION, fallback='')
+                self.view.gearSetsPvpCloakEntry.insert(0, pvpCloak)
+                pvpBody = configParser.get(self._VIEW_SETTINGS, self._PVP_GEAR_SET_BODY__OPTION, fallback='')
+                self.view.gearSetsPvpBodyEntry.insert(0, pvpBody)
+                pvpHands = configParser.get(self._VIEW_SETTINGS, self._PVP_GEAR_SET_HANDS__OPTION, fallback='')
+                self.view.gearSetsPvpHandsEntry.insert(0, pvpHands)
+                pvpLegs = configParser.get(self._VIEW_SETTINGS, self._PVP_GEAR_SET_LEGS__OPTION, fallback='')
+                self.view.gearSetsPvpLegsEntry.insert(0, pvpLegs)
+                pvpFeet = configParser.get(self._VIEW_SETTINGS, self._PVP_GEAR_SET_FEET__OPTION, fallback='')
+                self.view.gearSetsPvpFeetEntry.insert(0, pvpFeet)
+                pvpHeldRight = configParser.get(self._VIEW_SETTINGS, self._PVP_GEAR_SET_HELD_RIGHT__OPTION, fallback='')
+                self.view.gearSetsPvpHeldRightEntry.insert(0, pvpHeldRight)
+                pvpHeldLeft = configParser.get(self._VIEW_SETTINGS, self._PVP_GEAR_SET_HELD_LEFT__OPTION, fallback='')
+                self.view.gearSetsPvpHeldLeftEntry.insert(0, pvpHeldLeft)
+
+                pveHead = configParser.get(self._VIEW_SETTINGS, self._PVE_GEAR_SET_HEAD__OPTION, fallback='')
+                self.view.gearSetsPveHeadEntry.insert(0, pveHead)
+                pveJewel1 = configParser.get(self._VIEW_SETTINGS, self._PVE_GEAR_SET_JEWEL1__OPTION, fallback='')
+                self.view.gearSetsPveJewel1Entry.insert(0, pveJewel1)
+                pveJewel2 = configParser.get(self._VIEW_SETTINGS, self._PVE_GEAR_SET_JEWEL2__OPTION, fallback='')
+                self.view.gearSetsPveJewel2Entry.insert(0, pveJewel2)
+                pveCloak = configParser.get(self._VIEW_SETTINGS, self._PVE_GEAR_SET_CLOAK__OPTION, fallback='')
+                self.view.gearSetsPveCloakEntry.insert(0, pveCloak)
+                pveBody = configParser.get(self._VIEW_SETTINGS, self._PVE_GEAR_SET_BODY__OPTION, fallback='')
+                self.view.gearSetsPveBodyEntry.insert(0, pveBody)
+                pveHands = configParser.get(self._VIEW_SETTINGS, self._PVE_GEAR_SET_HANDS__OPTION, fallback='')
+                self.view.gearSetsPveHandsEntry.insert(0, pveHands)
+                pveLegs = configParser.get(self._VIEW_SETTINGS, self._PVE_GEAR_SET_LEGS__OPTION, fallback='')
+                self.view.gearSetsPveLegsEntry.insert(0, pveLegs)
+                pveFeet = configParser.get(self._VIEW_SETTINGS, self._PVE_GEAR_SET_FEET__OPTION, fallback='')
+                self.view.gearSetsPveFeetEntry.insert(0, pveFeet)
+                pveHeldRight = configParser.get(self._VIEW_SETTINGS, self._PVE_GEAR_SET_HELD_RIGHT__OPTION, fallback='')
+                self.view.gearSetsPveHeldRightEntry.insert(0, pveHeldRight)
+                pveHeldLeft = configParser.get(self._VIEW_SETTINGS, self._PVE_GEAR_SET_HELD_LEFT__OPTION, fallback='')
+                self.view.gearSetsPveHeldLeftEntry.insert(0, pveHeldLeft)
+
         try:
             if configParser.has_section(self._VIEW_SETTINGS):
                 ignoredMobsPetsCsv = configParser.get(self._VIEW_SETTINGS, self._IGNORED_MOB_PETS_CSV__OPTION, fallback='')
@@ -345,18 +450,24 @@ v.setup_ui()
                 self.view.var_soughtAfterItems.set(soughtAfterItems)
                 self.model.SoughtAfterItems = set(item.strip() for item in soughtAfterItems.split(',') if item.strip() != '')
 
+                applyGearSets(self)
+
             if configParser.has_section(self._APP_SETTINGS):
-                rootWindowSize = self.view.parent.geometry().split('+')[0]
+                rootWindowSize = self.view.root.geometry().split('+')[0]
                 rootWindowPosition = configParser.get(self._APP_SETTINGS, self._ROOT_WINDOW_POSITION__OPTION, fallback='+50+50')
-                self.view.parent.geometry(rootWindowSize + rootWindowPosition)
+                self.view.root.geometry(rootWindowSize + rootWindowPosition)
 
                 petOrMobDisplaySettingsWindowSize = self.view._miscellaneousSettings.geometry().split('+')[0]
-                petOrMobDisplaySettingsWindowPosition = configParser.get(self._APP_SETTINGS, self._IGNORED_MOBS_WINDOW_POSITION__OPTION, fallback='+50+50')
+                petOrMobDisplaySettingsWindowPosition = configParser.get(self._APP_SETTINGS, self._MISCELLANEOUS_SETTINGS_WINDOW_POSITION__OPTION, fallback='+50+50')
                 self.view._miscellaneousSettings.geometry(petOrMobDisplaySettingsWindowSize + petOrMobDisplaySettingsWindowPosition)
 
                 invasionSuppliesWindowSize = self.view._supplyCheckerWindow.geometry().split('+')[0]
-                invasionSuppliesWindowPosition = configParser.get(self._APP_SETTINGS, self._CHECK_SUPPLIES_WINDOW_POSITION__OPTION, fallback='+50+50')
+                invasionSuppliesWindowPosition = configParser.get(self._APP_SETTINGS, self._SUPPLY_CHECKER_WINDOW_POSITION__OPTION, fallback='+50+50')
                 self.view._supplyCheckerWindow.geometry(invasionSuppliesWindowSize + invasionSuppliesWindowPosition)
+
+                gearSetsWindowSize = self.view._gearSetsWindow.geometry().split('+')[0]
+                gearSetsWindowPosition = configParser.get(self._APP_SETTINGS, self._GEAR_SETS_WINDOW_POSITION__OPTION, fallback='+50+50')
+                self.view._gearSetsWindow.geometry(gearSetsWindowSize + gearSetsWindowPosition)
 
         except KeyError:
             # This means the config file was missing or malformed. We can choose to ignore this and just use defaults.
@@ -407,17 +518,15 @@ Returns a `list[Item]` of missing items
 
         return missingItems
 
-    def suppliesTextBasedOnActiveTab(self) -> str:
-        activeTab = self.view.suppliesNotebook.select()
-        activeTabText = self.view.suppliesNotebook.tab(activeTab, "text")
-        if activeTabText == "PvP":
+    def suppliesTextFromTab(self, tabIdentifier: str) -> str:
+        if tabIdentifier == "PvP":
             return self.view.pvpSuppliesText.get("1.0", tk.END)
-        elif activeTabText == "PvE":
+        elif tabIdentifier == "PvE":
             return self.view.pveSuppliesText.get("1.0", tk.END)
         else:
-            raise ValueError(f"Unexpected active tab name: {activeTabText}")
+            raise ValueError(f"Unexpected active tab name: {tabIdentifier}")
 
-    def updateMissingSuppliesLabel(self, tabIndicatorText: str, supplyText: str, inventory: Inventory):
+    def updateMissingSuppliesLabel(self, tabIndicator: str, supplyText: str, inventory: Inventory):
         if supplyText == '' or supplyText.isspace():
             self.view.updateMissingSuppliesLabel("***No supplies were checked.")
             return
@@ -427,7 +536,7 @@ Returns a `list[Item]` of missing items
             return
 
         missingSupplies = self.check_invasion_supplies(supplyText, inventory)
-        self.view.updateMissingSuppliesLabel(tabIndicatorText, missingSupplies)
+        self.view.updateMissingSuppliesLabel(tabIndicator, missingSupplies)
 
     def hideAffectSpellDropWarningLabel(self):
         self.view.hideAffectSpellDropWarningLabel()
@@ -441,3 +550,207 @@ Returns a `list[Item]` of missing items
 
     def clearSoughtAfterItemsThatDropped(self):
         self.model.SoughtAfterItemsThatDropped.clear()
+
+    def activeGearSetTabEquipment(self) -> Equipment:
+        def pvpGearSetEquipment(self: Controller) -> Equipment:
+            gearSet = Equipment()
+            gearSet.Head = Item(self.view.gearSetsPvpHeadEntry.get(), slot=ItemSlot.HEAD)
+            gearSet.Jewel1 = Item(self.view.gearSetsPvpJewel1Entry.get(), slot=ItemSlot.JEWEL)
+            gearSet.Jewel2 = Item(self.view.gearSetsPvpJewel2Entry.get(), slot=ItemSlot.JEWEL)
+            gearSet.Cloak = Item(self.view.gearSetsPvpCloakEntry.get(), slot=ItemSlot.CLOAK)
+            gearSet.Body = Item(self.view.gearSetsPvpBodyEntry.get(), slot=ItemSlot.BODY)
+            gearSet.Hands = Item(self.view.gearSetsPvpHandsEntry.get(), slot=ItemSlot.HANDS)
+            gearSet.Legs = Item(self.view.gearSetsPvpLegsEntry.get(), slot=ItemSlot.LEGS)
+            gearSet.Feet = Item(self.view.gearSetsPvpFeetEntry.get(), slot=ItemSlot.FEET)
+            gearSet.Held_Right = Item(self.view.gearSetsPvpHeldRightEntry.get(), slot=ItemSlot.HELD)
+            gearSet.Held_Left = Item(self.view.gearSetsPvpHeldLeftEntry.get(), slot=ItemSlot.HELD)
+            return gearSet
+
+        def pveGearSetEquipment(self: Controller) -> Equipment:
+            gearSet = Equipment()
+            gearSet.Head = Item(self.view.gearSetsPveHeadEntry.get(), slot=ItemSlot.HEAD)
+            gearSet.Jewel1 = Item(self.view.gearSetsPveJewel1Entry.get(), slot=ItemSlot.JEWEL)
+            gearSet.Jewel2 = Item(self.view.gearSetsPveJewel2Entry.get(), slot=ItemSlot.JEWEL)
+            gearSet.Cloak = Item(self.view.gearSetsPveCloakEntry.get(), slot=ItemSlot.CLOAK)
+            gearSet.Body = Item(self.view.gearSetsPveBodyEntry.get(), slot=ItemSlot.BODY)
+            gearSet.Hands = Item(self.view.gearSetsPveHandsEntry.get(), slot=ItemSlot.HANDS)
+            gearSet.Legs = Item(self.view.gearSetsPveLegsEntry.get(), slot=ItemSlot.LEGS)
+            gearSet.Feet = Item(self.view.gearSetsPveFeetEntry.get(), slot=ItemSlot.FEET)
+            gearSet.Held_Right = Item(self.view.gearSetsPveHeldRightEntry.get(), slot=ItemSlot.HELD)
+            gearSet.Held_Left = Item(self.view.gearSetsPveHeldLeftEntry.get(), slot=ItemSlot.HELD)
+            return gearSet
+
+        activeTabText = self.activeTabTextInNotebook(self.view.gearSetsNotebook)
+        if activeTabText == "PvP":
+            return pvpGearSetEquipment(self)
+        elif activeTabText == "PvE":
+            return pveGearSetEquipment(self)
+        else:
+            raise ValueError(f"Unexpected active tab name: {activeTabText}")
+
+    def checkGearSet(self, activeGearSetTabEquipment: Equipment, equippedGear_: Equipment):
+        if Equipment.IsEmpty(equippedGear_):
+            messagebox.showinfo("No equipped gear", "Execute `equipment` in the client then check again.")
+            return
+
+        missingViewItemsSet = set(activeGearSetTabEquipment.items()) - set(equippedGear_.items())
+        if not missingViewItemsSet:
+            self.view.displayMissingGearSetItemsLabel('')
+            return
+
+        missingItems = [f"{item.Slot}: {item.Name}" for item in Item.orderBySlot(missingViewItemsSet)]
+        self.view.displayMissingGearSetItemsLabel("Missing set items:" + '\n   - ' + '\n   - '.join(missingItems))
+
+    def sendBankWithdrawTextToClipboard(self):
+        'Query the view for the active gear set tab, create a withdrawal text, and send it to the clipboard.'
+        withdrawalText = self.gearSetBankWidthdrawalTextFromActiveGearSetTab()
+        self.view.clipboard_clear()
+        self.view.clipboard_append(withdrawalText)
+        self.view.update()
+
+    def gearSetBankWidthdrawalTextFromActiveGearSetTab(self) -> str:
+        """Create a `', '` separated string from the non-empty gear fields.
+
+        If no entries are filled, shows a `messagebox` to the user and returns an empty string."""
+        tabIdentifier = self.activeTabTextInNotebook(self.view.gearSetsNotebook)
+        fields = []
+        if tabIdentifier == "PvP":
+            fields = [self.view.gearSetsPvpHeadEntry.get(),
+                      self.view.gearSetsPvpJewel1Entry.get(),
+                      self.view.gearSetsPvpJewel2Entry.get(),
+                      self.view.gearSetsPvpCloakEntry.get(),
+                      self.view.gearSetsPvpBodyEntry.get(),
+                      self.view.gearSetsPvpHandsEntry.get(),
+                      self.view.gearSetsPvpLegsEntry.get(),
+                      self.view.gearSetsPvpFeetEntry.get(),
+                      self.view.gearSetsPvpHeldRightEntry.get(),
+                      self.view.gearSetsPvpHeldLeftEntry.get()]
+        elif tabIdentifier == "PvE":
+            fields = [self.view.gearSetsPveHeadEntry.get(),
+                      self.view.gearSetsPveJewel1Entry.get(),
+                      self.view.gearSetsPveJewel2Entry.get(),
+                      self.view.gearSetsPveCloakEntry.get(),
+                      self.view.gearSetsPveBodyEntry.get(),
+                      self.view.gearSetsPveHandsEntry.get(),
+                      self.view.gearSetsPveLegsEntry.get(),
+                      self.view.gearSetsPveFeetEntry.get(),
+                      self.view.gearSetsPveHeldRightEntry.get(),
+                      self.view.gearSetsPveHeldLeftEntry.get()]
+        else:
+            raise ValueError(f"Unexpected active tab name: {tabIdentifier}")
+
+        if fields[-2] == fields[-1]: # 2handed weapon. Drop an entry
+            fields[-1] = ''
+
+        if all(field == "" for field in fields):
+            messagebox.showinfo("No gear set", "Please input gear before creating a bank withdrawal text.")
+            return ''
+
+        return 'withdraw ' + ', withdraw '.join([field for field in fields if field != ""]).lower()
+
+    def clearGearSetEntriesOnActiveTab(self):
+        """Query the view for the activetab, then clear the entries on that tab."""
+        tabIdentifier = self.activeTabTextInNotebook(self.view.gearSetsNotebook)
+        if tabIdentifier == "PvP":
+            self.view.clearPvpSetEntries()
+        elif tabIdentifier == "PvE":
+            self.view.clearPveSetEntries()
+        else:
+            raise ValueError(f"Unexpected active tab name: {tabIdentifier}")
+
+    def activeTabTextInNotebook(self, notebook: ttk.Notebook) -> str:
+            """Query the notebook for the active tab, and return the `text` of that tab.
+            
+            The returned text cannot be used for tab selection. Use a zero based index for that as indicated by https://docs.python.org/3/library/tkinter.ttk.html#tab-identifiers"""
+            return notebook.tab(notebook.select(), "text")
+
+    def copyPastedGearSetTextToActiveTabEntries(self, text: str):
+        '''Copy the pasted text into its corresponding entry input, after clearing input fields to prevent carrying over prior equipment.
+        
+        If no text is pasted or no gear is worn a `messagebox` is shown to to the user.'''
+
+        pastedFormat = """     On Head:  item1
+    On Jewel:  item2
+    On Jewel:  item3
+    On Cloak:  item4
+     On Body:  item5
+    On Hands:  item6
+     On Legs:  item7
+     On Feet:  item8
+  Held Right:  item9
+   Held Left:  item9 (for 2handed or item10 for an offhand weapon/shield)"""
+        message = f"Paste gear text in the format \n\n{pastedFormat}\n\n The spacing doesn't need to be exact, but the labels do."
+        if text == '' or text.isspace():
+            messagebox.showinfo("No pasted text", message)
+            return
+
+        eg = Parser().parseEquippedGear(text)
+
+        if eg is None or all([eg.Head is None,
+                                eg.Jewel1 is None,
+                                eg.Jewel2 is None,
+                                eg.Cloak is None,
+                                eg.Body is None,
+                                eg.Hands is None,
+                                eg.Legs is None,
+                                eg.Feet is None,
+                                eg.Held_Right is None,
+                                eg.Held_Left is None]):
+            messagebox.showinfo("No gear worn", message)
+            return
+
+        tabIdentifier = self.activeTabTextInNotebook(self.view.gearSetsNotebook)
+        if tabIdentifier == "PvP":
+            self.view.clearPvpSetEntries()
+            self.view.gearSetsPvpHeadEntry.insert(0, eg.Head if eg.Head is not None else '')
+            self.view.gearSetsPvpJewel1Entry.insert(0, eg.Jewel1 if eg.Jewel1 is not None else '')
+            self.view.gearSetsPvpJewel2Entry.insert(0, eg.Jewel2 if eg.Jewel2 is not None else '')
+            self.view.gearSetsPvpCloakEntry.insert(0, eg.Cloak if eg.Cloak is not None else '')
+            self.view.gearSetsPvpBodyEntry.insert(0, eg.Body if eg.Body is not None else '')
+            self.view.gearSetsPvpHandsEntry.insert(0, eg.Hands if eg.Hands is not None else '')
+            self.view.gearSetsPvpLegsEntry.insert(0, eg.Legs if eg.Legs is not None else '')
+            self.view.gearSetsPvpFeetEntry.insert(0, eg.Feet if eg.Feet is not None else '')
+            self.view.gearSetsPvpHeldRightEntry.insert(0, eg.Held_Right if eg.Held_Right is not None else '')
+            self.view.gearSetsPvpHeldLeftEntry.insert(0, eg.Held_Left if eg.Held_Left is not None else '')
+        elif tabIdentifier == "PvE":
+            self.view.clearPveSetEntries()
+            self.view.gearSetsPveHeadEntry.insert(0, eg.Head if eg.Head is not None else '')
+            self.view.gearSetsPveJewel1Entry.insert(0, eg.Jewel1 if eg.Jewel1 is not None else '')
+            self.view.gearSetsPveJewel2Entry.insert(0, eg.Jewel2 if eg.Jewel2 is not None else '')
+            self.view.gearSetsPveCloakEntry.insert(0, eg.Cloak if eg.Cloak is not None else '')
+            self.view.gearSetsPveBodyEntry.insert(0, eg.Body if eg.Body is not None else '')
+            self.view.gearSetsPveHandsEntry.insert(0, eg.Hands if eg.Hands is not None else '')
+            self.view.gearSetsPveLegsEntry.insert(0, eg.Legs if eg.Legs is not None else '')
+            self.view.gearSetsPveFeetEntry.insert(0, eg.Feet if eg.Feet is not None else '')
+            self.view.gearSetsPveHeldRightEntry.insert(0, eg.Held_Right if eg.Held_Right is not None else '')
+            self.view.gearSetsPveHeldLeftEntry.insert(0, eg.Held_Left if eg.Held_Left is not None else '')
+        else:
+            raise ValueError(f"Unexpected active tab name: {tabIdentifier}")
+
+    def copyPvpGearSetToPve(self):
+        self.view.clearPveSetEntries()
+
+        self.view.gearSetsPveHeadEntry.insert(0, self.view.gearSetsPvpHeadEntry.get())
+        self.view.gearSetsPveJewel1Entry.insert(0, self.view.gearSetsPvpJewel1Entry.get())
+        self.view.gearSetsPveJewel2Entry.insert(0, self.view.gearSetsPvpJewel2Entry.get())
+        self.view.gearSetsPveCloakEntry.insert(0, self.view.gearSetsPvpCloakEntry.get())
+        self.view.gearSetsPveBodyEntry.insert(0, self.view.gearSetsPvpBodyEntry.get())
+        self.view.gearSetsPveHandsEntry.insert(0, self.view.gearSetsPvpHandsEntry.get())
+        self.view.gearSetsPveLegsEntry.insert(0, self.view.gearSetsPvpLegsEntry.get())
+        self.view.gearSetsPveFeetEntry.insert(0, self.view.gearSetsPvpFeetEntry.get())
+        self.view.gearSetsPveHeldRightEntry.insert(0, self.view.gearSetsPvpHeldRightEntry.get())
+        self.view.gearSetsPveHeldLeftEntry.insert(0, self.view.gearSetsPvpHeldLeftEntry.get())
+
+    def copyPveGearSetToPvp(self):
+        self.view.clearPvpSetEntries()
+
+        self.view.gearSetsPvpHeadEntry.insert(0, self.view.gearSetsPveHeadEntry.get())
+        self.view.gearSetsPvpJewel1Entry.insert(0, self.view.gearSetsPveJewel1Entry.get())
+        self.view.gearSetsPvpJewel2Entry.insert(0, self.view.gearSetsPveJewel2Entry.get())
+        self.view.gearSetsPvpCloakEntry.insert(0, self.view.gearSetsPveCloakEntry.get())
+        self.view.gearSetsPvpBodyEntry.insert(0, self.view.gearSetsPveBodyEntry.get())
+        self.view.gearSetsPvpHandsEntry.insert(0, self.view.gearSetsPveHandsEntry.get())
+        self.view.gearSetsPvpLegsEntry.insert(0, self.view.gearSetsPveLegsEntry.get())
+        self.view.gearSetsPvpFeetEntry.insert(0, self.view.gearSetsPveFeetEntry.get())
+        self.view.gearSetsPvpHeldRightEntry.insert(0, self.view.gearSetsPveHeldRightEntry.get())
+        self.view.gearSetsPvpHeldLeftEntry.insert(0, self.view.gearSetsPveHeldLeftEntry.get())

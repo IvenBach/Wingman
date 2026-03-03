@@ -1,21 +1,15 @@
-from typing import overload
+from typing import List, overload, Iterable
 from enum import Enum, StrEnum
 
 class ItemSlot(StrEnum):
     HEAD = "HEAD"
+    JEWEL = "JEWEL"
+    CLOAK = "CLOAK"
+    BODY = "BODY"
+    HANDS = "HANDS"
     FEET = "FEET"
     LEGS = "LEGS"
-    CLOAK = "CLOAK"
-    WEAPON = "WEAPON"
-    JEWEL = "JEWEL"
-    HANDS = "HANDS"
-    BODY = "BODY"
-    SHIELD = "SHIELD"
-    BOOTS = "BOOTS"
-    CHEST = "CHEST"
-    WIELDED = "WIELDED"
-    SCROLL = "SCROLL"
-    CONSUMABLE = "CONSUMABLE"
+    HELD = "HELD"
 
 class ItemType(StrEnum):
     CLAW = "CLAW"
@@ -65,11 +59,11 @@ class AccuracyRate(StrEnum):
     WORSE = "WORSE"
 
 class DefenseRating(StrEnum):
+    MUCH_WORSE = "MUCH_WORSE"
+    WORSE = "WORSE"
+    NORMAL = "NORMAL"
     BETTER = "BETTER"
     MUCH_BETTER = "MUCH_BETTER"
-    NORMAL = "NORMAL"
-    WORSE = "WORSE"
-    MUCH_WORSE = "MUCH_WORSE"
 
 class Sigil(StrEnum):
     FIRE = "FIRE"
@@ -110,14 +104,14 @@ class Item:
     Quantity: int | None
 
     @overload
-    def __init__(self, name: str): ...
+    def __init__(self, name: str):...
     @overload
-    def __init__(self, name: str, quantity: int): ...
+    def __init__(self, name: str, quantity: int):...
     @overload
-    def __init__(self, name: str, quantity: None): ...
+    def __init__(self, name: str, quantity: None):...
     @overload
-    def __init__(self, name: str, slot: ItemSlot): ...
-    
+    def __init__(self, name: str, slot: ItemSlot):...
+
     def __init__(self,
                  name: str,
                  slot: ItemSlot | None = None,
@@ -179,6 +173,9 @@ class Item:
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def __hash__(self):
+        return hash((self.Name.lower(), self.Quantity))
+
     def QuantityComparison(self, other) -> 'QuantityComparer':
         if isinstance(other, str):
             from Wingman.core.parser import Parser
@@ -229,3 +226,17 @@ class Item:
 
         assert self.Quantity is not None and other.Quantity is not None
         return self.Quantity - other.Quantity
+
+    @staticmethod
+    def orderBySlot(missingItems: Iterable['Item']) -> List['Item']:
+            gearOrder = {ItemSlot.HEAD: 0,
+                         ItemSlot.JEWEL: 1,
+                         ItemSlot.CLOAK: 2,
+                         ItemSlot.BODY: 3,
+                         ItemSlot.HANDS: 4,
+                         ItemSlot.LEGS: 5,
+                         ItemSlot.FEET: 6,
+                         ItemSlot.HELD: 7,
+                         None: 8 }
+
+            return sorted(missingItems, key=lambda item: gearOrder[item.Slot])

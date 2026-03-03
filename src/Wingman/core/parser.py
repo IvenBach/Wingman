@@ -5,7 +5,7 @@ from Wingman.core.status_indicator import StatusIndicator
 from Wingman.core.resource_bar import ResourceBar
 from Wingman.core.character import Character
 from Wingman.core.group import Group
-from Wingman.core.inventory import EquippedGear, Inventory
+from Wingman.core.inventory import Equipment, Inventory
 from Wingman.core.item import Item, ItemSlot
 from Wingman.core.affect import Affect
 from Wingman.core.ansi_code_stripper import remove_ANSI_color_codes
@@ -485,7 +485,7 @@ That parse is intended to overwrite with the correct worn gear.'''
         if "Inventory:" not in text:
             return None
 
-        eg = EquippedGear()
+        eg = Equipment()
         backpackStartIndex = 1
         lines = text.split('\n')
         equippedText = [line[6:] for line in lines if line.startswith("  (w) ")]
@@ -514,9 +514,9 @@ That parse is intended to overwrite with the correct worn gear.'''
         for heldCounter, line in enumerate(heldText):
             match heldCounter:
                 case 0:
-                    eg.Held_Right = Item(line, slot=ItemSlot.WIELDED)
+                    eg.Held_Right = Item(line, slot=ItemSlot.HELD)
                 case 1:
-                    eg.Held_Left = Item(line, slot=ItemSlot.WIELDED)
+                    eg.Held_Left = Item(line, slot=ItemSlot.HELD)
 
         backpackStartIndex = len(equippedText) + len(heldText) + 1
 
@@ -542,43 +542,49 @@ That parse is intended to overwrite with the correct worn gear.'''
         '''Pattern to search for inventory weight footer `Encumbrance: yy / YYY`'''
         return re.compile(r"Encumbrance:\s+(\d|\w)+\s*/\s*(\d|\w)+")
 
-    def parseEquippedGear(self, text: str) -> EquippedGear | None:
-        if "Items in use:" not in text:
+    def parseEquippedGear(self, text: str) -> Equipment | None:
+        # if "Items in use:" not in text:
+        #     return None
+        pattern = re.compile(r"On (Head|Jewel|Cloak|Body|Hands|Legs|Feet|Held Right|Held Left):  .+")
+
+        if not pattern.findall(text):
             return None
 
-        eg = EquippedGear()
-        lines = text.split('\n')
+        eg = Equipment()
+        lines = [lines.strip() for lines in text.split("\n")]
         for line in lines:
             if "Items in use:" in line:
                 continue
 
-            prefix = line[:15]
-            name = line[15:]
+            delimiter = ":  "
+            delimiterIndex = line.find(delimiter)
+            prefix = line[:delimiterIndex + len(delimiter)]
+            name = line[len(prefix):]
             if name == 'nothing':
                 continue
 
             match prefix:
-                case "     On Head:  ":
+                case "On Head:  ":
                     eg.Head = Item(name, slot=ItemSlot.HEAD)
-                case "    On Jewel:  ":
+                case "On Jewel:  ":
                     if eg.Jewel1 is None:
                         eg.Jewel1 = Item(name, slot=ItemSlot.JEWEL)
                     else:
                         eg.Jewel2 = Item(name, slot=ItemSlot.JEWEL)
-                case "    On Cloak:  ":
+                case "On Cloak:  ":
                     eg.Cloak = Item(name, slot=ItemSlot.CLOAK)
-                case "     On Body:  ":
+                case "On Body:  ":
                     eg.Body = Item(name, slot=ItemSlot.BODY)
-                case "    On Hands:  ":
+                case "On Hands:  ":
                     eg.Hands = Item(name, slot=ItemSlot.HANDS)
-                case "     On Legs:  ":
+                case "On Legs:  ":
                     eg.Legs = Item(name, slot=ItemSlot.LEGS)
-                case "     On Feet:  ":
+                case "On Feet:  ":
                     eg.Feet = Item(name, slot=ItemSlot.FEET)
-                case "  Held Right:  ":
-                    eg.Held_Right = Item(name, slot=ItemSlot.WIELDED)
-                case "   Held Left:  ":
-                    eg.Held_Left = Item(name, slot=ItemSlot.WIELDED)
+                case "Held Right:  ":
+                    eg.Held_Right = Item(name, slot=ItemSlot.HELD)
+                case "Held Left:  ":
+                    eg.Held_Left = Item(name, slot=ItemSlot.HELD)
 
         return eg
 
