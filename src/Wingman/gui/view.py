@@ -349,7 +349,7 @@ c = Controller.ForTesting()
         suppliesFrame.grid_columnconfigure(0, weight=1)
 
         ttk.Label(suppliesFrame,
-                  text="List of items to have in your inventory.")\
+                  text="List of items to have in your inventory.\nDependent on accurate cache. Execute `inventory` in client to refresh cache.")\
             .grid(row=0, column=0, sticky=tk.W, padx=10, pady=(10, 0))
         self.suppliesNotebook = ttk.Notebook(suppliesFrame, name="suppliesNotebook")
         self.suppliesNotebook.grid(row=1, column=0, sticky=tk.NSEW, padx=10, pady=5)
