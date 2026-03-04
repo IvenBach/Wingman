@@ -193,8 +193,8 @@ class Parser():
         """
         Parse line of text to determine if it indicates meditation status.
 
-- First Tuple Part: `True` = meditation has begun, `False` = meditation has ended, `None` = non-meditation related.
-- Second Tuple Part: The enum member indicating the meditation status. `None` for non-meditation related.
+- First Tuple Element: `True` = meditation has begun, `False` = meditation has ended, `None` = non-meditation related.
+- Second Tuple Element: The enum member indicating the meditation status. `None` for non-meditation related.
 """
         if self.MeditationState.Begin.value in text:
                 return True, self.MeditationState.Begin
@@ -302,9 +302,9 @@ BG	FC	Color			Color
         def mobRelatedMovement(self, text: str, mobsInRoom: list[str]) -> tuple[bool, MobMovement | None, str | None]:
             '''Parse text for mob related movement. Assumes `mobsInRoom` have their indefinite-articles (a, an) lower cased as part of `Also there is `.
 
-- First Tuple Part: `bool` - `True` = mob movement occurred - `False` = no mob movement, remaining tuple parts are then `None`.
-- Second Tuple Part: `MobMovement` - indicates the kind of movement, either entering/leaving.
-- Last Tuple Part: `str` - the mob that moved.
+- First Tuple Element: `bool` - `True` = mob movement occurred - `False` = no mob movement, remaining Tuple Elements are then `None`.
+- Second Tuple Element: `MobMovement` - indicates the kind of movement, either entering/leaving.
+- Last Tuple Element: `str` - the mob that moved.
 
 Subsequent removal of mob from the model needs to be dealt with by the caller.'''
             mobName = r"(?P<mobName>(A|An) " + Parser.mobNameRegexList + r")"
@@ -388,8 +388,8 @@ Subsequent removal of mob from the model needs to be dealt with by the caller.''
 
 If the text includes the ending and starting value for the spell, this is treated as a refresh of the buff/shield and results in a `True` return value.
 
-- First Tuple Part: `bool` - `True` = a buff or shield has refreshed, `False` = buff or shield has ended, `None` - non-buff/shield related.
-- Second Tuple Part: `ParseBuffOrShieldText` indicates which buff/shield has started/ended. `None` for non-buff/shield related."""
+- First Tuple Element: `bool` - `True` = a buff or shield has refreshed, `False` = buff or shield has ended, `None` - non-buff/shield related.
+- Second Tuple Element: `ParseBuffOrShieldText` indicates which buff/shield has started/ended. `None` for non-buff/shield related."""
         if self.ParseBuffOrShieldText.Shield_Ended.value in text:
             if self.ParseBuffOrShieldText.ShieldStarts.value in text:
                 return True, self.ParseBuffOrShieldText.ShieldStarts
@@ -465,8 +465,8 @@ If the text includes the ending and starting value for the spell, this is treate
     def parseSpellMitigationAffect(self, text: str) -> tuple[bool, SpellMitigationAffect | None]:
         '''Parses text for a mitigating affect related to a spell.
 
-- First Tuple Part: `bool` - `True` = pertains to spell mitigation, `False` otherwise.
-- Second Tuple Part: The enum member indicating the reason for the mitigation. `None` if the text does not pertain to spell mitigation.'''
+- First Tuple Element: `bool` - `True` = pertains to spell mitigation, `False` otherwise.
+- Second Tuple Element: The enum member indicating the reason for the mitigation. `None` if the text does not pertain to spell mitigation.'''
 
         map = self.SpellMitigationAffect._value2member_map_
         if map.__contains__(text):
@@ -623,9 +623,9 @@ Assumes any item lacking quantity parenthesis to be a non-quantity item and assi
 
         def parseAffects(self, text: str) -> tuple[bool, list[Affect], tuple[int, int]]:
             '''Parses text for affects.
-- First Tuple Part: `bool` - `True` = text contains affects, `False` = text does not contain affects
-- Second Tuple Part: `list[Affect]` - list of Affect objects parsed from the text, or empty list if no affects are found.
-- Third Tuple Part: tuple[int, int] - start and end index of the affects block in the text, `(-1, -1)` if no affects are found.'''
+- First Tuple Element: `bool` - `True` = text contains affects, `False` = text does not contain affects
+- Second Tuple Element: `list[Affect]` - list of Affect objects parsed from the text, or empty list if no affects are found.
+- Third Tuple Element: tuple[int, int] - start and end index of the affects block in the text, `(-1, -1)` if no affects are found.'''
             startIndex = text.find("\x1b[1mYou are affected by: ")
             endingText = "\n\n\n\n\x1b[8m"
             endIndex = text.find(endingText, startIndex) + len(endingText) if startIndex > -1 else -1
@@ -668,8 +668,8 @@ Assumes any item lacking quantity parenthesis to be a non-quantity item and assi
     @staticmethod
     def parseMobDroppedItem(text: str) -> tuple[bool, Item | None]:
         '''Parses text for a dropped item.
-- First Tuple Part: `bool` - `True` = text contains a dropped item, `False` = text does not contain a dropped item
-- Second Tuple Part: `Item` - the Item object parsed from the text, or `None` if no dropped item is found.'''
+- First Tuple Element: `bool` - `True` = text contains a dropped item, `False` = text does not contain a dropped item
+- Second Tuple Element: `Item` - the Item object parsed from the text, or `None` if no dropped item is found.'''
         dropPattern = re.compile(r"(A|An) (?P<mobName>" +  Parser.mobNameRegexList +  r") drops (?P<itemName>[a-zA-Z ',\-]+?)\.")
         match = dropPattern.search(text)
         if not match:
@@ -704,8 +704,8 @@ Assumes any item lacking quantity parenthesis to be a non-quantity item and assi
 
     def parseConstitutionResisted(self, text: str) -> tuple[bool, ConstitutionResisted | None]:
         '''Parse text for constitution resisted messages.
-- First Tuple Part: `bool` - `True` = text contains a constitution resisted message, `False` = text does not contain a constitution resisted related message.
-- Second Tuple Part: `ConstitutionResisted` - the ConstitutionResisted value parsed from the text, or `None` if not constitution resisted related.
+- First Tuple Element: `bool` - `True` = text contains a constitution resisted message, `False` = text does not contain a constitution resisted related message.
+- Second Tuple Element: `ConstitutionResisted` - the ConstitutionResisted value parsed from the text, or `None` if not constitution resisted related.
 '''
         if not ', but your constitution fights it off!' in text:
             return (False, None)
