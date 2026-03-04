@@ -695,3 +695,27 @@ Assumes any item lacking quantity parenthesis to be a non-quantity item and assi
 
         itemName = match.group("itemName")
         return True, Item(itemName)
+
+    class ConstitutionResisted(StrEnum):
+        ConstitutionResistedDisease = "Disease starts to enter your system, but your constitution fights it off!"
+        ConstitutionResistedPoison = "Poison starts to enter your system, but your constitution fights it off!"
+        ConstitutionResistedBleed = "You start to bleed, but your constitution fights it off!"
+
+    def parseConstitutionResisted(self, text: str) -> tuple[bool, ConstitutionResisted | None]:
+        '''Parse text for constitution resisted messages.
+- First Tuple Part: `bool` - `True` = text contains a constitution resisted message, `False` = text does not contain a constitution resisted related message.
+- Second Tuple Part: `ConstitutionResisted` - the ConstitutionResisted value parsed from the text, or `None` if not constitution resisted related.
+'''
+        if not ', but your constitution fights it off!' in text:
+            return (False, None)
+
+        if self.ConstitutionResisted.ConstitutionResistedBleed.value in text:
+            return (True, self.ConstitutionResisted.ConstitutionResistedBleed)
+
+        if self.ConstitutionResisted.ConstitutionResistedDisease.value in text:
+            return (True, self.ConstitutionResisted.ConstitutionResistedDisease)
+
+        if self.ConstitutionResisted.ConstitutionResistedPoison.value in text:
+            return (True, self.ConstitutionResisted.ConstitutionResistedPoison)
+
+        return (False, None)

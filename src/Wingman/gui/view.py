@@ -4,7 +4,7 @@ from tkinter import ttk
 import time
 import ctypes
 from typing import overload, Callable
-from enum import Enum
+from enum import Enum, StrEnum
 from Wingman.core.controller import Controller
 from Wingman.core.group import Group
 from Wingman.core.character import Character
@@ -48,7 +48,7 @@ class View(tk.Frame):
         self.var_includePetsInGroup = tk.BooleanVar(value=False)
         self._cachedGroup: Group = Group([])
         self.var_buffOrShieldEndingText = tk.StringVar(value="")
-        self.var_spellMitigatesAffectText = tk.StringVar(value="")
+        self.var_mitigatedAffectText = tk.StringVar(value="")
         self.var_spellDropWarningText = tk.StringVar(value="")
         self.var_soughtAfterItems = tk.StringVar(value="")
         #controller dependent *Var fields are applied in `set_controller`
@@ -444,7 +444,7 @@ c = Controller.ForTesting()
         self.buffOrShieldEndedLabel.grid_remove()
 
         self.spellMitigatesAffectsLabel = ttk.Label(_statusFooter,
-                                                    textvariable=self.var_spellMitigatesAffectText, 
+                                                    textvariable=self.var_mitigatedAffectText,
                                                     style=statusFooterStyleName)
         self.spellMitigatesAffectsLabel.grid(row=3, column=1)
 
@@ -679,8 +679,13 @@ c = Controller.ForTesting()
     def hideBuffOrShieldEndedLabel(self):
         self.buffOrShieldEndedLabel.grid_remove()
 
-    def displaySpellMitigatesAffectLabel(self, spellMitigationAffectMember: Parser.SpellMitigationAffect):
-        self.var_spellMitigatesAffectText.set(spellMitigationAffectMember.name
+    @overload
+    def displayMitigatedAffectLabel(self, spellMitigationAffectMember: Parser.SpellMitigationAffect): ...
+    @overload
+    def displayMitigatedAffectLabel(self, affectResistedByConstitution: Parser.ConstitutionResisted): ...
+
+    def displayMitigatedAffectLabel(self, mitigationEnumMember: StrEnum):
+        self.var_mitigatedAffectText.set(mitigationEnumMember.name
                                               .replace("Dot", "."))
         self.spellMitigatesAffectsLabel.grid()
         self.after(self.var_hideDisplayedLabelCallbackTimerInMilliseconds.get(), self.hideSpellMitigatesAffect)

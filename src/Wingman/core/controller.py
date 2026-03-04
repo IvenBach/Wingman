@@ -250,9 +250,13 @@ v.setup_ui()
             if isBuffOrShieldRefreshing == False:
                 self.model.BuffOrShieldEnding = whatEnded
 
+            isConstitutionResisted, affectResistedByConstitution = self.model.parser.parseConstitutionResisted(line)
+            if isConstitutionResisted and affectResistedByConstitution is not None:
+                self.view.displayMitigatedAffectLabel(affectResistedByConstitution)
+
             isSpellMitigationAffect, mitigatingAffect = self.model.parser.parseSpellMitigationAffect(line)
             if isSpellMitigationAffect and mitigatingAffect is not None:
-                self.view.displaySpellMitigatesAffectLabel(mitigatingAffect)
+                self.view.displayMitigatedAffectLabel(mitigatingAffect)
         return logs
 
     def IsLookingForItem(self, itemName: str) -> bool:

@@ -1089,3 +1089,24 @@ class TestDroppedItemParse:
         isMobDroppedItem, _ = Parser.parseMobDroppedItem(text)
 
         assert not isMobDroppedItem
+
+class TestConstitutionResistedParse:
+    @pytest.mark.parametrize("text, expectedResisted",
+                             [(Parser.ConstitutionResisted.ConstitutionResistedDisease.value, Parser.ConstitutionResisted.ConstitutionResistedDisease),
+                              (Parser.ConstitutionResisted.ConstitutionResistedPoison.value, Parser.ConstitutionResisted.ConstitutionResistedPoison),
+                              (Parser.ConstitutionResisted.ConstitutionResistedBleed.value, Parser.ConstitutionResisted.ConstitutionResistedBleed)],
+                                    ids=["Disease Resisted",
+                                        "Poison Resisted",
+                                        "Bleed Resisted"])
+    def test_Resisted_ParsedCorrectly(self, text, expectedResisted):
+        isConstitutionResisted, actualResisted = Parser().parseConstitutionResisted(text)
+
+        assert isConstitutionResisted
+        assert actualResisted == expectedResisted
+
+    def test_NonResistedText_ReturnsFalse(self):
+        text = "A Tamian peasant drops a few silver coins."
+
+        isConstitutionResisted, _ = Parser().parseConstitutionResisted(text)
+
+        assert not isConstitutionResisted

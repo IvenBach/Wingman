@@ -266,23 +266,27 @@ class TestView():
 
             assert expectedToContain in actualText
 
-    class TestSpellMitigationDisplay:
-        def test_SpellMitigationInputReceived_LabelDisplayed(self, testController: Controller):
+    class TestAffectMitigationDisplay:
+        @pytest.mark.parametrize("input, expected", [(Parser.SpellMitigationAffect.BleedDotResist.value, "Bleed.Resist"),
+                                                     (Parser.ConstitutionResisted.ConstitutionResistedBleed.value, Parser.ConstitutionResisted.ConstitutionResistedBleed.name )],
+                                        ids=["Spell mitigation affect - Bleed Resist",
+                                             "Constitution resisted affect - Bleed Resist"])
+        def test_AffectMitigationInputReceived_LabelDisplayed(self, testController: Controller, input: str, expected: str):
             c = testController
             v = c.view
-            c.receiver.receive(Parser.SpellMitigationAffect.BleedDotResist.value)
+            c.receiver.receive(input)
 
             v.update_gui()
-            actualText = v.var_spellMitigatesAffectText.get()
+            actualText = v.var_mitigatedAffectText.get()
 
-            assert actualText.__contains__("Bleed.Resist")
+            assert expected in actualText
 
-        def test_NonSpellMitigationText_LabelNotDisplayed(self, testController: Controller):
+        def test_NonAffectMitigationText_LabelNotDisplayed(self, testController: Controller):
             c = testController
             v = c.view
-            c.receiver.receive("Text not related to spell mitigation.")
+            c.receiver.receive("Text not related to affect mitigation.")
 
-            with patch.object(v, f'{v.displaySpellMitigatesAffectLabel.__name__}') as mockedDisplay:
+            with patch.object(v, f'{v.displayMitigatedAffectLabel.__name__}') as mockedDisplay:
                 v.update_gui()
 
             mockedDisplay.assert_not_called()
