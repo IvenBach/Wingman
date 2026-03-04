@@ -1,15 +1,15 @@
 from typing import List, overload, Iterable
-from enum import Enum, StrEnum
+from enum import Enum, StrEnum, auto
 
-class ItemSlot(StrEnum):
-    HEAD = "HEAD"
-    JEWEL = "JEWEL"
-    CLOAK = "CLOAK"
-    BODY = "BODY"
-    HANDS = "HANDS"
-    FEET = "FEET"
-    LEGS = "LEGS"
-    HELD = "HELD"
+class ItemSlot(Enum):
+    HEAD = auto()
+    JEWEL = auto()
+    CLOAK = auto()
+    BODY = auto()
+    HANDS = auto()
+    FEET = auto()
+    LEGS = auto()
+    HELD = auto()
 
 class ItemType(StrEnum):
     CLAW = "CLAW"
@@ -226,17 +226,3 @@ class Item:
 
         assert self.Quantity is not None and other.Quantity is not None
         return self.Quantity - other.Quantity
-
-    @staticmethod
-    def orderBySlot(missingItems: Iterable['Item']) -> List['Item']:
-            gearOrder = {ItemSlot.HEAD: 0,
-                         ItemSlot.JEWEL: 1,
-                         ItemSlot.CLOAK: 2,
-                         ItemSlot.BODY: 3,
-                         ItemSlot.HANDS: 4,
-                         ItemSlot.LEGS: 5,
-                         ItemSlot.FEET: 6,
-                         ItemSlot.HELD: 7,
-                         None: 8 }
-
-            return sorted(missingItems, key=lambda item: gearOrder[item.Slot])

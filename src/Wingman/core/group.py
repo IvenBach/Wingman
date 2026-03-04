@@ -1,11 +1,11 @@
 from Wingman.core.character import Character
-from typing import List, overload
+from typing import Iterable, List, overload
 
 class Group:
     '''
     Character group management class.
     '''
-    def __init__(self, members: List[Character] = []) -> None:
+    def __init__(self, members: Iterable[Character] = []) -> None:
         self._members: List[Character] = []
         if members:
             self._members.extend(members)
@@ -17,15 +17,15 @@ class Group:
     def Disband(self):
         self._members.clear()
 
-    def AddMembers(self, newMembers: List[Character]):
-        for member in newMembers:
-            self._members.append(member)
-    @overload
-    def RemoveMembers(self, membersToRemove: List[str]): ...
-    @overload
-    def RemoveMembers(self, membersToRemove: List[Character]): ...
+    def AddMembers(self, newMembers: Iterable[Character]):
+        self._members.extend(newMembers)
 
-    def RemoveMembers(self, membersToRemove: List[Character] | List[str]):
+    @overload
+    def RemoveMembers(self, membersToRemove: Iterable[str]): ...
+    @overload
+    def RemoveMembers(self, membersToRemove: Iterable[Character]): ...
+
+    def RemoveMembers(self, membersToRemove: Iterable[Character] | Iterable[str]):
         for memberToRemove in membersToRemove:
             if isinstance(memberToRemove, Character):
                 if memberToRemove in self._members:
@@ -50,13 +50,13 @@ class Group:
 
     def __repr__(self):
         return f"{self.Leader.Name}'s group"
-    
+
     @property
     def DisplayHealingIcon(self) -> bool:
         for member in self._members:
             if member.Hp.Current == 1:
                 return True
-        
+
         return False
 
     def __eq__(self, other) -> bool:

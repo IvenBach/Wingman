@@ -8,6 +8,7 @@ from Wingman.core.input_receiver import InputReceiver
 from Wingman.core.controller import Controller
 from Wingman.core.parser import Parser
 from Wingman.core.affect import Affect
+from Wingman.core.connection_payload_bytes import ConnectionPayloadBytes
 
 # Helper class to mock Scapy packet behavior cleanly
 class MockPacket:
@@ -219,3 +220,64 @@ def test_AffectsWithPrefixedAndSuffixedInfo_PrefixedAndSuffixedInfoContinueOnToR
     assert mockCalls[1].args[0] == "Some text before."
     assert mockCalls[2].args[0] == ''
     assert mockCalls[3].args[0] == "Some text after."
+
+class TestConnectionPayload:
+    def test_LogoutPayload_MethodToPauseInvoked(self, listener_stack: tuple[NetworkListener, InputReceiver]):
+        listener, receiver = listener_stack
+        target_ip = listener.target_ip
+        target_port = listener.target_port
+        pkt = MockPacket(target_ip, target_port, ConnectionPayloadBytes.Logout.value)
+        v = listener.controller.view
+
+        with patch.object(v, v.apply_pause.__name__) as mockedApplyPause:
+            listener.packet_callback(pkt)
+
+        mockedApplyPause.assert_called_once_with(True)
+
+    def test_LogoutPayload_MethodToDisbandGroupInvoked(self, listener_stack: tuple[NetworkListener, InputReceiver]):
+        listener, receiver = listener_stack
+        target_ip = listener.target_ip
+        target_port = listener.target_port
+        pkt = MockPacket(target_ip, target_port, ConnectionPayloadBytes.Logout.value)
+        c = listener.controller
+
+        with patch.object(c, c.disbandGroup.__name__) as mockedDisbandGroup:
+            listener.packet_callback(pkt)
+
+        mockedDisbandGroup.assert_called_once()
+
+    def test_LoginPayloadReceived__MockedMethodToUnpauseInvoked(self, listener_stack: tuple[NetworkListener, InputReceiver]):
+        listener, receiver = listener_stack
+        target_ip = listener.target_ip
+        target_port = listener.target_port
+        pkt = MockPacket(target_ip, target_port, ConnectionPayloadBytes.Login.value)
+        v = listener.controller.view
+
+        with patch.object(v, v.apply_pause.__name__) as mockedApplyPause:
+            listener.packet_callback(pkt)
+
+        mockedApplyPause.assert_called_once_with(False)
+
+    def test_UnpausedSession_LogoutPayloadReceived_PauseStateUpdated(self, listener_stack: tuple[NetworkListener, InputReceiver]):
+        listener, receiver = listener_stack
+        target_ip = listener.target_ip
+        target_port = listener.target_port
+        pkt = MockPacket(target_ip, target_port, ConnectionPayloadBytes.Logout.value)
+        v = listener.controller.view
+        v.isPaused = False
+
+        listener.packet_callback(pkt)
+
+        assert v.isPaused
+
+    def test_PausedSession_LoginPayloadReceived_PauseStateUpdated(self, listener_stack: tuple[NetworkListener, InputReceiver]):
+        listener, receiver = listener_stack
+        target_ip = listener.target_ip
+        target_port = listener.target_port
+        pkt = MockPacket(target_ip, target_port, ConnectionPayloadBytes.Login.value)
+        v = listener.controller.view
+        v.isPaused = True
+
+        listener.packet_callback(pkt)
+
+        assert not v.isPaused

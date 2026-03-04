@@ -4,7 +4,6 @@ import re
 import time
 import configparser
 from pathlib import Path
-from typing import Iterable
 from Wingman.core.affect import Affect
 from Wingman.core.group import Group
 from Wingman.core.session import GameSession
@@ -167,8 +166,10 @@ v.setup_ui()
                 continue
 
             assert isinstance(line, str)
+
             if needToClearGroupData(line, self.gameSession.group):
                 self.gameSession.group.Disband()
+                self.disbandGroup()
 
             # Check for member rows in this line
             found_members = self.model.parser.parse_group_status(line, self.model.includePetsInGroup)
@@ -602,7 +603,9 @@ Returns a `list[Item]` of missing items
             self.view.displayMissingGearSetItemsLabel('')
             return
 
-        missingItems = [f"{item.Slot}: {item.Name}" for item in Item.orderBySlot(missingViewItemsSet)]
+        #https://stackoverflow.com/a/5944696 Lamda sort in place
+        missingItems = [f"{item.Slot}: {item.Name}"
+                            for item in sorted(missingViewItemsSet,key=lambda item: (item.Slot, item.Name))]
         self.view.displayMissingGearSetItemsLabel("Missing set items:" + '\n   - ' + '\n   - '.join(missingItems))
 
     def sendBankWithdrawTextToClipboard(self):
@@ -706,28 +709,28 @@ Returns a `list[Item]` of missing items
         tabIdentifier = self.activeTabTextInNotebook(self.view.gearSetsNotebook)
         if tabIdentifier == "PvP":
             self.view.clearPvpSetEntries()
-            self.view.gearSetsPvpHeadEntry.insert(0, eg.Head if eg.Head is not None else '')
-            self.view.gearSetsPvpJewel1Entry.insert(0, eg.Jewel1 if eg.Jewel1 is not None else '')
-            self.view.gearSetsPvpJewel2Entry.insert(0, eg.Jewel2 if eg.Jewel2 is not None else '')
-            self.view.gearSetsPvpCloakEntry.insert(0, eg.Cloak if eg.Cloak is not None else '')
-            self.view.gearSetsPvpBodyEntry.insert(0, eg.Body if eg.Body is not None else '')
-            self.view.gearSetsPvpHandsEntry.insert(0, eg.Hands if eg.Hands is not None else '')
-            self.view.gearSetsPvpLegsEntry.insert(0, eg.Legs if eg.Legs is not None else '')
-            self.view.gearSetsPvpFeetEntry.insert(0, eg.Feet if eg.Feet is not None else '')
-            self.view.gearSetsPvpHeldRightEntry.insert(0, eg.Held_Right if eg.Held_Right is not None else '')
-            self.view.gearSetsPvpHeldLeftEntry.insert(0, eg.Held_Left if eg.Held_Left is not None else '')
+            self.view.gearSetsPvpHeadEntry.insert(0, eg.Head.Name if eg.Head is not None else '')
+            self.view.gearSetsPvpJewel1Entry.insert(0, eg.Jewel1.Name if eg.Jewel1 is not None else '')
+            self.view.gearSetsPvpJewel2Entry.insert(0, eg.Jewel2.Name if eg.Jewel2 is not None else '')
+            self.view.gearSetsPvpCloakEntry.insert(0, eg.Cloak.Name if eg.Cloak is not None else '')
+            self.view.gearSetsPvpBodyEntry.insert(0, eg.Body.Name if eg.Body is not None else '')
+            self.view.gearSetsPvpHandsEntry.insert(0, eg.Hands.Name if eg.Hands is not None else '')
+            self.view.gearSetsPvpLegsEntry.insert(0, eg.Legs.Name if eg.Legs is not None else '')
+            self.view.gearSetsPvpFeetEntry.insert(0, eg.Feet.Name if eg.Feet is not None else '')
+            self.view.gearSetsPvpHeldRightEntry.insert(0, eg.Held_Right.Name if eg.Held_Right is not None else '')
+            self.view.gearSetsPvpHeldLeftEntry.insert(0, eg.Held_Left.Name if eg.Held_Left is not None else '')
         elif tabIdentifier == "PvE":
             self.view.clearPveSetEntries()
-            self.view.gearSetsPveHeadEntry.insert(0, eg.Head if eg.Head is not None else '')
-            self.view.gearSetsPveJewel1Entry.insert(0, eg.Jewel1 if eg.Jewel1 is not None else '')
-            self.view.gearSetsPveJewel2Entry.insert(0, eg.Jewel2 if eg.Jewel2 is not None else '')
-            self.view.gearSetsPveCloakEntry.insert(0, eg.Cloak if eg.Cloak is not None else '')
-            self.view.gearSetsPveBodyEntry.insert(0, eg.Body if eg.Body is not None else '')
-            self.view.gearSetsPveHandsEntry.insert(0, eg.Hands if eg.Hands is not None else '')
-            self.view.gearSetsPveLegsEntry.insert(0, eg.Legs if eg.Legs is not None else '')
-            self.view.gearSetsPveFeetEntry.insert(0, eg.Feet if eg.Feet is not None else '')
-            self.view.gearSetsPveHeldRightEntry.insert(0, eg.Held_Right if eg.Held_Right is not None else '')
-            self.view.gearSetsPveHeldLeftEntry.insert(0, eg.Held_Left if eg.Held_Left is not None else '')
+            self.view.gearSetsPveHeadEntry.insert(0, eg.Head.Name if eg.Head is not None else '')
+            self.view.gearSetsPveJewel1Entry.insert(0, eg.Jewel1.Name if eg.Jewel1 is not None else '')
+            self.view.gearSetsPveJewel2Entry.insert(0, eg.Jewel2.Name if eg.Jewel2 is not None else '')
+            self.view.gearSetsPveCloakEntry.insert(0, eg.Cloak.Name if eg.Cloak is not None else '')
+            self.view.gearSetsPveBodyEntry.insert(0, eg.Body.Name if eg.Body is not None else '')
+            self.view.gearSetsPveHandsEntry.insert(0, eg.Hands.Name if eg.Hands is not None else '')
+            self.view.gearSetsPveLegsEntry.insert(0, eg.Legs.Name if eg.Legs is not None else '')
+            self.view.gearSetsPveFeetEntry.insert(0, eg.Feet.Name if eg.Feet is not None else '')
+            self.view.gearSetsPveHeldRightEntry.insert(0, eg.Held_Right.Name if eg.Held_Right is not None else '')
+            self.view.gearSetsPveHeldLeftEntry.insert(0, eg.Held_Left.Name if eg.Held_Left is not None else '')
         else:
             raise ValueError(f"Unexpected active tab name: {tabIdentifier}")
 
@@ -758,3 +761,8 @@ Returns a `list[Item]` of missing items
         self.view.gearSetsPvpFeetEntry.insert(0, self.view.gearSetsPveFeetEntry.get())
         self.view.gearSetsPvpHeldRightEntry.insert(0, self.view.gearSetsPveHeldRightEntry.get())
         self.view.gearSetsPvpHeldLeftEntry.insert(0, self.view.gearSetsPveHeldLeftEntry.get())
+
+    def disbandGroup(self):
+        self.gameSession.group.Disband()
+        emptyGroup = Group()
+        self.view._cachedGroup = emptyGroup

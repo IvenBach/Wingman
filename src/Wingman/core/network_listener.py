@@ -32,6 +32,13 @@ class NetworkListener:
                 try:
                     payload_bytes = bytes(packet[TCP].payload)
 
+                    if Parser.ParseBytes().isLogin(payload_bytes):
+                        self.controller.view.apply_pause(False)
+
+                    if Parser.ParseBytes().isLogout(payload_bytes):
+                        self.controller.view.apply_pause(True)
+                        self.controller.disbandGroup()
+
                     # Decode and append to buffer immediately
                     chunk = payload_bytes.decode('utf-8', errors='replace')
 

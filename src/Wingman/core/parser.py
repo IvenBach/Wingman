@@ -1,6 +1,7 @@
 import re
 from typing import List
 from enum import StrEnum
+from Wingman.core.connection_payload_bytes import ConnectionPayloadBytes
 from Wingman.core.status_indicator import StatusIndicator
 from Wingman.core.resource_bar import ResourceBar
 from Wingman.core.character import Character
@@ -719,3 +720,12 @@ Assumes any item lacking quantity parenthesis to be a non-quantity item and assi
             return (True, self.ConstitutionResisted.ConstitutionResistedPoison)
 
         return (False, None)
+
+    class ParseBytes:
+        def isLogout(self, text: bytes) -> bool:
+            '''Parse bytes for logout message.'''
+            return ConnectionPayloadBytes.Logout.value in text
+
+        def isLogin(self, text: bytes) -> bool:
+            '''Parse bytes for login message.'''
+            return ConnectionPayloadBytes.Login.value in text

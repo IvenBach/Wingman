@@ -7,10 +7,13 @@ import configparser
 import tkinter as tk
 import tkinter.messagebox
 
+from Wingman.core.group import Group
+
 if __name__ == "__main__":
     srcDirectory = Path(__file__).parent.parent.parent.resolve()
     sys.path.append(str(srcDirectory))
 
+from Wingman.core.character import Character
 from Wingman.core.controller import Controller
 from Wingman.core.parser import Parser
 from Wingman.core.health_Tagger import HealthTagger
@@ -466,6 +469,30 @@ class TestGrouping:
         c.process_queue()
 
         assert c.gameSession.group.Count == 2
+
+    class TestDisbanding:
+        def test_ClearsGameSessionGroup(self, testController: Controller):
+            c = testController
+            c.gameSession.group.AddMembers([Character("Foo"), Character("Bar")])
+
+            initialGroupCount = c.gameSession.group.Count
+
+            c.disbandGroup()
+
+            assert initialGroupCount == 2
+            assert c.gameSession.group.Count == 0
+
+        def test_ClearsCachedGroupOnView(self, testController: Controller):
+            c = testController
+            v = c.view
+            v._cachedGroup = Group([Character("Foo"), Character("Bar")])
+
+            initialCachedGroupCount = v._cachedGroup.Count
+
+            c.disbandGroup()
+
+            assert initialCachedGroupCount == 2
+            assert v._cachedGroup.Count == 0
 
 class TestDisplayingCentralColumnLabelInView:
     def test_DisplayAfkLabel(self, testController: Controller):

@@ -9,6 +9,7 @@ if __name__ == "__main__":
     sys.path.append(str(srcDirectory))
 
 
+from Wingman.core.connection_payload_bytes import ConnectionPayloadBytes
 from Wingman.core.parser import MobMovement, Parser
 from Wingman.core.status_indicator import StatusIndicator
 from Wingman.core.group import Group
@@ -1110,3 +1111,18 @@ class TestConstitutionResistedParse:
         isConstitutionResisted, _ = Parser().parseConstitutionResisted(text)
 
         assert not isConstitutionResisted
+
+class TestConnectionPayload:
+    class TestLogin:
+        def test_LoginPayload_ReturnsTrue(self):
+            assert Parser.ParseBytes().isLogin(ConnectionPayloadBytes.Login.value)
+
+        def test_NonLoginPayload_ReturnsFalse(self):
+            assert not Parser.ParseBytes().isLogin(b'Not login payload')
+
+    class TestLogout:
+        def test_LogoutPayload_ReturnsTrue(self):
+            assert Parser.ParseBytes().isLogout(ConnectionPayloadBytes.Logout.value)
+
+        def test_NonLogoutPayload_ReturnsFalse(self):
+            assert not Parser.ParseBytes().isLogout(b'Not logout payload')

@@ -32,7 +32,7 @@ class View(tk.Frame):
         self.var_duration = tk.StringVar(value="Time: 00:00:00")
         self.var_always_on_top = tk.BooleanVar(value=True)
         self.var_meditationRegenDisplay = tk.StringVar(value="Med: 0")
-        self.paused: bool = False
+        self.isPaused: bool = False
         self.last_stat_update = 0
         self.dark_mode = False
         self._controller: Controller
@@ -158,7 +158,7 @@ c = Controller.ForTesting()
         # Control Buttons Frame
         btns_frame = ttk.Frame(pauseSettingsTimerFrame)
         btns_frame.grid(row=1, column=0, sticky=tk.E)
-        self.btn_pause = ttk.Button(btns_frame, text="Pause", command=self.toggle_pause, width=8)
+        self.btn_pause = ttk.Button(btns_frame, text="Pause", command=lambda: self.apply_pause(not self.isPaused), width=8)
         self.btn_pause.grid(row=0, column=0, sticky=tk.W, padx=(0, 2))
 
         # Settings Dropdown
@@ -487,14 +487,15 @@ c = Controller.ForTesting()
 
         self.menu_settings.config(bg=field_bg, fg=fg_color, activebackground=select_bg, activeforeground="white")
 
-    def toggle_pause(self):
-        self.paused = not self.paused
-        if self.paused:
+    def apply_pause(self, isPaused: bool):
+        if isPaused:
             self.btn_pause.config(text="Resume")
-            if hasattr(self._controller.gameSession, 'pause_clock'): self._controller.gameSession.pause_clock()
+            self._controller.gameSession.pause_clock()
         else:
             self.btn_pause.config(text="Pause")
-            if hasattr(self._controller.gameSession, 'resume_clock'): self._controller.gameSession.resume_clock()
+            self._controller.gameSession.resume_clock()
+
+        self.isPaused = isPaused
 
     def set_windows_titlebar_color(self, use_dark: bool):
         try:
@@ -512,7 +513,7 @@ c = Controller.ForTesting()
 
     def update_gui(self):
         self.after(100, self.update_gui)
-        if self.paused: return
+        if self.isPaused: return
         self._controller.process_queue()
         group_data = self._controller.gameSession.group
         if group_data != self._cachedGroup:
@@ -614,9 +615,9 @@ c = Controller.ForTesting()
         for m in group.Members:
             if isCurrentPartyMember(m):
                 values = (m.Class_, m.Level, str(m.Status), m.Name, str(m.Hp), str(m.Fat), str(m.Pow))
-                
+
                 healthTag = HealthTagger.HealthTag(m)
-                
+
                 self.groupTreeview.insert('', tk.END, iid=m.Name, values=values, tags=(healthTag))
             elif isNewlyJoinedPartyMember(m):
                 suffixToMakeUnique = ''
@@ -625,8 +626,8 @@ c = Controller.ForTesting()
 
                 values = ('__', "__", "__", m.Name, '__', '__', '__')
                 self.groupTreeview.insert('', tk.END, iid=m.Name + suffixToMakeUnique, values=values)
-        
-        
+
+
         if group.DisplayHealingIcon:
             self.displayHealGroupImage()
         else:

@@ -401,3 +401,20 @@ class TestView():
             assert v.gearSetsPveFeetEntry.get() == ""
             assert v.gearSetsPveHeldRightEntry.get() == ""
             assert v.gearSetsPveHeldLeftEntry.get() == ""
+
+    @pytest.mark.parametrize("initialPauseState, appliedPauseState, expectedStateAfterApplyingPause", 
+                             [(True, False, False),
+                              (False, True, True)],
+                              ids=["Initially paused, applying unpause",
+                                  "Initially unpaused, applying pause"])
+    def test_ApplyingPause_UpdatesPauseState(self, testController: Controller,
+                                             initialPauseState: bool,
+                                             appliedPauseState: bool,
+                                             expectedStateAfterApplyingPause: bool):
+        c = testController
+        v = c.view
+        v.isPaused = initialPauseState
+
+        v.apply_pause(appliedPauseState)
+
+        assert v.isPaused == expectedStateAfterApplyingPause
