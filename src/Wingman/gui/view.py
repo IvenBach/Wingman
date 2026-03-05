@@ -513,17 +513,18 @@ c = Controller.ForTesting()
 
     def update_gui(self):
         self.after(100, self.update_gui)
-        if self.isPaused: return
         self._controller.process_queue()
         group_data = self._controller.gameSession.group
         if group_data != self._cachedGroup:
             self.refreshGroupDisplay(group_data)
             self._cachedGroup = Group(group_data.Members) # Cache a new instance to avoid using the same reference for next comparison.
-        current_xp = self._controller.gameSession.total_xp
-        self.var_total_xp.set(f"Total XP: {current_xp:,}")
-        now = time.time()
-        if now - self.last_stat_update >= 1.0:
-            self.updateTimeRelatedValues(now)
+
+        if not self.isPaused:
+            current_xp = self._controller.gameSession.total_xp
+            self.var_total_xp.set(f"Total XP: {current_xp:,}")
+            now = time.time()
+            if now - self.last_stat_update >= 1.0:
+                self.updateTimeRelatedValues(now)
 
         match self._controller.model.isAfk:
             case True:

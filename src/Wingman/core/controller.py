@@ -107,7 +107,7 @@ v.setup_ui()
     def reset_stats(self):
         self.view.reset_stats()
 
-    def process_queue(self):
+    def process_queue(self) -> list[str]:
         """
         Dequeues items (alters state as needed), calculates XP, and parses Group stats.
         Returns a list of text logs for the GUI.
@@ -143,6 +143,7 @@ v.setup_ui()
             if line is None:
                 break
 
+            #Non-string objects specifically handled by the network_listener and given to the
             if isinstance(line, MobsInRoom):
                 self.model.currentMobsInRoom = line.mobs_in_room
                 self.updateMobCountDisplay()
@@ -168,7 +169,6 @@ v.setup_ui()
             assert isinstance(line, str)
 
             if needToClearGroupData(line, self.gameSession.group):
-                self.gameSession.group.Disband()
                 self.disbandGroup()
 
             # Check for member rows in this line
@@ -182,12 +182,13 @@ v.setup_ui()
                 self.gameSession.group.RemoveMembers(leavingMembers)
 
             # --- Logic 2: XP Detection ---
-            xp_gain = self.model.parser.parse_xp_message(line)
-            if xp_gain > 0:
-                self.gameSession.total_xp += xp_gain
-                timestamp = time.strftime("%H:%M:%S", time.localtime())
-                log_entry = f"[{timestamp}] +{xp_gain:,} XP"
-                logs.append(log_entry)
+            if not self.view.isPaused:
+                xp_gain = self.model.parser.parse_xp_message(line)
+                if xp_gain > 0:
+                    self.gameSession.total_xp += xp_gain
+                    timestamp = time.strftime("%H:%M:%S", time.localtime())
+                    log_entry = f"[{timestamp}] +{xp_gain:,} XP"
+                    logs.append(log_entry)
 
             isMobDroppedItem, droppedItem = self.model.parser.parseMobDroppedItem(line)
             if isMobDroppedItem and droppedItem is not None:
@@ -215,7 +216,7 @@ v.setup_ui()
                 case False:
                     self.model.isMeditating = False
 
-                    if meditationState == Parser.MeditationState.Termination_ByFullPower:
+                    if meditationState == self.model.parser.MeditationState.Termination_ByFullPower:
                         self.displayFullPowerLabel()
                 case None:
                     pass

@@ -1,3 +1,4 @@
+from enum import StrEnum
 import unittest.mock
 import pytest
 from unittest.mock import MagicMock, patch
@@ -266,6 +267,226 @@ Blur.V                         4m 5s                """
 
             mockedDisplay.assert_called_once_with("a fire root")
 
+    class TestPausingDoesNotAffect:
+        def test_DisbandingGroup_NotAffectedWhilePaused(self, testController: Controller):
+            c = testController
+            c.gameSession.group.AddMembers([Character("Bar"), Character("Foo")])
+            c.view.isPaused = True
+
+            countBeforeDisbanding = c.gameSession.group.Count
+
+            c.receiver.receive("You disband from Quackin's group.")
+            c.process_queue()
+
+            assert countBeforeDisbanding == 2
+            assert c.gameSession.group.Count == 0
+
+        def test_AddingGroupMember_NotAffectedWhilePaused(self, testController: Controller):
+            c = testController
+            c.view.isPaused = True
+            c.receiver.receive("FooBar follows you")
+            c.process_queue()
+
+            assert c.gameSession.group.Count == 1
+
+        def test_GroupMemberLeaving_NotAffectedWhilePaused(self, testController: Controller):
+            c = testController
+            c.gameSession.group.AddMembers([Character("Bar"), Character("FooBar")])
+            c.view.isPaused = True
+
+            c.process_queue()
+            countBeforeLeaving = c.gameSession.group.Count
+
+            c.receiver.receive("FooBar disbands from the group.")
+            c.process_queue()
+
+            assert countBeforeLeaving == 2
+            assert c.gameSession.group.Count == 1
+
+        def test_MobDroppingItemThatIsSoughtAfter_DisplayOfLabel_NotAffectedWhilePaused(self, testController: Controller):
+            c = testController
+            c.model.SoughtAfterItems = set(['a fire root'])
+            c.view.isPaused = True
+            text = "A simple mob drops a fire root."
+
+            c.receiver.receive(text)
+            c.process_queue()
+
+            with patch.object(c.view, c.view.displayDropAlertLabel.__name__) as mockedDisplay:
+                c.view.update_gui()
+
+            mockedDisplay.assert_called()
+
+        def test_GoingAfk_NotAffectedWhilePaused(self, testController: Controller):
+            c = testController
+            c.model.isAfk = False
+            c.view.isPaused = True
+
+            c.receiver.receive(Parser.AfkStatus.BeginAfk.value)
+            c.process_queue()
+
+            with patch.object(c.view, c.view.displayAfkLabel.__name__) as mockedDisplay:
+                c.view.update_gui()
+
+            mockedDisplay.assert_called_once_with()
+            assert c.model.isAfk
+
+        def test_ReturningFromAfk_NotAffectedWhilePaused(self, testController: Controller):
+            c = testController
+            c.model.isAfk = True
+            c.view.isPaused = True
+
+            c.receiver.receive(Parser.AfkStatus.EndAfk.value)
+            c.process_queue()
+
+            with patch.object(c.view, c.view.hideAfkLabel.__name__) as mockedHide:
+                c.view.update_gui()
+
+            mockedHide.assert_called_once_with()
+            assert not c.model.isAfk
+
+        def test_MeditationStarting_NotAffectedWhilePaused(self, testController: Controller):
+            c = testController
+            c.model.isMeditating = False
+            c.view.isPaused = True
+
+            c.receiver.receive(Parser.MeditationState.Begin.value)
+            c.process_queue()
+
+            with patch.object(c.view, c.view.displayMeditationLabel.__name__) as mockedDisplay:
+                c.view.update_gui()
+
+            mockedDisplay.assert_called_once_with()
+            assert c.model.isMeditating
+
+        def test_MeditationEnding_NotAffectedWhilePaused(self, testController: Controller):
+            c = testController
+            c.model.isMeditating = True
+            c.view.isPaused = True
+
+            c.receiver.receive(Parser.MeditationState.Termination_ByStanding.value)
+            c.process_queue()
+
+            with patch.object(c.view, c.view.hideMeditationLabel.__name__) as mockedHide:
+                c.view.update_gui()
+
+            mockedHide.assert_called_once_with()
+            assert not c.model.isMeditating
+
+        def test_HidingStarts_DisplayOfLabel_NotAffectedWhilePaused(self, testController: Controller):
+            c = testController
+            c.model.isHiding = False
+            c.view.isPaused = True
+
+            c.receiver.receive(Parser.HideStatus.Begin.value)
+            c.process_queue()
+
+            with patch.object(c.view, c.view.displayHidingLabel.__name__) as mockedDisplay:
+                c.view.update_gui()
+
+            mockedDisplay.assert_called_once_with()
+            assert c.model.isHiding
+
+        def test_HidingEnds_DisplayOfLabel_NotAffectedWhilePaused(self, testController: Controller):
+            c = testController
+            c.model.isHiding = True
+            c.view.isPaused = True
+
+            c.receiver.receive(Parser.HideStatus.EndHiding.value)
+            c.process_queue()
+
+            with patch.object(c.view, c.view.hideHidingLabel.__name__) as mockedHide:
+                c.view.update_gui()
+
+            mockedHide.assert_called_once_with()
+            assert not c.model.isHiding
+
+        def test_PlayerMovement_ClearCountOfMobsInRoomInvoked_NotAffectedWhilePaused(self, testController: Controller):
+            c = testController
+            c.view.isPaused = True
+
+            c.receiver.receive("Obvious exits: east, northwest, and a small, smelly hut.")
+            with patch.object(c, c.clearCountOfMobsInRoom.__name__) as mockedClear:
+                c.process_queue()
+
+            mockedClear.assert_called_once_with()
+
+        def test_PlayerMovement_UpdateMobCountDisplayInvoked_NotAffectedWhilePaused(self, testController: Controller):
+            c = testController
+            c.view.isPaused = True
+
+            c.receiver.receive("Obvious exits: east, northwest, and a small, smelly hut.")
+            with patch.object(c, c.updateMobCountDisplay.__name__) as mockedUpdate:
+                c.process_queue()
+
+            mockedUpdate.assert_called_once_with()
+
+        def test_PlayerMovement_ClearSoughtAfterItemsThatDroppedInvoked_NotAffectedWhilePaused(self, testController: Controller):
+            c = testController
+            c.view.isPaused = True
+
+            c.receiver.receive("Obvious exits: east, northwest, and a small, smelly hut.")
+            with patch.object(c, c.clearSoughtAfterItemsThatDropped.__name__) as mockedClear:
+                c.process_queue()
+
+            mockedClear.assert_called_once_with()
+
+        def test_MobMovement_Enters_UpdateMobCountDisplayInvoked_NotAffectedWhilePaused(self, testController: Controller):
+            c = testController
+            c.view.isPaused = True
+
+            c.receiver.receive('A cat enters the room.')
+            with patch.object(c, c.updateMobCountDisplay.__name__) as mockedUpdate:
+                c.process_queue()
+
+            mockedUpdate.assert_called_once_with()
+
+        def test_MobMovement_Leaves_UpdateMobCountDisplayInvoked_NotAffectedWhilePaused(self, testController: Controller):
+            c = testController
+            c.view.isPaused = True
+            c.model.currentMobsInRoom = ['a cat']
+
+            c.receiver.receive('A cat leaves the North.')
+            with patch.object(c, c.updateMobCountDisplay.__name__) as mockedUpdate:
+                c.process_queue()
+
+            mockedUpdate.assert_called_once_with()
+
+        def test_SpellWithTimeDurationEnds_NotAffectedWhilePaused(self, testController: Controller):
+            c = testController
+            c.view.isPaused = True
+            c.model.BuffOrShieldEnding = None
+            c.receiver.receive(Parser.ParseBuffOrShieldText.Blur_Ended.value)
+
+            c.process_queue()
+
+            assert c.model.BuffOrShieldEnding == Parser.ParseBuffOrShieldText.Blur_Ended
+
+        @pytest.mark.parametrize("expectedMitigation",
+                                 [Parser.ConstitutionResisted.ConstitutionResistedDisease,
+                                  Parser.SpellMitigationAffect.BleedDotResist],
+                                ids=['ConstitutionResistedDisease', 'BleedDotResist'])
+        def test_AffectMitigation_DisplayMitigatedAffectLabel_NotAffectedWhilePaused(self, testController: Controller, expectedMitigation: StrEnum):
+            c = testController
+            v = c.view
+            c.view.isPaused = True
+
+            c.receiver.receive(expectedMitigation.value)
+
+            with patch.object(v, v.displayMitigatedAffectLabel.__name__) as mockedDisplay:
+                c.process_queue()
+
+            mockedDisplay.assert_called_once_with(expectedMitigation)
+
+    class TestPausingDoesAffect:
+        def test_GainingExperience_DoesNotUpdateWhilePaused(self, testController: Controller):
+            c = testController
+            c.view.isPaused = True
+
+            c.receiver.receive("You gain 1000 experience points.")
+            c.process_queue()
+
+            assert c.gameSession.total_xp == 0
 
 class TestGrouping:
     def test_GainNewFollower_NewFollowerAddedToGroupForDisplay(self, testController: Controller):
@@ -283,7 +504,7 @@ class TestGrouping:
         groupCountAfterNewFollower = len(c.view.groupTreeview.get_children())
         assert groupCountBeforeNewFollower == 2
         assert groupCountAfterNewFollower == 3
-    
+
     def test_LoseFollower_FollowerRemovedFromGroupForDisplay(self, testController: Controller):
         c = testController
         c.receiver.receive("""Beautiful's group:
@@ -301,7 +522,7 @@ class TestGrouping:
 
         assert groupCountBeforeLosingFollower == 3
         assert groupCountAfterLosingFollower == 2
-    
+
     def test_GainNewFollowerAndLoseFollower_WithoutInvokingGroupCommand_CountsCorrectlyForAdditionAndRemoval(self, testController: Controller):
         c = testController
         c.receiver.receive("""Beautiful's group:
@@ -356,7 +577,7 @@ class TestGrouping:
         healthTags = c.view.groupTreeview.item(member, 'tags')
 
         assert HealthTagger.HealthLevels.ZEROED.value in healthTags
-    
+
     def test_GroupMemberInRedHealth_DisplaysRedHealthFormatting(self, testController: Controller):
         c = testController
         c.receiver.receive("[Bar            01]            Foo                 25/ 100 (  0%)      497/ 500 ( 99%)    592/ 707 ( 83%)   """)
@@ -376,7 +597,7 @@ class TestGrouping:
         healthTags = c.view.groupTreeview.item(member, 'tags')
 
         assert HealthTagger.HealthLevels.AT_OR_BELOW_50.value in healthTags
-    
+
     def test_GroupMemberInGoodHealth_DisplaysNoHealthFormatting(self, testController: Controller):
         c = testController
         c.receiver.receive("[Bar            01]            Foo                 51/ 100 (  0%)      497/ 500 ( 99%)    592/ 707 ( 83%)   ")
@@ -433,7 +654,7 @@ class TestGrouping:
 
         assert groupCountWhileMemberOfGroup == 2
         assert c.gameSession.group.Count == 0
-    
+
     def test_nonGroupLeaderLeavesGroup_IsRemovedFromLatestGroupData(self, testController: Controller):
         c = testController
 
@@ -454,7 +675,7 @@ class TestGrouping:
 
         assert initialGroupSize == 3
         assert c.gameSession.group.Count == 2
-    
+
     def test_IncludeMobsInGroup_MobsDisplayInGroupDisplay(self, testController: Controller):
         c = testController
         c.model.includePetsInGroup = True
