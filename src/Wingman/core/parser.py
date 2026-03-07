@@ -7,7 +7,8 @@ from Wingman.core.resource_bar import ResourceBar
 from Wingman.core.character import Character
 from Wingman.core.group import Group
 from Wingman.core.inventory import Equipment, Inventory
-from Wingman.core.item import Item, ItemSlot
+from Wingman.core.item import Item, ItemSlot, ItemEnchantments
+from Wingman.core.item import ItemMaterial_Cloth, ItemMaterial_Leather, ItemMaterial_Studded_And_Plate, ItemMaterial_Wood
 from Wingman.core.affect import Affect
 from Wingman.core.ansi_code_stripper import remove_ANSI_color_codes
 
@@ -15,9 +16,10 @@ class MobMovement(StrEnum):
     LEAVING = "LEAVING"
     ENTERING = "ENTERING"
 
-class Parser():
-    mobNameRegexList = r"[a-zA-Z ',\-]+"
-    charNameRegexList = r"[a-zA-Z '\-]+"
+class Parser:
+    MOB_NAME_REGEX_PATTERN = r"[a-zA-Z ',\-]+"
+    CHARACTER_NAME_REGEX_PATTERN = r"[a-zA-Z '\-]+"
+
     def parse_xp_message(self, text_block: str) -> int:
         """Parses text for XP gains."""
         # Use finditer to find ALL occurrences in the block
@@ -283,7 +285,7 @@ BG	FC	Color			Color
             if "Also there is " not in text:
                 return []
 
-            mobIndicator = r"(?P<subMob>\x1b\[1;31m(?P<name>" + Parser.mobNameRegexList + r")+)"
+            mobIndicator = r"(?P<subMob>\x1b\[1;31m(?P<name>" + Parser.MOB_NAME_REGEX_PATTERN + r")+)"
             searchPattern = re.compile(mobIndicator)
             foundMobs = searchPattern.findall(text)
 
@@ -307,16 +309,16 @@ BG	FC	Color			Color
 - Last Tuple Element: `str` - the mob that moved.
 
 Subsequent removal of mob from the model needs to be dealt with by the caller.'''
-            mobName = r"(?P<mobName>(A|An) " + Parser.mobNameRegexList + r")"
+            mobName = r"(?P<mobName>(A|An) " + Parser.MOB_NAME_REGEX_PATTERN + r")"
 
-            exitType = r"(?P<exitType>leaves|dies|chases " + Parser.charNameRegexList + r" out of the room)"
+            exitType = r"(?P<exitType>leaves|dies|chases " + Parser.CHARACTER_NAME_REGEX_PATTERN + r" out of the room)"
             exitPattern = re.compile(f'{mobName} {exitType}', re.IGNORECASE)
             mobExiting = exitPattern.findall(text)
             if mobExiting:
                 name: str = mobExiting[0][0]
                 return True, MobMovement.LEAVING, name[:1].lower() + name[1:]
 
-            entryType = r"(?P<entryType>arrives from|enters the room|chases " + Parser.charNameRegexList + r" into the room)"
+            entryType = r"(?P<entryType>arrives from|enters the room|chases " + Parser.CHARACTER_NAME_REGEX_PATTERN + r" into the room)"
             pattern = re.compile(f'{mobName} {entryType}', re.IGNORECASE)
             mobEntering = pattern.findall(text)
             if mobEntering:
@@ -665,37 +667,87 @@ Assumes any item lacking quantity parenthesis to be a non-quantity item and assi
 
             return hours * 3600 + minutes * 60 + seconds
 
+    class ParseItem:
+        ENCHANTMENT_NAMES = "|".join(map(re.escape, ItemEnchantments._member_names_))
+
+        CLOTH_MATERIAL_NAMES = "|".join(map(re.escape, ItemMaterial_Cloth._member_names_))
+        LEATHER_MATERIAL_NAMES = "|".join(map(re.escape, ItemMaterial_Leather._member_names_))
+        STUDDED_AND_PLATE_MATERIAL_NAMES = "|".join(map(re.escape, ItemMaterial_Studded_And_Plate._member_names_))
+        WOOD_MATERIAL_NAMES = "|".join(map(re.escape, ItemMaterial_Wood._member_names_))
+        MATERIAL_NAMES = "|".join([
+            CLOTH_MATERIAL_NAMES,
+            LEATHER_MATERIAL_NAMES,
+            STUDDED_AND_PLATE_MATERIAL_NAMES,
+            WOOD_MATERIAL_NAMES
+        ])
+
+        ITEM_REGEX = rf"""(?P<itemName>
+                            (?:(?:the|an|a|)\s*)
+                            (?:(?P<enchantment>{ENCHANTMENT_NAMES})\b\s+)?
+                            (?:(?P<material>{MATERIAL_NAMES})\b\s+)?
+                                (?P<baseItemName>[a-zA-Z ',\-]+)
+                        )"""
+
+        ITEM_PATTERN = re.compile(ITEM_REGEX, re.VERBOSE | re.IGNORECASE)
+
+        def parseItem(self, text: str) -> Item | None:
+            '''Parse text for an item.'''
+
+            match = Parser.ParseItem.ITEM_PATTERN.search(text)
+            if not match:
+                return None
+
+            return Parser._fromRegexMatch(match)
+
+    DROP_ITEM_PATTERN = re.compile(
+rf"""
+^
+(?:A|An)\s+
+(?P<mobName>{MOB_NAME_REGEX_PATTERN})
+
+\s+drops\s+
+
+{ParseItem.ITEM_REGEX}
+
+\.
+$
+""", re.VERBOSE | re.IGNORECASE
+)
+
+    SHAPESHIFTED_WEREWOLF_NAMES = set([
+        "small wolf",
+        "fierce wolf",
+        "berserking wolf",
+        "crimson-furred wolf",
+        "ebon-furred stonewolf",
+        "ice-blue frostwolf",
+        "fiery-maned hellwolf",
+        "arctic ghostwolf",
+        "white-fanged banewolf",
+        "ethereal wraithwolf",
+        "storm-grey thunderwolf",
+        "icy cobalt tundrawolf",
+        "fierce ancient ba'alwolf",
+        "vapor-shrouded mistwolf",
+        "azure-eyed stormwolf",
+        "primeval eldritch voidwolf"
+        ])
+
+
     @staticmethod
     def parseMobDroppedItem(text: str) -> tuple[bool, Item | None]:
         '''Parses text for a dropped item.
 - First Tuple Element: `bool` - `True` = text contains a dropped item, `False` = text does not contain a dropped item
 - Second Tuple Element: `Item` - the Item object parsed from the text, or `None` if no dropped item is found.'''
-        dropPattern = re.compile(r"(A|An) (?P<mobName>" +  Parser.mobNameRegexList +  r") drops (?P<itemName>[a-zA-Z ',\-]+?)\.")
-        match = dropPattern.search(text)
+        match = Parser.DROP_ITEM_PATTERN.search(text)
+
         if not match:
             return False, None
-        
-        shapeshiftedWerewolfNames = set(["small wolf",
-                                        "fierce wolf",
-                                        "berserking wolf",
-                                        "crimson-furred wolf",
-                                        "ebon-furred stonewolf",
-                                        "ice-blue frostwolf",
-                                        "fiery-maned hellwolf",
-                                        "arctic ghostwolf",
-                                        "white-fanged banewolf",
-                                        "ethereal wraithwolf",
-                                        "storm-grey thunderwolf",
-                                        "icy cobalt tundrawolf",
-                                        "fierce ancient ba'alwolf",
-                                        "vapor-shrouded mistwolf",
-                                        "azure-eyed stormwolf",
-                                        "primeval eldritch voidwolf"])
-        if match.group("mobName") in shapeshiftedWerewolfNames:
+
+        if match.group("mobName") in Parser.SHAPESHIFTED_WEREWOLF_NAMES:
             return False, None
 
-        itemName = match.group("itemName")
-        return True, Item(itemName)
+        return True, Parser._fromRegexMatch(match)
 
     class ConstitutionResisted(StrEnum):
         ConstitutionResistedDisease = "Disease starts to enter your system, but your constitution fights it off!"
@@ -729,3 +781,28 @@ Assumes any item lacking quantity parenthesis to be a non-quantity item and assi
         def isLogin(self, text: bytes) -> bool:
             '''Parse bytes for login message.'''
             return ConnectionPayloadBytes.Login.value in text
+
+    @staticmethod
+    def _fromRegexMatch(match: re.Match[str]) -> 'Item':
+        '''Factory method to create an Item from a regex match object with named groups corresponding to 
+        `itemName`, `enchantment`, and `material`.'''
+        if not match:
+            raise ValueError("Cannot create Item from None match")
+
+        itemName = match.group("itemName")
+        enchantment = ItemEnchantments[match.group('enchantment').upper()] if match.group('enchantment') else None
+
+        materialEnum = Item.resolveMaterial(match.group('material')) if match.group('material') else None
+
+        item = Item(itemName)
+        item.ParsedBaseItemName = match.group("baseItemName") if match.group("baseItemName") else None
+        if not enchantment and not materialEnum:
+            return item
+
+        if enchantment:
+            item.Enchantment = enchantment
+
+        if materialEnum:
+            item.Material = materialEnum
+
+        return item

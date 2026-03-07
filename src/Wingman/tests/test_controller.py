@@ -28,7 +28,7 @@ def testController():
 
     c.view.root.destroy()
 
-class TestProcessQueue():
+class TestProcessQueue:
     def test_process_queue_calculates_xp(self, testController: Controller):
         c = testController
         inputs = ["You gain 1000 experience points.", "Garbage line."]
@@ -148,7 +148,7 @@ class TestProcessQueue():
 
         def test_ClearsSoughtAfterItemsThatDropped(self, testController: Controller):
             c = testController
-            c.model.SoughtAfterItemsThatDropped = ['A foo bar']
+            c.model.SoughtAfterItems_ThatDropped = ['A foo bar']
 
             c.receiver.receive("Obvious exits: east, northwest, and a small, smelly hut.")
             with patch.object(c, c.clearSoughtAfterItemsThatDropped.__name__) as mockedClear:
@@ -254,9 +254,9 @@ Blur.V                         4m 5s                """
             assert 'Blur.V' in argument
 
     class TestAlertingItemDrops:
-        def test_ItemDropsThatIsSoughtAfter_DisplaysDropAlertLabel(self, testController: Controller):
+        def test_ItemNameDropsThatIsSoughtAfter_DisplaysDropAlertLabel(self, testController: Controller):
             c = testController
-            c.model.SoughtAfterItems = set(['a fire root'])
+            c.model.SoughtAfterItems_Names, c.model.SoughtAfterItems_BaseItemNames = c.SoughtAfterItems_SemicolonDelimitedTextToTwoSets('a fire root')
             text = "A simple mob drops a fire root."
 
             c.receiver.receive(text)
@@ -266,6 +266,19 @@ Blur.V                         4m 5s                """
                 c.view.update_gui()
 
             mockedDisplay.assert_called_once_with("a fire root")
+
+        def test_BaseItemNameDropsThatIsSoughtAfter_DisplaysDropAlertLabel(self, testController: Controller):
+            c = testController
+            c.model.SoughtAfterItems_Names, c.model.SoughtAfterItems_BaseItemNames = c.SoughtAfterItems_SemicolonDelimitedTextToTwoSets('dragon-wing boots')
+            text = "A simple mob drops a glowing dragon-wing boots."
+
+            c.receiver.receive(text)
+            c.process_queue()
+
+            with patch.object(c, c.displayDropAlertLabel.__name__) as mockedDisplay:
+                c.view.update_gui()
+
+            mockedDisplay.assert_called_once_with("a glowing dragon-wing boots")
 
     class TestPausingDoesNotAffect:
         def test_DisbandingGroup_NotAffectedWhilePaused(self, testController: Controller):
@@ -305,7 +318,7 @@ Blur.V                         4m 5s                """
 
         def test_MobDroppingItemThatIsSoughtAfter_DisplayOfLabel_NotAffectedWhilePaused(self, testController: Controller):
             c = testController
-            c.model.SoughtAfterItems = set(['a fire root'])
+            c.model.SoughtAfterItems_Names, c.model.SoughtAfterItems_BaseItemNames = c.SoughtAfterItems_SemicolonDelimitedTextToTwoSets('a fire root')
             c.view.isPaused = True
             text = "A simple mob drops a fire root."
 
@@ -823,13 +836,13 @@ class TestDisplayingCentralColumnLabelInView:
 class TestIgnoredMobsInRoom:
     def test_UpdatingIgnoredMobsPets_WithCsvIncludingWhitespace_WhitespaceTrimmedAndNotIncludedInModel(self, testController: Controller):
         c = testController
-        c.updateIgnoredMobsPets(' foo, bar ,baz ')
+        c.updateIgnoredMobsPets(' foo; bar ;baz ')
 
         assert c.model.ignoreTheseMobsInCurrentRoom == ['foo', 'bar', 'baz']
 
     def test_UpdatingIgnoredMobsPets_WithEmptyInput_ClearsIgnoredMobs(self, testController: Controller):
         c = testController
-        c.updateIgnoredMobsPets('foo,bar,baz')
+        c.updateIgnoredMobsPets('foo;bar;baz')
 
         c.updateIgnoredMobsPets('')
 
@@ -837,9 +850,9 @@ class TestIgnoredMobsInRoom:
 
     def test_UpdatingIgnoredMobsPets_WhenDifferentCsvMobsEntered_ClearsOldValuesLeavingOnlyNew(self, testController: Controller):
         c = testController
-        c.updateIgnoredMobsPets('foo,bar,baz')
+        c.updateIgnoredMobsPets('foo;bar;baz')
 
-        c.updateIgnoredMobsPets('a, b, c, d')
+        c.updateIgnoredMobsPets('a; b; c; d')
 
         assert c.model.ignoreTheseMobsInCurrentRoom == ['a', 'b', 'c', 'd']
 
@@ -1023,7 +1036,7 @@ class TestApplySettings:
         }
 
         c.applySettings(cp)
-        appliedText = c.view.var_ignoredMobPetsCsv.get()
+        appliedText = c.view.var_ignoredMobPetsSemicolonDelimited.get()
 
         assert appliedText == "foo, bar, baz"
         assert c.model.ignoreTheseMobsInCurrentRoom == ['foo', 'bar', 'baz']
@@ -1134,7 +1147,7 @@ class TestApplySettings:
             assert "+1108+856" in actual
 
     class TestSoughtAfterItems:
-        def test_ZeroLengthString_ModelHasEmptySet(self, testController: Controller):
+        def test_ZeroLengthString_ModelHasEmptySoughtAfterItems_Sets(self, testController: Controller):
             cp = configparser.ConfigParser()
             c = testController
             cp[c._VIEW_SETTINGS] = {
@@ -1143,9 +1156,11 @@ class TestApplySettings:
 
             c.applySettings(cp)
 
-            assert c.model.SoughtAfterItems == set()
+            assert c.model.SoughtAfterItems_Names == set()
+            assert c.model.SoughtAfterItems_BaseItemNames == set()
 
-        def test_SingleItem_ModelHasSetWithSingleItem(self, testController: Controller):
+        def test_ConfigOptionWithItemName_PutsSoughtStringInto_ItemNameSetLookup(self, testController: Controller):
+            expected = set(['a fire root'])
             cp = configparser.ConfigParser()
             c = testController
             cp[c._VIEW_SETTINGS] = {
@@ -1154,29 +1169,57 @@ class TestApplySettings:
 
             c.applySettings(cp)
 
-            assert c.model.SoughtAfterItems == set(['a fire root'])
+            assert c.model.SoughtAfterItems_Names == expected
 
-        def test_SequenceOfCsvValues_AddedToSet(self, testController: Controller):
+        def test_ConfigOptionWithBaseItemName_PutsSoughtStringInto_BaseItemNameSet(self, testController: Controller):
+            expected = set(['fire root'])
             cp = configparser.ConfigParser()
             c = testController
             cp[c._VIEW_SETTINGS] = {
-                c._SOUGHT_AFTER_ITEMS__OPTION: "a fire root, a water root, a spirit root"
+                c._SOUGHT_AFTER_ITEMS__OPTION: "fire root"
             }
 
             c.applySettings(cp)
 
-            assert c.model.SoughtAfterItems == set(['a fire root', 'a water root', 'a spirit root'])
+            assert c.model.SoughtAfterItems_BaseItemNames == expected
 
-        def test_SequenceOfCsvValuesWithWhitespaceBetweenSomeCommas_WhitespaceValuesStrippedOutAndNotAddedToSet(self, testController: Controller):
+        def test_SequenceOfSemicolonDelimited_ItemNames_AddedToNamesSet(self, testController: Controller):
+            expected = set(['a fire root', 'a water root', 'a spirit root'])
             cp = configparser.ConfigParser()
             c = testController
             cp[c._VIEW_SETTINGS] = {
-                c._SOUGHT_AFTER_ITEMS__OPTION: "a fire root,, , a water root, , a spirit root, "
+                c._SOUGHT_AFTER_ITEMS__OPTION: "a fire root; a water root; a spirit root"
             }
 
             c.applySettings(cp)
 
-            assert c.model.SoughtAfterItems == set(['a fire root', 'a water root', 'a spirit root'])
+            assert c.model.SoughtAfterItems_Names == expected
+
+        def test_SequenceOfSemicolonDelimited_ItemNameAndBaseItemNames_AddedToRespectiveSets(self, testController: Controller):
+            expectedNamesSet = set(['a water root', 'a wood root'])
+            expectedBaseItemNamesSet = set(['fire root', 'spirit root'])
+            cp = configparser.ConfigParser()
+            c = testController
+            cp[c._VIEW_SETTINGS] = {
+                c._SOUGHT_AFTER_ITEMS__OPTION: "fire root; a water root; a wood root; spirit root"
+            }
+
+            c.applySettings(cp)
+
+            assert c.model.SoughtAfterItems_Names == expectedNamesSet
+            assert c.model.SoughtAfterItems_BaseItemNames == expectedBaseItemNamesSet
+
+        def test_SequenceOfSemicolonDelimitedValuesWithWhitespaceBetweenDelimiters_WhitespaceNotAddedToLookupSets(self, testController: Controller):
+            expected = set(['a fire root', 'a water root', 'a spirit root'])
+            cp = configparser.ConfigParser()
+            c = testController
+            cp[c._VIEW_SETTINGS] = {
+                c._SOUGHT_AFTER_ITEMS__OPTION: "a fire root;; ; a water root; ; a spirit root; "
+            }
+
+            c.applySettings(cp)
+
+            assert c.model.SoughtAfterItems_Names == expected
 
     class TestGearSets:
         def test_LastActiveTabInGearSetsNotebook_RestoredToActiveTab(self, testController: Controller):
@@ -1414,15 +1457,21 @@ class TestApplySettings:
                 assert c.view.gearSetsPveHeldLeftEntry.get() == "a shield"
 
 class TestIsLookingForItem:
-    def test_ItemInModel_ReturnsTrue(self, testController: Controller):
+    def test_ItemNameInModel_ReturnsTrue(self, testController: Controller):
         c = testController
-        c.model.SoughtAfterItems = set(['A darkspawned blackened fish fillet'])
+        c.model.SoughtAfterItems_Names, c.model.SoughtAfterItems_BaseItemNames = c.SoughtAfterItems_SemicolonDelimitedTextToTwoSets('a darkspawned blackened fish fillet;dragon-wing boots')
 
         assert c.IsLookingForItem('A darkspawned blackened fish fillet')
 
+    def test_ItemBaseNameInModel_ReturnsTrue(self, testController: Controller):
+        c = testController
+        c.model.SoughtAfterItems_Names, c.model.SoughtAfterItems_BaseItemNames = c.SoughtAfterItems_SemicolonDelimitedTextToTwoSets('a darkspawned blackened fish fillet;dragon-wing boots')
+
+        assert c.IsLookingForItem('dragon-wing boots')
+
     def test_ItemNotInModel_ReturnsFalse(self, testController: Controller):
         c = testController
-        c.model.SoughtAfterItems = set(['A darkspawned blackened fish fillet'])
+        c.model.SoughtAfterItems_Names, c.model.SoughtAfterItems_BaseItemNames = c.SoughtAfterItems_SemicolonDelimitedTextToTwoSets('a darkspawned blackened fish fillet;dragon-wing boots')
 
         assert not c.IsLookingForItem('A goblet of zombie blood')
 

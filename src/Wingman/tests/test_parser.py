@@ -1,3 +1,4 @@
+from enum import Enum
 import time
 
 import pytest
@@ -14,7 +15,7 @@ from Wingman.core.parser import MobMovement, Parser
 from Wingman.core.status_indicator import StatusIndicator
 from Wingman.core.group import Group
 from Wingman.core.character import Character
-from Wingman.core.item import Item, ItemSlot
+from Wingman.core.item import Item, ItemMaterial_Studded_And_Plate, ItemMaterials, ItemSlot, ItemEnchantments, ItemMaterial_Cloth, ItemMaterial_Leather, ItemMaterial_Wood
 from Wingman.core.affect import Affect
 
 @pytest.fixture
@@ -1037,6 +1038,52 @@ Vitalize.V                4h 28m 12s                      """
         assert affects[7].Name == "Vitalize.V"
         assert affects[7].DurationEndsAt == pytest.approx(now + 4*60*60 + 28*60 + 12, rel=1)
 
+@pytest.fixture
+def parseItem():
+        return Parser.ParseItem().parseItem
+
+class TestParseItem:
+    def test_ItemWithoutEnchantment_ReturnsItemWithNoneEnchantment(self, parseItem: Callable[[str], Item | None]):
+        text = "a dragon-wing boots."
+
+        item = parseItem(text)
+
+        assert item is not None
+        assert item.Enchantment == None
+
+    def test_ItemWithEnchantment_ReturnsItemWithEnchantment(self, parseItem: Callable[[str], Item | None]):
+        text = "a glowing dragon-wing boots."
+
+        item = parseItem(text)
+
+        assert item is not None
+        assert item.Enchantment == ItemEnchantments.GLOWING
+
+    @pytest.mark.parametrize("expectedMaterial",
+                             [(ItemMaterial_Wood.EBONY),
+                              (ItemMaterial_Cloth.EBONWEAVE),
+                              (ItemMaterial_Leather.WYVERN_SCALE),
+                              (ItemMaterial_Studded_And_Plate.LAEN)])
+    def test_ItemWithMaterial_ReturnsItemWithMaterial(self,
+                                                        parseItem: Callable[[str], Item | None],
+                                                        expectedMaterial: Enum):
+        text = f"a {expectedMaterial.name.lower()} basic item."
+
+        item = parseItem(text)
+
+        assert item is not None
+        assert item.Material == expectedMaterial
+
+    def test_ItemWithBothEnchantmentAndMaterial_ReturnsItemWithEnchantmentAndMaterial(self,
+                                                                                   parseItem: Callable[[str], Item | None]):
+        text = "a glowing ebony basic item."
+
+        item = parseItem(text)
+
+        assert item is not None
+        assert item.Enchantment == ItemEnchantments.GLOWING
+        assert item.Material == ItemMaterial_Wood.EBONY
+
 class TestDroppedItemParse:
     @pytest.mark.parametrize("text, expected", [("A stone giant drops a bright ironwood white-oak staff.", "a bright ironwood white-oak staff"),
                                         ("A Tiny Mouse drops giant candycane, dangerously sharp.", "giant candycane, dangerously sharp"),
@@ -1050,7 +1097,7 @@ class TestDroppedItemParse:
     def test_NameWithSpecialCharacters_IsParsedCorrectly(self, text: str, expected: str):
         _, itemName = Parser.parseMobDroppedItem(text)
 
-        assert itemName == expected
+        assert itemName.Name == expected
 
     @pytest.mark.parametrize("text, expected", [("A Tamian peasant drops a few silver coins.", "a few silver coins"),
                                                 ("A Tamian Trapper drops a bag of silver.", "a bag of silver")],
@@ -1090,6 +1137,20 @@ class TestDroppedItemParse:
         isMobDroppedItem, _ = Parser.parseMobDroppedItem(text)
 
         assert not isMobDroppedItem
+
+    def test_ItemWithoutEnchantment_ReturnsItemWithNoneEnchantment(self):
+        text = "A greater obsidian basilisk drops a black basilisk boots."
+
+        _, item = Parser.parseMobDroppedItem(text)
+
+        assert item.Enchantment == None
+
+    def test_ItemWithEnchantment_ReturnsItemWithEnchantment(self):
+        text = "A greater obsidian basilisk drops a glowing black basilisk boots."
+
+        _, item = Parser.parseMobDroppedItem(text)
+
+        assert item.Enchantment == ItemEnchantments.GLOWING
 
 class TestConstitutionResistedParse:
     @pytest.mark.parametrize("text, expectedResisted",

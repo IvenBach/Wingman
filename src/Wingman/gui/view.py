@@ -38,8 +38,8 @@ class View(tk.Frame):
         self._controller: Controller
         self.groupTreeview: ttk.Treeview
         self.menu_settings: tk.Menu
-        self.var_ignoredMobPetsCsv = tk.StringVar(value="")
-        self._miscellaneousSettings = tk.Toplevel(root, name="petOrMobsDisplaySettingsWindow")
+        self.var_ignoredMobPetsSemicolonDelimited = tk.StringVar(value="")
+        self._miscellaneousSettings = tk.Toplevel(root, name="miscellaneousSettingsWindow")
         self._supplyCheckerWindow = tk.Toplevel(root, name="supplyCheckerWindow")
         self._gearSetsWindow = tk.Toplevel(root, name="gearSetsWindow")
         self.var_missingGearSetItems = tk.StringVar(value="")
@@ -185,49 +185,52 @@ c = Controller.ForTesting()
         self._setUpTopLevelWindow(self._miscellaneousSettings, "Miscellaneous Settings", "<Escape>", self._withdraw_miscellaneous_settings_window)
         self._miscellaneousSettings.grid_columnconfigure(1, weight=1)
         self._miscellaneousSettings.bind("<Escape>", lambda e: self._withdraw_miscellaneous_settings_window())
+        self._miscellaneousSettings.minsize(550, 185)
+        self._miscellaneousSettings.resizable(True, False)
+
         ttk.Label(self._miscellaneousSettings,
-                  text="Ignore mobs/pets in room\n(comma-separated):", anchor=tk.E)\
+                  text="Ignore mobs/pets in room\n(semicolon ; delimited):", anchor=tk.E)\
             .grid(row=0, column=0, sticky=tk.E, padx=10, pady=(10, 0))
-        self.ignoredMobsPetsCsv = ttk.Entry(self._miscellaneousSettings,
-                                       textvariable=self.var_ignoredMobPetsCsv,
-                                       width=50)
-        self.ignoredMobsPetsCsv.grid(row=0, column=1, sticky=tk.W, padx=(0, 10))
+        self.ignoredMobsPetsCommaDelimitedEntry = ttk.Entry(self._miscellaneousSettings,
+                                                            textvariable=self.var_ignoredMobPetsSemicolonDelimited)
+        self.ignoredMobsPetsCommaDelimitedEntry.grid(row=0, column=1, sticky=tk.EW, padx=(0, 10))
         # helpful lambda explanation: https://stackoverflow.com/a/55093731
-        self.ignoredMobsPetsCsv.bind("<FocusOut>", # Without the lambda the function is never invoked.
-                                lambda e: self._controller.updateIgnoredMobsPets(self.var_ignoredMobPetsCsv.get()))
+        self.ignoredMobsPetsCommaDelimitedEntry.bind("<FocusOut>", # Without the lambda the function is never invoked.
+                                lambda e: self._controller.updateIgnoredMobsPets(self.var_ignoredMobPetsSemicolonDelimited.get()))
         ttk.Label(self._miscellaneousSettings,
-                  text="Include mobs in group window: ")\
+                  text="Include mobs in\ngroup window: ")\
             .grid(row=1, column=0, sticky=tk.E, padx=10)
         self.includeMobsInGroupCheckButton = ttk.Checkbutton(self._miscellaneousSettings,
                                                         variable=self.var_includePetsInGroup,
                                                         command=lambda: self.update_display_of_pets_in_group_window(self.var_includePetsInGroup.get()))
         self.includeMobsInGroupCheckButton.grid(row=1, column=1, sticky=tk.W)
         ttk.Label(self._miscellaneousSettings,
-                  text="Time, in milliseconds, for alerts to be displayed:")\
+                  text="Alerts to be displayed:\n(in milliseconds)")\
             .grid(row=2, column=0, sticky=tk.E, padx=10)
         self.alertLabelDurationDisplayEntry = ttk.Entry(self._miscellaneousSettings,
                                                   textvariable=self.var_hideDisplayedLabelCallbackTimerInMilliseconds,
                                                   width=10)
         self.alertLabelDurationDisplayEntry.grid(row=2, column=1, sticky=tk.W)
         ttk.Label(self._miscellaneousSettings,
-                  text="Time, in minutes, to alert before affects drop:")\
+                  text="Alert before affects drop:\n(in minutes)")\
             .grid(row=3, column=0, sticky=tk.E, padx=10)
         self.affectDropWarningDurationEntry = ttk.Entry(self._miscellaneousSettings,
                                                   textvariable=self.var_timeInMinutesToWarnAboutSpellsDropping,
                                                   width=10)
         self.affectDropWarningDurationEntry.grid(row=3, column=1, sticky=tk.W)
-        ttk.Label(self._miscellaneousSettings,
-                  text="Item sought after (comma-separated):")\
-            .grid(row=4, column=0, sticky=tk.E, padx=10, pady=(0, 10))
 
+        ttk.Label(self._miscellaneousSettings,
+                  text="Items sought after\n(semicolon ; delimited):",
+                  anchor=tk.CENTER)\
+            .grid(row=4, column=0, sticky=tk.EW, padx=10)
         #https://stackoverflow.com/a/4140988
         validateSoughtAfterItemsCommand = (self.register(self.validateSoughtAfterItemsEntry), '%P')
-        self.soughtAFterItemsEntry = ttk.Entry(self._miscellaneousSettings,
+        self.soughtAfterItemsEntry = ttk.Entry(self._miscellaneousSettings,
                                                textvariable=self.var_soughtAfterItems,
                                                validate='key',
-                                               validatecommand=validateSoughtAfterItemsCommand,
-                                               width=50)
-        self.soughtAFterItemsEntry.grid(row=4, column=1, sticky=tk.W, padx=(0, 10), pady=(0, 10))
+                                               validatecommand=validateSoughtAfterItemsCommand)
+        self.soughtAfterItemsEntry.grid(row=4, column=1, sticky=tk.EW, padx=(0, 10))
+
 
         self.menu_settings.add_command(label="Gear sets", command=self.open_gearSetsWindow)
 
@@ -568,12 +571,9 @@ c = Controller.ForTesting()
             else:
                 self._controller.hideAffectSpellDropWarningLabel()
 
-        #TODO: ¿Find correct way to update? - Feels like a hacky workaround. Don't know how to properly check this.
-        self._controller.model.SoughtAfterItems = {soughtItem.strip() for soughtItem in self.var_soughtAfterItems.get().split(',')}
-
-        if self._controller.model.SoughtAfterItemsThatDropped:
-            self._controller.displayDropAlertLabel(", ".join(self._controller.model.SoughtAfterItemsThatDropped))
-            self._controller.model.SoughtAfterItemsThatDropped.clear()
+        if self._controller.model.SoughtAfterItems_ThatDropped:
+            self._controller.displayDropAlertLabel(", ".join(self._controller.model.SoughtAfterItems_ThatDropped))
+            self._controller.model.SoughtAfterItems_ThatDropped.clear()
 
     def updateTimeRelatedValues(self, currentTime: float):
         current_rate = self._controller.gameSession.get_xp_per_hour()
@@ -749,7 +749,9 @@ c = Controller.ForTesting()
         self._dropAlertLabel.grid_remove()
 
     def validateSoughtAfterItemsEntry(self, proposedValue: str) -> bool:
-        self._controller.model.SoughtAfterItems = {item.strip() for item in proposedValue.split(',')}
+        itemNamesSet, itemBaseNamesSet = self._controller.SoughtAfterItems_SemicolonDelimitedTextToTwoSets(proposedValue)
+        self._controller.model.SoughtAfterItems_Names = itemNamesSet
+        self._controller.model.SoughtAfterItems_BaseItemNames = itemBaseNamesSet
 
         return True
 

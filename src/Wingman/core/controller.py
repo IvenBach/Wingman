@@ -193,7 +193,7 @@ v.setup_ui()
             isMobDroppedItem, droppedItem = self.model.parser.parseMobDroppedItem(line)
             if isMobDroppedItem and droppedItem is not None:
                 if self.IsLookingForItem(droppedItem.Name):
-                    self.model.SoughtAfterItemsThatDropped.append(droppedItem.Name)
+                    self.model.SoughtAfterItems_ThatDropped.append(droppedItem.Name)
 
             afkRelated = self.model.parser.parseAfkStatus(line)
             match afkRelated:
@@ -262,7 +262,14 @@ v.setup_ui()
         return logs
 
     def IsLookingForItem(self, itemName: str) -> bool:
-        return itemName in self.model.SoughtAfterItems
+        item = Parser.ParseItem().parseItem(itemName.lower())
+        if item.Name in self.model.SoughtAfterItems_Names:
+            return True
+
+        if item.ParsedBaseItemName in self.model.SoughtAfterItems_BaseItemNames:
+            return True
+
+        return False
 
     def updateMeditationDisplayValue(self):
         '''Method used to inform subscribers of `MeditationDisplay.attach(...)` that a change has occurred.'''
@@ -275,17 +282,17 @@ v.setup_ui()
 
     def clearCountOfMobsInRoom(self):
         self.model.currentMobsInRoom.clear()
-    
+
     def open_miscellaneousSettings_window(self):
         self.view.open_pet_or_mobs_display_settings_window()
-    
-    def updateIgnoredMobsPets(self, csvMobList: str):
+
+    def updateIgnoredMobsPets(self, semicolonDelimitedText: str):
         self.clearIgnoredMobsPets()
 
-        if csvMobList == '':
+        if semicolonDelimitedText == '':
             return
 
-        values = csvMobList.split(',')
+        values = semicolonDelimitedText.split(';')
         self.model.ignoreTheseMobsInCurrentRoom.extend(value.strip() for value in values)
 
     def clearIgnoredMobsPets(self):
@@ -308,7 +315,7 @@ v.setup_ui()
         cp[self._VIEW_SETTINGS] = {
             self._ALWAYS_ON_TOP__OPTION: str(self.view.var_always_on_top.get()),
             self._DARK_MODE__OPTION: str(self.view.dark_mode),
-            self._IGNORED_MOB_PETS_CSV__OPTION: self.view.ignoredMobsPetsCsv.get(),
+            self._IGNORED_MOB_PETS_CSV__OPTION: self.view.ignoredMobsPetsCommaDelimitedEntry.get(),
             self._DISPLAY_PETS_IN_GROUP__OPTION: str(self.model.includePetsInGroup),
             self._PVP_SUPPLIES_TEXT__OPTION: str(self.view.pvpSuppliesText.get("1.0", tk.END)),
             self._PVE_SUPPLIES_TEXT__OPTION: str(self.view.pveSuppliesText.get("1.0", tk.END)),
@@ -418,7 +425,7 @@ v.setup_ui()
         try:
             if configParser.has_section(self._VIEW_SETTINGS):
                 ignoredMobsPetsCsv = configParser.get(self._VIEW_SETTINGS, self._IGNORED_MOB_PETS_CSV__OPTION, fallback='')
-                self.view.var_ignoredMobPetsCsv.set(ignoredMobsPetsCsv)
+                self.view.var_ignoredMobPetsSemicolonDelimited.set(ignoredMobsPetsCsv)
                 self.updateIgnoredMobsPets(ignoredMobsPetsCsv)
 
                 darkModeSavedSetting = configParser.getboolean(self._VIEW_SETTINGS, self._DARK_MODE__OPTION, fallback=False)
@@ -452,9 +459,11 @@ v.setup_ui()
                                                                              fallback=self._HIDE_DISPLAYED_LABEL_CALLBACK_TIMER_IN_MILLISECONDS__FALLBACK)
                 self.view.var_hideDisplayedLabelCallbackTimerInMilliseconds.set(hideDisplayCallbackTimerInMilliseconds)
 
-                soughtAfterItems = configParser.get(self._VIEW_SETTINGS, self._SOUGHT_AFTER_ITEMS__OPTION, fallback='')
-                self.view.var_soughtAfterItems.set(soughtAfterItems)
-                self.model.SoughtAfterItems = set(item.strip() for item in soughtAfterItems.split(',') if item.strip() != '')
+                soughtAfterItemsText = configParser.get(self._VIEW_SETTINGS, self._SOUGHT_AFTER_ITEMS__OPTION, fallback='')
+                self.view.var_soughtAfterItems.set(soughtAfterItemsText)
+                itemNames, itemBaseNames = self.SoughtAfterItems_SemicolonDelimitedTextToTwoSets(soughtAfterItemsText)
+                self.model.SoughtAfterItems_Names = itemNames
+                self.model.SoughtAfterItems_BaseItemNames = itemBaseNames
 
                 applyGearSets(self)
 
@@ -555,7 +564,7 @@ Returns a `list[Item]` of missing items
         self.view.hideDropAlertLabel()
 
     def clearSoughtAfterItemsThatDropped(self):
-        self.model.SoughtAfterItemsThatDropped.clear()
+        self.model.SoughtAfterItems_ThatDropped.clear()
 
     def activeGearSetTabEquipment(self) -> Equipment:
         def pvpGearSetEquipment(self: Controller) -> Equipment:
@@ -767,3 +776,25 @@ Returns a `list[Item]` of missing items
         self.gameSession.group.Disband()
         emptyGroup = Group()
         self.view._cachedGroup = emptyGroup
+
+    def SoughtAfterItems_SemicolonDelimitedTextToTwoSets(self, soughtAfterItemsSemicolonDelimited: str) -> tuple[set[str], set[str]]:
+        itemNamesSet: set[str] = set()
+        baseItemNamesSet: set[str] = set()
+        if soughtAfterItemsSemicolonDelimited == '':
+            return (set(), set())
+
+        for soughtItem in soughtAfterItemsSemicolonDelimited.split(';'):
+            if soughtItem == '' or soughtItem.isspace():
+                continue
+
+            checkName = soughtItem.strip().lower()
+            item = self.model.parser.ParseItem().parseItem(checkName)
+            assert item is not None
+            assert item.ParsedBaseItemName is not None
+
+            if checkName == item.ParsedBaseItemName:
+                baseItemNamesSet.add(item.ParsedBaseItemName)
+            else:
+                itemNamesSet.add(checkName)
+
+        return (itemNamesSet, baseItemNamesSet)

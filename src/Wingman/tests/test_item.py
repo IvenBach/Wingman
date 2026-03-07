@@ -1,5 +1,7 @@
 import pytest
-from Wingman.core.item import Item, ItemSlot, QuantityComparer
+from enum import Enum
+from Wingman.core.item import Item, QuantityComparer
+from Wingman.core.item import ItemMaterial_Cloth, ItemMaterial_Leather, ItemMaterial_Studded_And_Plate, ItemMaterial_Wood, ItemMaterials
 
 def test_NonQuantityStringName_MatchesItemName_ReturnsTrue():    
     line = "A goblet of zombie blood"
@@ -43,6 +45,16 @@ def test_CapitalizationOnNameDoesNotAffectComparison_ReturnsTrue():
     item = Item("a GOBLET of ZOMBIE BLOOD")
 
     assert line == item
+
+@pytest.mark.parametrize('material, expectedMaterial',
+                         [(ItemMaterial_Cloth.EBONWEAVE, ItemMaterials.CLOTH),
+                          (ItemMaterial_Leather.ENCHANTED, ItemMaterials.LEATHER),
+                          (ItemMaterial_Studded_And_Plate.LAEN, ItemMaterials.STUDDED_AND_PLATE),
+                          (ItemMaterial_Wood.EBONY, ItemMaterials.WOOD)])
+def test_LookingUpItemMaterialByName_UsingRegistryLookupOnItemClass_ReturnsMaterialTypeAndEnumValue(material: Enum, expectedMaterial: ItemMaterials):
+    mat_enum = Item.resolveMaterial(material.name)
+
+    assert mat_enum == material
 
 class TestQuantityComparer:
     def test_DifferentNames_ReturnsInvalidComparison(self):

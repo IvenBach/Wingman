@@ -1,5 +1,44 @@
-from typing import List, overload, Iterable
+from typing import overload
+from re import Match
 from enum import Enum, StrEnum, auto
+
+class ItemMaterials(Enum):
+    CLOTH = auto()
+    LEATHER = auto()
+    STUDDED_AND_PLATE = auto()
+    WOOD = auto()
+
+class ItemMaterial_Cloth(Enum):
+    WOOL = auto()
+    COTTON = auto()
+    SILK = auto()
+    GOSSAMER = auto()
+    WISPWEAVE = auto()
+    EBONWEAVE = auto()
+
+class ItemMaterial_Leather(Enum):
+    LEATHER = auto()
+    ROUGH = auto()
+    SUEDE = auto()
+    EMBOSSED = auto()
+    WYVERN_SCALE = auto()
+    ENCHANTED = auto()
+
+class ItemMaterial_Studded_And_Plate(Enum):
+    BRONZE = auto()
+    IRON = auto()
+    STEEL = auto()
+    ALLOY = auto()
+    MITHRIL = auto()
+    LAEN = auto()
+
+class ItemMaterial_Wood(Enum):
+    MAPLE = auto()
+    OAK = auto()
+    YEW = auto()
+    ROSEWOOD = auto()
+    IRONWOOD = auto()
+    EBONY = auto()
 
 class ItemSlot(Enum):
     HEAD = auto()
@@ -10,6 +49,14 @@ class ItemSlot(Enum):
     FEET = auto()
     LEGS = auto()
     HELD = auto()
+
+class ItemEnchantments(Enum):
+    SILVERED = auto()
+    BRIGHT = auto()
+    SHINING = auto()
+    GLOWING = auto()
+    LUSTROUS = auto()
+    BRILLIANT = auto()
 
 class ItemType(StrEnum):
     CLAW = "CLAW"
@@ -85,23 +132,25 @@ class QuantityComparer(Enum):
     INVALID_COMPARISON = 9999 # String name comparison with non-matching names. ¿Better way?
 
 class Item:
-    Name: str
-    Slot: ItemSlot | None
-    Type: ItemType | None
-    Spell: str | None
-    Level: int
-    Damage: DamageRange | None
-    Timer: int | None
-    Fumble: FumbleRate | None
-    Accuracy: AccuracyRate | None
-    Defense: DefenseRating | None
-    Sigil_: Sigil | None
-    SigilLevel: int | None
-    Weight: int
-    Realm: str | None
-    Area: str | None
-    Mob: str | list[str]
-    Quantity: int | None
+    _MATERIAL_LOOKUP = {}
+
+    for enum_cls, mat_type in [(ItemMaterial_Cloth, ItemMaterials.CLOTH),
+                                (ItemMaterial_Leather, ItemMaterials.LEATHER),
+                                (ItemMaterial_Studded_And_Plate, ItemMaterials.STUDDED_AND_PLATE),
+                                (ItemMaterial_Wood, ItemMaterials.WOOD)]:
+        for name, member in enum_cls.__members__.items():
+            _MATERIAL_LOOKUP[name.upper()] = member
+
+    del(name, member, enum_cls, mat_type)
+
+    @staticmethod
+    def resolveMaterial(materialName: str) -> Enum | None:
+        '''Look for the material in a cached registry'''
+        if not materialName:
+            return None
+
+        return Item._MATERIAL_LOOKUP.get(materialName.upper(), None)
+
 
     @overload
     def __init__(self, name: str):...
@@ -129,7 +178,10 @@ class Item:
                  realm: str | None = None,
                  area: str | None = None,
                  mob: str | list[str] = "",
-                 quantity: int | None = None):
+                 quantity: int | None = None,
+                 enchantment: ItemEnchantments | None = None,
+                 material: Enum | None = None,
+                 parsedBaseItemName: str | None = None):
         self.Name = name.strip()
         self.Slot = slot
         self.Type = type
@@ -147,6 +199,9 @@ class Item:
         self.Area = area
         self.Mob = mob
         self.Quantity = quantity
+        self.Enchantment = enchantment
+        self.Material = material
+        self.ParsedBaseItemName = parsedBaseItemName
 
     def __str__(self):
         if self.Quantity is not None:

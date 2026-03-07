@@ -31,7 +31,7 @@ class TestView():
     [Bar            01]            Foo                 51/ 100 (  0%)      497/ 500 ( 99%)    592/ 707 ( 83%)   
     [Baz            01]            Fuzz                 1/ 50  (  0%)       50/  50 (100%)     50/ 50  (100%)
     [Duck           01]            Head               500/ 500 (  0%)      500/ 500 (100%)     50/ 50  (100%)""")
-            
+
             with patch.object(v, f'{v.displayHealGroupImage.__name__}') as mockedMethod:
                 v.update_gui()
 
