@@ -1,7 +1,6 @@
-from unittest.mock import patch
 import pytest
 from Wingman.core.input_receiver import InputReceiver
-from Wingman.core.parser import Parser
+from Wingman.core.parsing.parser import Parser
 from Wingman.core.controller import Controller
 
 @pytest.fixture

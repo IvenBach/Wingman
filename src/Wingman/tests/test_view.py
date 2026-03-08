@@ -8,7 +8,7 @@ if __name__ == "__main__":
     sys.path.append(str(srcDirectory))
 from Wingman.gui.view import View, SuppliesPaneChangeDirection
 from Wingman.core.controller import Controller
-from Wingman.core.parser import Parser
+from Wingman.core.parsing.parser import Parser
 
 @pytest.fixture
 def testController():

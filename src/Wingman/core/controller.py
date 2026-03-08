@@ -9,7 +9,7 @@ from Wingman.core.group import Group
 from Wingman.core.session import GameSession
 from Wingman.core.network_listener import NetworkListener
 from Wingman.core.model import Model
-from Wingman.core.parser import Parser, MobMovement
+from Wingman.core.parsing.parser import Parser, MobMovement
 from Wingman.core.mobs_in_room import MobsInRoom
 from Wingman.core.item import Item, ItemSlot, QuantityComparer
 from Wingman.core.inventory import Inventory, Equipment
@@ -34,7 +34,7 @@ class Controller:
         self._SETTINGS_FILE_NAME = 'WingmanSettings.ini'
         self._VIEW_SETTINGS = 'ViewSettings'
         self._APP_SETTINGS = 'AppSettings'
-        self._IGNORED_MOB_PETS_CSV__OPTION = 'IgnoredMobsPetsCsv'
+        self._IGNORED_MOB_PETS_SEMICOLON_DELIMITED__OPTION = 'IgnoredMobsPetsSemicolonDelimited'
         self._DISPLAY_PETS_IN_GROUP__OPTION = 'DisplayPetsInGroup'
         self._ALWAYS_ON_TOP__OPTION = 'AlwaysOnTop'
         self._DARK_MODE__OPTION = 'DarkMode'
@@ -262,7 +262,7 @@ v.setup_ui()
         return logs
 
     def IsLookingForItem(self, itemName: str) -> bool:
-        item = Parser.ParseItem().parseItem(itemName.lower())
+        item = Parser.parseItem(itemName.lower())
         if item.Name in self.model.SoughtAfterItems_Names:
             return True
 
@@ -315,7 +315,7 @@ v.setup_ui()
         cp[self._VIEW_SETTINGS] = {
             self._ALWAYS_ON_TOP__OPTION: str(self.view.var_always_on_top.get()),
             self._DARK_MODE__OPTION: str(self.view.dark_mode),
-            self._IGNORED_MOB_PETS_CSV__OPTION: self.view.ignoredMobsPetsCommaDelimitedEntry.get(),
+            self._IGNORED_MOB_PETS_SEMICOLON_DELIMITED__OPTION: self.view.ignoredMobsPetsCommaDelimitedEntry.get(),
             self._DISPLAY_PETS_IN_GROUP__OPTION: str(self.model.includePetsInGroup),
             self._PVP_SUPPLIES_TEXT__OPTION: str(self.view.pvpSuppliesText.get("1.0", tk.END)),
             self._PVE_SUPPLIES_TEXT__OPTION: str(self.view.pveSuppliesText.get("1.0", tk.END)),
@@ -424,7 +424,7 @@ v.setup_ui()
 
         try:
             if configParser.has_section(self._VIEW_SETTINGS):
-                ignoredMobsPetsCsv = configParser.get(self._VIEW_SETTINGS, self._IGNORED_MOB_PETS_CSV__OPTION, fallback='')
+                ignoredMobsPetsCsv = configParser.get(self._VIEW_SETTINGS, self._IGNORED_MOB_PETS_SEMICOLON_DELIMITED__OPTION, fallback='')
                 self.view.var_ignoredMobPetsSemicolonDelimited.set(ignoredMobsPetsCsv)
                 self.updateIgnoredMobsPets(ignoredMobsPetsCsv)
 
@@ -788,7 +788,7 @@ Returns a `list[Item]` of missing items
                 continue
 
             checkName = soughtItem.strip().lower()
-            item = self.model.parser.ParseItem().parseItem(checkName)
+            item = self.model.parser.parseItem(checkName)
             assert item is not None
             assert item.ParsedBaseItemName is not None
 

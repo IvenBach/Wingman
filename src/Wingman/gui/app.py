@@ -2,7 +2,7 @@ import tkinter as tk
 from Wingman.core.model import Model
 from Wingman.gui.view import View
 from Wingman.core.controller import Controller
-from Wingman.core.parser import Parser
+from Wingman.core.parsing.parser import Parser
 
 class WingmanApp(tk.Tk):
     def __init__(self, inUnitTesting: bool = False):

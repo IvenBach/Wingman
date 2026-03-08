@@ -6,7 +6,7 @@ from unittest.mock import patch, call
 from Wingman.core.network_listener import NetworkListener
 from Wingman.core.input_receiver import InputReceiver
 from Wingman.core.controller import Controller
-from Wingman.core.parser import Parser
+from Wingman.core.parsing.parser import Parser
 from Wingman.core.affect import Affect
 from Wingman.core.connection_payload_bytes import ConnectionPayloadBytes
 

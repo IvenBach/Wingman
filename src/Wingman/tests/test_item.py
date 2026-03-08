@@ -2,6 +2,7 @@ import pytest
 from enum import Enum
 from Wingman.core.item import Item, QuantityComparer
 from Wingman.core.item import ItemMaterial_Cloth, ItemMaterial_Leather, ItemMaterial_Studded_And_Plate, ItemMaterial_Wood, ItemMaterials
+from Wingman.core.item import ItemEnchantments
 
 def test_NonQuantityStringName_MatchesItemName_ReturnsTrue():    
     line = "A goblet of zombie blood"
@@ -46,15 +47,20 @@ def test_CapitalizationOnNameDoesNotAffectComparison_ReturnsTrue():
 
     assert line == item
 
-@pytest.mark.parametrize('material, expectedMaterial',
-                         [(ItemMaterial_Cloth.EBONWEAVE, ItemMaterials.CLOTH),
-                          (ItemMaterial_Leather.ENCHANTED, ItemMaterials.LEATHER),
-                          (ItemMaterial_Studded_And_Plate.LAEN, ItemMaterials.STUDDED_AND_PLATE),
-                          (ItemMaterial_Wood.EBONY, ItemMaterials.WOOD)])
-def test_LookingUpItemMaterialByName_UsingRegistryLookupOnItemClass_ReturnsMaterialTypeAndEnumValue(material: Enum, expectedMaterial: ItemMaterials):
+@pytest.mark.parametrize('material',
+                         [ItemMaterial_Cloth.EBONWEAVE,
+                          ItemMaterial_Leather.ENCHANTED,
+                          ItemMaterial_Studded_And_Plate.LAEN,
+                          ItemMaterial_Wood.EBONY])
+def test_ResolveMaterial_LookingUpItemMaterialByName_ReturnsEnumValue(material: Enum):
     mat_enum = Item.resolveMaterial(material.name)
 
     assert mat_enum == material
+
+def test_ResolveEnchantment_LookingUpItemEnchantmentByName_ReturnsEnchantmentEnumValue():
+    enchantment_enum = Item.resolveEnchantment(ItemEnchantments.LUSTROUS.name)
+
+    assert enchantment_enum == ItemEnchantments.LUSTROUS
 
 class TestQuantityComparer:
     def test_DifferentNames_ReturnsInvalidComparison(self):

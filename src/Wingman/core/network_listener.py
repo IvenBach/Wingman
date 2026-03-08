@@ -1,7 +1,7 @@
 import threading
 from scapy.all import sniff, IP, TCP
 from Wingman.core.input_receiver import InputReceiver
-from Wingman.core.parser import Parser
+from Wingman.core.parsing.parser import Parser
 from Wingman.core.mobs_in_room import MobsInRoom
 from Wingman.core.ansi_code_stripper import remove_ANSI_color_codes
 

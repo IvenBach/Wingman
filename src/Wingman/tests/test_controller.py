@@ -5,7 +5,6 @@ from unittest.mock import MagicMock, patch
 from pathlib import Path
 import sys
 import configparser
-import tkinter as tk
 import tkinter.messagebox
 
 from Wingman.core.group import Group
@@ -16,7 +15,7 @@ if __name__ == "__main__":
 
 from Wingman.core.character import Character
 from Wingman.core.controller import Controller
-from Wingman.core.parser import Parser
+from Wingman.core.parsing.parser import Parser
 from Wingman.core.health_Tagger import HealthTagger
 from Wingman.core.inventory import Equipment, Inventory
 from Wingman.core.item import Item
@@ -895,7 +894,7 @@ class TestSettings:
         cp = configparser.ConfigParser()
         cp.add_section(c._VIEW_SETTINGS)
         cp.add_section(c._APP_SETTINGS)
-        cp[c._VIEW_SETTINGS][c._IGNORED_MOB_PETS_CSV__OPTION] = 'foo, bar, baz'
+        cp[c._VIEW_SETTINGS][c._IGNORED_MOB_PETS_SEMICOLON_DELIMITED__OPTION] = 'foo, bar, baz'
 
         with patch.object(c, c.updateIgnoredMobsPets.__name__) as mockedUpdateIgnoredMobsPets:
             with patch('builtins.open', new_callable=unittest.mock.mock_open()) as mockedOpen:
@@ -1032,13 +1031,13 @@ class TestApplySettings:
         cp = configparser.ConfigParser()
         c = testController
         cp[c._VIEW_SETTINGS] = {
-            c._IGNORED_MOB_PETS_CSV__OPTION: "foo, bar, baz"
+            c._IGNORED_MOB_PETS_SEMICOLON_DELIMITED__OPTION: "foo; bar; baz"
         }
 
         c.applySettings(cp)
         appliedText = c.view.var_ignoredMobPetsSemicolonDelimited.get()
 
-        assert appliedText == "foo, bar, baz"
+        assert appliedText == "foo; bar; baz"
         assert c.model.ignoreTheseMobsInCurrentRoom == ['foo', 'bar', 'baz']
 
     def test_PvpSupplies(self, testController: Controller):

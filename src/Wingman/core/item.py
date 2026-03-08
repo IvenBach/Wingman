@@ -21,7 +21,7 @@ class ItemMaterial_Leather(Enum):
     ROUGH = auto()
     SUEDE = auto()
     EMBOSSED = auto()
-    WYVERN_SCALE = auto()
+    WYVERNSCALE = auto()
     ENCHANTED = auto()
 
 class ItemMaterial_Studded_And_Plate(Enum):
@@ -139,7 +139,7 @@ class Item:
                                 (ItemMaterial_Studded_And_Plate, ItemMaterials.STUDDED_AND_PLATE),
                                 (ItemMaterial_Wood, ItemMaterials.WOOD)]:
         for name, member in enum_cls.__members__.items():
-            _MATERIAL_LOOKUP[name.upper()] = member
+            _MATERIAL_LOOKUP[name.lower()] = member
 
     del(name, member, enum_cls, mat_type)
 
@@ -149,7 +149,17 @@ class Item:
         if not materialName:
             return None
 
-        return Item._MATERIAL_LOOKUP.get(materialName.upper(), None)
+        return Item._MATERIAL_LOOKUP.get(materialName.lower(), None)
+
+    _ENCHANTMENT_LOOKUP = {enchantment.name.lower(): enchantment for enchantment in ItemEnchantments}
+
+    @staticmethod
+    def resolveEnchantment(enchantmentName: str) -> ItemEnchantments | None:
+        '''Look for the enchantment in a cached registry'''
+        if not enchantmentName:
+            return None
+
+        return Item._ENCHANTMENT_LOOKUP.get(enchantmentName.lower(), None)
 
 
     @overload
@@ -214,7 +224,7 @@ class Item:
 
     def __eq__(self, other):
         if isinstance(other, str):
-            from Wingman.core.parser import Parser
+            from Wingman.core.parsing.parser import Parser
             return self == Parser.parseQuantityItem(other)
 
         if not isinstance(other, Item):
@@ -233,7 +243,7 @@ class Item:
 
     def QuantityComparison(self, other) -> 'QuantityComparer':
         if isinstance(other, str):
-            from Wingman.core.parser import Parser
+            from Wingman.core.parsing.parser import Parser
             itemOther = Parser.parseQuantityItem(other)
 
             if self.Name != itemOther.Name:

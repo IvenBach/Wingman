@@ -1,22 +1,20 @@
 from enum import Enum
 import time
-
 import pytest
 from typing import Callable, List
 from pathlib import Path
 import sys
+
 if __name__ == "__main__":
     srcDirectory = Path(__file__).parent.parent.parent.resolve()
     sys.path.append(str(srcDirectory))
 
-
 from Wingman.core.connection_payload_bytes import ConnectionPayloadBytes
-from Wingman.core.parser import MobMovement, Parser
+from Wingman.core.parsing.parser import MobMovement, Parser
 from Wingman.core.status_indicator import StatusIndicator
 from Wingman.core.group import Group
 from Wingman.core.character import Character
-from Wingman.core.item import Item, ItemMaterial_Studded_And_Plate, ItemMaterials, ItemSlot, ItemEnchantments, ItemMaterial_Cloth, ItemMaterial_Leather, ItemMaterial_Wood
-from Wingman.core.affect import Affect
+from Wingman.core.item import Item, ItemMaterial_Studded_And_Plate, ItemEnchantments, ItemMaterial_Cloth, ItemMaterial_Leather, ItemMaterial_Wood
 
 @pytest.fixture
 def parser():
@@ -1040,7 +1038,7 @@ Vitalize.V                4h 28m 12s                      """
 
 @pytest.fixture
 def parseItem():
-        return Parser.ParseItem().parseItem
+        return Parser.parseItem
 
 class TestParseItem:
     def test_ItemWithoutEnchantment_ReturnsItemWithNoneEnchantment(self, parseItem: Callable[[str], Item | None]):
@@ -1062,7 +1060,7 @@ class TestParseItem:
     @pytest.mark.parametrize("expectedMaterial",
                              [(ItemMaterial_Wood.EBONY),
                               (ItemMaterial_Cloth.EBONWEAVE),
-                              (ItemMaterial_Leather.WYVERN_SCALE),
+                              (ItemMaterial_Leather.WYVERNSCALE),
                               (ItemMaterial_Studded_And_Plate.LAEN)])
     def test_ItemWithMaterial_ReturnsItemWithMaterial(self,
                                                         parseItem: Callable[[str], Item | None],
@@ -1095,9 +1093,10 @@ class TestDroppedItemParse:
                                             "Apostrophe",
                                             "Dash then Comma"])
     def test_NameWithSpecialCharacters_IsParsedCorrectly(self, text: str, expected: str):
-        _, itemName = Parser.parseMobDroppedItem(text)
+        _, item = Parser.parseMobDroppedItem(text)
 
-        assert itemName.Name == expected
+        assert item is not None
+        assert item.Name == expected
 
     @pytest.mark.parametrize("text, expected", [("A Tamian peasant drops a few silver coins.", "a few silver coins"),
                                                 ("A Tamian Trapper drops a bag of silver.", "a bag of silver")],
@@ -1143,6 +1142,7 @@ class TestDroppedItemParse:
 
         _, item = Parser.parseMobDroppedItem(text)
 
+        assert item is not None
         assert item.Enchantment == None
 
     def test_ItemWithEnchantment_ReturnsItemWithEnchantment(self):
@@ -1150,6 +1150,7 @@ class TestDroppedItemParse:
 
         _, item = Parser.parseMobDroppedItem(text)
 
+        assert item is not None
         assert item.Enchantment == ItemEnchantments.GLOWING
 
 class TestConstitutionResistedParse:

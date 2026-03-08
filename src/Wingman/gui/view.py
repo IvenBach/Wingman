@@ -9,7 +9,7 @@ from Wingman.core.controller import Controller
 from Wingman.core.group import Group
 from Wingman.core.character import Character
 from Wingman.core.health_Tagger import HealthTagger
-from Wingman.core.parser import Parser
+from Wingman.core.parsing.parser import Parser
 from Wingman.core.item import Item
 
 class SuppliesPaneChangeDirection(Enum):

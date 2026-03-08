@@ -1,8 +1,7 @@
 from Wingman.core.affect import Affect
-from Wingman.core.parser import Parser
+from Wingman.core.parsing.parser import Parser
 from Wingman.core.meditation_display import MeditationDisplay
 from Wingman.core.inventory import Inventory, Equipment
-from Wingman.core.item import Item
 
 class Model:
     def __init__(self, parser: Parser):

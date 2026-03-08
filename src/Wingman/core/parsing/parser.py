@@ -1,7 +1,9 @@
+from collections import deque
 import re
-from typing import List
+from typing import Iterable, List
 from enum import StrEnum
 from Wingman.core.connection_payload_bytes import ConnectionPayloadBytes
+from Wingman.core.parsing.tokenstream import TokenStream
 from Wingman.core.status_indicator import StatusIndicator
 from Wingman.core.resource_bar import ResourceBar
 from Wingman.core.character import Character
@@ -667,37 +669,56 @@ Assumes any item lacking quantity parenthesis to be a non-quantity item and assi
 
             return hours * 3600 + minutes * 60 + seconds
 
-    class ParseItem:
-        ENCHANTMENT_NAMES = "|".join(map(re.escape, ItemEnchantments._member_names_))
 
-        CLOTH_MATERIAL_NAMES = "|".join(map(re.escape, ItemMaterial_Cloth._member_names_))
-        LEATHER_MATERIAL_NAMES = "|".join(map(re.escape, ItemMaterial_Leather._member_names_))
-        STUDDED_AND_PLATE_MATERIAL_NAMES = "|".join(map(re.escape, ItemMaterial_Studded_And_Plate._member_names_))
-        WOOD_MATERIAL_NAMES = "|".join(map(re.escape, ItemMaterial_Wood._member_names_))
-        MATERIAL_NAMES = "|".join([
-            CLOTH_MATERIAL_NAMES,
-            LEATHER_MATERIAL_NAMES,
-            STUDDED_AND_PLATE_MATERIAL_NAMES,
-            WOOD_MATERIAL_NAMES
-        ])
 
-        ITEM_REGEX = rf"""(?P<itemName>
-                            (?:(?:the|an|a|)\s*)
-                            (?:(?P<enchantment>{ENCHANTMENT_NAMES})\b\s+)?
-                            (?:(?P<material>{MATERIAL_NAMES})\b\s+)?
-                                (?P<baseItemName>[a-zA-Z ',\-]+)
-                        )"""
+    ENCHANTMENT_NAMES = frozenset(e.lower() for e in ItemEnchantments._member_names_)
 
-        ITEM_PATTERN = re.compile(ITEM_REGEX, re.VERBOSE | re.IGNORECASE)
+    CLOTH_MATERIAL_NAMES = frozenset(m.lower() for m in ItemMaterial_Cloth._member_names_)
+    LEATHER_MATERIAL_NAMES = frozenset(m.lower() for m in ItemMaterial_Leather._member_names_)
+    STUDDED_AND_PLATE_MATERIAL_NAMES = frozenset(m.lower() for m in ItemMaterial_Studded_And_Plate._member_names_)
+    WOOD_MATERIAL_NAMES = frozenset(m.lower() for m in ItemMaterial_Wood._member_names_)
+    MATERIAL_NAMES = frozenset(
+        CLOTH_MATERIAL_NAMES
+        | LEATHER_MATERIAL_NAMES
+        | STUDDED_AND_PLATE_MATERIAL_NAMES
+        | WOOD_MATERIAL_NAMES
+    )
 
-        def parseItem(self, text: str) -> Item | None:
-            '''Parse text for an item.'''
+    ARTICLES = frozenset(["the", "an", "a"])
+    
+    @staticmethod
+    def tokenize(text: str) -> list[str]:
+        return re.findall(r"[a-zA-Z'\-]+", text.lower())
 
-            match = Parser.ParseItem.ITEM_PATTERN.search(text)
-            if not match:
-                return None
+    @staticmethod
+    def consumeIf(tokens: deque[str], validSet: Iterable[str]) -> str | None:
+        if tokens and tokens[0] in validSet:
+            return tokens.popleft()
+        return None
 
-            return Parser._fromRegexMatch(match)
+    @staticmethod
+    def parseItem(text: str) -> Item | None:
+        '''Parse text for an item.'''
+        tokens = TokenStream(Parser.tokenize(text))
+
+        if tokens.empty():
+            return None
+
+        tokens.consume_if(Parser.ARTICLES)
+        enchantment = tokens.consume_if(Parser.ENCHANTMENT_NAMES)
+        material = tokens.consume_if(Parser.MATERIAL_NAMES)
+
+        if tokens.empty():
+            return None
+
+        item = Item(text)
+
+        item.Enchantment = Item.resolveEnchantment(enchantment) if enchantment is not None else None
+        item.Material = Item.resolveMaterial(material) if material else None
+
+        item.ParsedBaseItemName = " ".join(tokens.remaining())
+
+        return item
 
     DROP_ITEM_PATTERN = re.compile(
 rf"""
@@ -707,7 +728,7 @@ rf"""
 
 \s+drops\s+
 
-{ParseItem.ITEM_REGEX}
+{r"(?P<itemName>.+)"}
 
 \.
 $
@@ -747,7 +768,12 @@ $
         if match.group("mobName") in Parser.SHAPESHIFTED_WEREWOLF_NAMES:
             return False, None
 
-        return True, Parser._fromRegexMatch(match)
+        item = Parser.parseItem(match.group("itemName"))
+
+        if not item:
+            return False, None
+
+        return True, item
 
     class ConstitutionResisted(StrEnum):
         ConstitutionResistedDisease = "Disease starts to enter your system, but your constitution fights it off!"
@@ -781,28 +807,3 @@ $
         def isLogin(self, text: bytes) -> bool:
             '''Parse bytes for login message.'''
             return ConnectionPayloadBytes.Login.value in text
-
-    @staticmethod
-    def _fromRegexMatch(match: re.Match[str]) -> 'Item':
-        '''Factory method to create an Item from a regex match object with named groups corresponding to 
-        `itemName`, `enchantment`, and `material`.'''
-        if not match:
-            raise ValueError("Cannot create Item from None match")
-
-        itemName = match.group("itemName")
-        enchantment = ItemEnchantments[match.group('enchantment').upper()] if match.group('enchantment') else None
-
-        materialEnum = Item.resolveMaterial(match.group('material')) if match.group('material') else None
-
-        item = Item(itemName)
-        item.ParsedBaseItemName = match.group("baseItemName") if match.group("baseItemName") else None
-        if not enchantment and not materialEnum:
-            return item
-
-        if enchantment:
-            item.Enchantment = enchantment
-
-        if materialEnum:
-            item.Material = materialEnum
-
-        return item
