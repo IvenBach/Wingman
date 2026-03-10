@@ -16,6 +16,12 @@ from Wingman.core.group import Group
 from Wingman.core.character import Character
 from Wingman.core.item import Item, ItemMaterial_Studded_And_Plate, ItemEnchantments, ItemMaterial_Cloth, ItemMaterial_Leather, ItemMaterial_Wood
 
+@pytest.fixture(scope="session", autouse=True)
+def load_valid_item_names():
+    srcDirectory = Path(__file__).parent.parent.resolve()
+    base_item_names_path = str(Path(srcDirectory).joinpath('data/baseItemNames.txt'))
+    Item.load_base_item_names_from_file(base_item_names_path)
+
 @pytest.fixture
 def parser():
     return Parser()
@@ -36,7 +42,6 @@ class TestXpParser:
     def test_parse_strange_formatting(self, parser):
         log_line = "   You gain    10 (+5)    experience points.   "
         assert parser.parse_xp_message(log_line) == 15
-
 
 @pytest.fixture
 def groupParser():
@@ -1041,7 +1046,7 @@ def parseItem():
         return Parser.parseItem
 
 class TestParseItem:
-    def test_ItemWithoutEnchantment_ReturnsItemWithNoneEnchantment(self, parseItem: Callable[[str], Item | None]):
+    def test_ItemTextWithoutEnchantment_ReturnsItemWithNoneEnchantment(self, parseItem: Callable[[str], Item | None]):
         text = "a dragon-wing boots."
 
         item = parseItem(text)
@@ -1049,7 +1054,7 @@ class TestParseItem:
         assert item is not None
         assert item.Enchantment == None
 
-    def test_ItemWithEnchantment_ReturnsItemWithEnchantment(self, parseItem: Callable[[str], Item | None]):
+    def test_ItemTextWithEnchantment_ReturnsItemWithEnchantment(self, parseItem: Callable[[str], Item | None]):
         text = "a glowing dragon-wing boots."
 
         item = parseItem(text)
@@ -1060,27 +1065,131 @@ class TestParseItem:
     @pytest.mark.parametrize("expectedMaterial",
                              [(ItemMaterial_Wood.EBONY),
                               (ItemMaterial_Cloth.EBONWEAVE),
-                              (ItemMaterial_Leather.WYVERNSCALE),
+                              (ItemMaterial_Leather.WYVERN_SCALE),
                               (ItemMaterial_Studded_And_Plate.LAEN)])
-    def test_ItemWithMaterial_ReturnsItemWithMaterial(self,
+    def test_ItemTextWithMaterial_ReturnsItemWithMaterial(self,
                                                         parseItem: Callable[[str], Item | None],
                                                         expectedMaterial: Enum):
-        text = f"a {expectedMaterial.name.lower()} basic item."
+        text = f"a {expectedMaterial.name.replace("_"," ").lower()} fire root."
 
         item = parseItem(text)
 
         assert item is not None
         assert item.Material == expectedMaterial
 
-    def test_ItemWithBothEnchantmentAndMaterial_ReturnsItemWithEnchantmentAndMaterial(self,
+    def test_ItemTextWithEnchantmentAndMaterial_ReturnsItemWithEnchantmentAndMaterial(self,
                                                                                    parseItem: Callable[[str], Item | None]):
-        text = "a glowing ebony basic item."
+        text = "a glowing ebony dragon-paragon's vestments."
 
         item = parseItem(text)
 
         assert item is not None
         assert item.Enchantment == ItemEnchantments.GLOWING
         assert item.Material == ItemMaterial_Wood.EBONY
+
+    @pytest.mark.parametrize("itemName", [
+        "partisan of the shining sun",
+        "rod of blood magic",
+        "glowing amber amulet",
+        "starsteel chestpiece of glowing opal",
+        "brilliant ruby ring"
+        ],
+        ids=[
+        "Shining in middle of name",
+        "Shining at start of name",
+        "Glowing at start of name",
+        "Glowing in middle of name",
+        "Brilliant at start of name"
+        ]
+    )
+    def test_ItemTextNameHasEnchantmentInName_ButDoesNotHaveAnEnchantment_ReturnsItemWithoutEnchantment(self,
+                parseItem: Callable[[str], Item | None],
+                itemName: str):
+        item = parseItem(itemName)
+
+        assert item is not None
+        assert item.Enchantment == None
+
+    @pytest.mark.parametrize("itemName", [
+"alloy staghorn shield",
+"ebony hide footsteps",
+"ebony hide pants",
+"ebony ringmail platelegs",
+"ebony robes of divinity",
+"ebony slicer",
+"ebony stormcrow boots",
+"ebony throat-ripper bow",
+"enchanted bamboo spear",
+"enchanted black and purple sacred gloves",
+"enchanted blue-frosted battle axe",
+"enchanted chitinous greaves",
+"enchanted dragon bone",
+"enchanted femur",
+"enchanted fury cap",
+"enchanted pair of sprinters",
+"enchanted silk fists",
+"enchanted spear of living huron",
+"enchanted wooden spear",
+"enchanted Yarubian sacrificial dagger",
+"iron maiden shield",
+"iron shod smuggler's staff",
+"iron treads of faith",
+"ironbark crusher",
+"leather armor of infiltration",
+"leather boots of the birds",
+"Leather Breastplate of Hope",
+"leather circlet of command",
+"leather cord tied to an engraved ring",
+"leather gloves of vigor",
+"leather greaves of the keep",
+"leather headband of discipleship",
+"leather headpiece of silent fire",
+"leather jerkin",
+"leather pads of silence",
+"leather pants of lion hide",
+"leather raiment of solid darkness",
+"leather robes of dark powers",
+"leather sandals of the gorge",
+"leather sharkhide gauntlets",
+"Leather Tunic of Burning whispers",
+"mithril tiger ring",
+"oak carved staff of psionic devastation",
+"rough boots of the blademaster",
+"rough minotaur robes",
+"rough salamander skin gloves",
+"rough sun-dried leather armor",
+"silk cape of power",
+"silk footguards of strength",
+"silk footpads of the stalker",
+"silk gloves of protection",
+"steel lined blacksmithing gloves",
+"steel plate banded long smith's apron",
+"steel plated cape of living moss",
+"steelbound gauntlets"],
+    )
+    def test_ItemTextNameHasMaterialAtStartOfName_ButDoesNotHaveAMaterial_ReturnsItemWithoutMaterial(self,
+                parseItem: Callable[[str], Item | None],
+                itemName: str):
+        item = parseItem(itemName)
+
+        assert item is not None
+        assert item.Material == None
+
+    def test_WyvernScaleMaterial_IsParsedCorrectly(self, parseItem: Callable[[str], Item | None]):
+        text = "a wyvern scale fire root"
+
+        item = parseItem(text)
+
+        assert item is not None
+        assert item.Material == ItemMaterial_Leather.WYVERN_SCALE
+
+    def test_ItemTextNameHasEnchantmentAsSubstringInName_ButDoesNotHaveAnEnchantment_ReturnsItemWithoutEnchantment(self, parseItem: Callable[[str], Item | None]):
+        text = "a brightly glowing band"
+
+        item = parseItem(text)
+
+        assert item is not None
+        assert item.Enchantment == None
 
 class TestDroppedItemParse:
     @pytest.mark.parametrize("text, expected", [("A stone giant drops a bright ironwood white-oak staff.", "a bright ironwood white-oak staff"),

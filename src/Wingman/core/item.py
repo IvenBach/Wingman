@@ -1,6 +1,6 @@
 from typing import overload
-from re import Match
 from enum import Enum, StrEnum, auto
+from pathlib import Path
 
 class ItemMaterials(Enum):
     CLOTH = auto()
@@ -21,7 +21,7 @@ class ItemMaterial_Leather(Enum):
     ROUGH = auto()
     SUEDE = auto()
     EMBOSSED = auto()
-    WYVERNSCALE = auto()
+    WYVERN_SCALE = auto()
     ENCHANTED = auto()
 
 class ItemMaterial_Studded_And_Plate(Enum):
@@ -134,17 +134,19 @@ class QuantityComparer(Enum):
 class Item:
     _MATERIAL_LOOKUP = {}
 
-    for enum_cls, mat_type in [(ItemMaterial_Cloth, ItemMaterials.CLOTH),
-                                (ItemMaterial_Leather, ItemMaterials.LEATHER),
-                                (ItemMaterial_Studded_And_Plate, ItemMaterials.STUDDED_AND_PLATE),
-                                (ItemMaterial_Wood, ItemMaterials.WOOD)]:
+    for enum_cls in [
+        ItemMaterial_Cloth,
+        ItemMaterial_Leather,
+        ItemMaterial_Studded_And_Plate,
+        ItemMaterial_Wood
+    ]:
         for name, member in enum_cls.__members__.items():
             _MATERIAL_LOOKUP[name.lower()] = member
 
-    del(name, member, enum_cls, mat_type)
+    del(name, member, enum_cls)
 
     @staticmethod
-    def resolveMaterial(materialName: str) -> Enum | None:
+    def resolve_material(materialName: str) -> Enum | None:
         '''Look for the material in a cached registry'''
         if not materialName:
             return None
@@ -154,13 +156,23 @@ class Item:
     _ENCHANTMENT_LOOKUP = {enchantment.name.lower(): enchantment for enchantment in ItemEnchantments}
 
     @staticmethod
-    def resolveEnchantment(enchantmentName: str) -> ItemEnchantments | None:
+    def resolve_enchantment(enchantmentName: str) -> ItemEnchantments | None:
         '''Look for the enchantment in a cached registry'''
         if not enchantmentName:
             return None
 
         return Item._ENCHANTMENT_LOOKUP.get(enchantmentName.lower(), None)
 
+    validBaseItemNames: set[str] = set()
+
+    @classmethod
+    def load_base_item_names_from_file(cls, path: str):
+        with open(path, 'r') as f:
+            cls.validBaseItemNames = set(line.strip().lower() for line in f if line.strip())
+
+    @classmethod
+    def is_valid_base_item_name(cls, name: str) -> bool:
+        return name.lower() in cls.validBaseItemNames
 
     @overload
     def __init__(self, name: str):...

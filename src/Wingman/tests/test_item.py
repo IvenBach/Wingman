@@ -1,3 +1,5 @@
+from unittest.mock import mock_open, patch
+
 import pytest
 from enum import Enum
 from Wingman.core.item import Item, QuantityComparer
@@ -48,19 +50,43 @@ def test_CapitalizationOnNameDoesNotAffectComparison_ReturnsTrue():
     assert line == item
 
 @pytest.mark.parametrize('material',
-                         [ItemMaterial_Cloth.EBONWEAVE,
+                         [ItemMaterial_Cloth.COTTON,
+                          ItemMaterial_Cloth.EBONWEAVE,
+                          ItemMaterial_Cloth.GOSSAMER,
+                          ItemMaterial_Cloth.SILK,
+                          ItemMaterial_Cloth.WISPWEAVE,
+                          ItemMaterial_Cloth.WOOL,
+                          ItemMaterial_Leather.EMBOSSED,
                           ItemMaterial_Leather.ENCHANTED,
+                          ItemMaterial_Leather.LEATHER,
+                          ItemMaterial_Leather.ROUGH,
+                          ItemMaterial_Leather.SUEDE,
+                          ItemMaterial_Leather.WYVERN_SCALE,
+                          ItemMaterial_Studded_And_Plate.ALLOY,
+                          ItemMaterial_Studded_And_Plate.BRONZE,
+                          ItemMaterial_Studded_And_Plate.IRON,
                           ItemMaterial_Studded_And_Plate.LAEN,
-                          ItemMaterial_Wood.EBONY])
+                          ItemMaterial_Studded_And_Plate.MITHRIL,
+                          ItemMaterial_Studded_And_Plate.STEEL,
+                          ItemMaterial_Wood.EBONY,
+                          ItemMaterial_Wood.IRONWOOD,
+                          ItemMaterial_Wood.MAPLE,
+                          ItemMaterial_Wood.OAK,
+                          ItemMaterial_Wood.ROSEWOOD,
+                          ItemMaterial_Wood.YEW])
 def test_ResolveMaterial_LookingUpItemMaterialByName_ReturnsEnumValue(material: Enum):
-    mat_enum = Item.resolveMaterial(material.name)
+    mat_enum = Item.resolve_material(material.name)
 
     assert mat_enum == material
 
 def test_ResolveEnchantment_LookingUpItemEnchantmentByName_ReturnsEnchantmentEnumValue():
-    enchantment_enum = Item.resolveEnchantment(ItemEnchantments.LUSTROUS.name)
+    enchantment_enum = Item.resolve_enchantment(ItemEnchantments.LUSTROUS.name)
 
     assert enchantment_enum == ItemEnchantments.LUSTROUS
+
+def test_LoadingBaseItemNamesFromFile_FileNotFound_ErrorRaised():
+    with pytest.raises(FileNotFoundError):
+        Item.load_base_item_names_from_file("nonexistent_file.txt")
 
 class TestQuantityComparer:
     def test_DifferentNames_ReturnsInvalidComparison(self):

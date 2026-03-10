@@ -10,6 +10,10 @@ class TokenStream:
         '''Return the next token without consuming it.'''
         return self._tokens[0] if self._tokens else None
 
+    def peek_n(self, n: int) -> str | None:
+        '''Return the nth token without consuming it.'''
+        return self._tokens[n] if len(self._tokens) > n else None
+
     def consume(self) -> str | None:
         '''Consume and return the next token.'''
         return self._tokens.popleft() if self._tokens else None

@@ -685,9 +685,9 @@ Assumes any item lacking quantity parenthesis to be a non-quantity item and assi
     )
 
     ARTICLES = frozenset(["the", "an", "a"])
-    
+
     @staticmethod
-    def tokenize(text: str) -> list[str]:
+    def tokenizeItemText(text: str) -> list[str]:
         return re.findall(r"[a-zA-Z'\-]+", text.lower())
 
     @staticmethod
@@ -699,22 +699,58 @@ Assumes any item lacking quantity parenthesis to be a non-quantity item and assi
     @staticmethod
     def parseItem(text: str) -> Item | None:
         '''Parse text for an item.'''
-        tokens = TokenStream(Parser.tokenize(text))
+        def addPrefixToRemainingTokens(prefix: str, remainingTokens: list[str]) -> list[str]:
+            result = [prefix]
+            result.extend(remainingTokens)
+            return result
+
+        enchantment = None
+        material = None
+
+        tokens = TokenStream(Parser.tokenizeItemText(text))
 
         if tokens.empty():
             return None
 
         tokens.consume_if(Parser.ARTICLES)
         enchantment = tokens.consume_if(Parser.ENCHANTMENT_NAMES)
-        material = tokens.consume_if(Parser.MATERIAL_NAMES)
+
+        potentialWyvern = tokens.peek()
+        potentialScale = tokens.peek_n(1)
+        if potentialScale is not None:
+            assert potentialWyvern is not None
+            potentialEnum = Item.resolve_material(potentialWyvern + "_" + potentialScale)
+            if potentialEnum is not None:
+                material = potentialEnum.name
+                tokens.consume() # wyvern
+                tokens.consume() # scale
+
+        if not material: #was not a `wyvern scale` material
+            material = tokens.consume_if(Parser.MATERIAL_NAMES)
+
+        if not Item.is_valid_base_item_name(" ".join(tokens.remaining())):
+            if material:
+                materialThenRemainingTokens = addPrefixToRemainingTokens(material.lower().replace("_", " "), tokens.remaining())
+                if not Item.is_valid_base_item_name(' '.join(materialThenRemainingTokens)):
+                    return None # unlikely unless testing
+
+                return Item(' '.join(materialThenRemainingTokens))
+
+            if enchantment:
+                if material:
+                    enchantmentThenRemainingTokens = addPrefixToRemainingTokens(enchantment, materialThenRemainingTokens)
+                else:
+                    enchantmentThenRemainingTokens = addPrefixToRemainingTokens(enchantment, tokens.remaining())
+                if Item.is_valid_base_item_name(' '.join(enchantmentThenRemainingTokens)):
+                    return Item(' '.join(enchantmentThenRemainingTokens))
 
         if tokens.empty():
             return None
 
         item = Item(text)
 
-        item.Enchantment = Item.resolveEnchantment(enchantment) if enchantment is not None else None
-        item.Material = Item.resolveMaterial(material) if material else None
+        item.Enchantment = Item.resolve_enchantment(enchantment) if enchantment is not None else None
+        item.Material = Item.resolve_material(material) if material else None
 
         item.ParsedBaseItemName = " ".join(tokens.remaining())
 

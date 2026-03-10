@@ -27,6 +27,12 @@ def testController():
 
     c.view.root.destroy()
 
+@pytest.fixture(scope="session", autouse=True)
+def load_base_item_names():
+    srcDirectory = Path(__file__).parent.parent.resolve()
+    base_item_names_path = str(Path(srcDirectory).joinpath('data/baseItemNames.txt'))
+    Item.load_base_item_names_from_file(base_item_names_path)
+
 class TestProcessQueue:
     def test_process_queue_calculates_xp(self, testController: Controller):
         c = testController
@@ -1183,11 +1189,11 @@ class TestApplySettings:
             assert c.model.SoughtAfterItems_BaseItemNames == expected
 
         def test_SequenceOfSemicolonDelimited_ItemNames_AddedToNamesSet(self, testController: Controller):
-            expected = set(['a fire root', 'a water root', 'a spirit root'])
+            expected = set(['a fire root', 'a pound of steel', 'a small vial of magma'])
             cp = configparser.ConfigParser()
             c = testController
             cp[c._VIEW_SETTINGS] = {
-                c._SOUGHT_AFTER_ITEMS__OPTION: "a fire root; a water root; a spirit root"
+                c._SOUGHT_AFTER_ITEMS__OPTION: "a fire root; a pound of steel; a small vial of magma"
             }
 
             c.applySettings(cp)
@@ -1195,12 +1201,12 @@ class TestApplySettings:
             assert c.model.SoughtAfterItems_Names == expected
 
         def test_SequenceOfSemicolonDelimited_ItemNameAndBaseItemNames_AddedToRespectiveSets(self, testController: Controller):
-            expectedNamesSet = set(['a water root', 'a wood root'])
-            expectedBaseItemNamesSet = set(['fire root', 'spirit root'])
+            expectedNamesSet = set(['a fire root', 'a pound of steel'])
+            expectedBaseItemNamesSet = set(['small vial of magma', 'skeletal dragon bone'])
             cp = configparser.ConfigParser()
             c = testController
             cp[c._VIEW_SETTINGS] = {
-                c._SOUGHT_AFTER_ITEMS__OPTION: "fire root; a water root; a wood root; spirit root"
+                c._SOUGHT_AFTER_ITEMS__OPTION: "a fire root; a pound of steel; small vial of magma; skeletal dragon bone"
             }
 
             c.applySettings(cp)
@@ -1209,11 +1215,23 @@ class TestApplySettings:
             assert c.model.SoughtAfterItems_BaseItemNames == expectedBaseItemNamesSet
 
         def test_SequenceOfSemicolonDelimitedValuesWithWhitespaceBetweenDelimiters_WhitespaceNotAddedToLookupSets(self, testController: Controller):
-            expected = set(['a fire root', 'a water root', 'a spirit root'])
+            expected = set(['a fire root', 'a pound of steel', 'a small vial of magma'])
             cp = configparser.ConfigParser()
             c = testController
             cp[c._VIEW_SETTINGS] = {
-                c._SOUGHT_AFTER_ITEMS__OPTION: "a fire root;; ; a water root; ; a spirit root; "
+                c._SOUGHT_AFTER_ITEMS__OPTION: "a fire root;; ; a pound of steel; ; a small vial of magma; "
+            }
+
+            c.applySettings(cp)
+
+            assert c.model.SoughtAfterItems_Names == expected
+
+        def test_IdenticalValuesNotAddedToSet_OnlyOneEntryInNamesSet(self, testController: Controller):
+            expected = set(['a fire root'])
+            cp = configparser.ConfigParser()
+            c = testController
+            cp[c._VIEW_SETTINGS] = {
+                c._SOUGHT_AFTER_ITEMS__OPTION: "a fire root; a fire root; a fire root"
             }
 
             c.applySettings(cp)

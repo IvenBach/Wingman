@@ -1,8 +1,11 @@
 import tkinter as tk
+from pathlib import Path
+from tkinter import messagebox
 from Wingman.core.model import Model
 from Wingman.gui.view import View
 from Wingman.core.controller import Controller
 from Wingman.core.parsing.parser import Parser
+from Wingman.core.item import Item
 
 class WingmanApp(tk.Tk):
     def __init__(self, inUnitTesting: bool = False):
@@ -30,8 +33,17 @@ class WingmanApp(tk.Tk):
         self.controller.view.apply_theme()
         self.controller.view.update_gui()
 
+        try:
+            srcDirectory = Path(__file__).parent.parent.resolve()
+            base_item_names_path = str(Path(srcDirectory).joinpath('data/baseItemNames.txt'))
+            Item.load_base_item_names_from_file(base_item_names_path)
+        except FileNotFoundError as e:
+            messageText = f"Could not find the file `{base_item_names_path}` containing base item names. Wingman will continue to run, but some item parsing may not work correctly.\n\nContact the developer if you need assistance resolving this issue."
+            messagebox.showerror(f"Error:", messageText)
+
         settings = self.controller.loadSettings()
         self.controller.applySettings(settings)
+
 
     def run(self):
         self.mainloop()
