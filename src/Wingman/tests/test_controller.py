@@ -130,6 +130,18 @@ class TestProcessQueue:
             mockedDisplay.assert_called_once_with()
             assert c.model.currentMobsInRoom == []
 
+        def test_MobDies_ButWasNotListedAsInCurrentRoom_DoesNotRaiseError(self, testController: Controller):
+            c = testController
+            c.model.currentMobsInRoom = []
+
+            c.receiver.receive("A bar foo dies.")
+
+            try:
+                c.process_queue()
+            except ValueError:
+                pytest.fail("Attempting to delete a non-existent mob from the current room failed.")
+
+
     class TestPlayerMovement:
         def test_ClearsMobsInRoomAndHidesMobCountInView(self, testController: Controller):
             c = testController

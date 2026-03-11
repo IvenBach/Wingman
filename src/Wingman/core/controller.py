@@ -245,7 +245,8 @@ v.setup_ui()
                         self.model.currentMobsInRoom.append(mobName)
                         self.updateMobCountDisplay()
                     case MobMovement.LEAVING:
-                        self.model.currentMobsInRoom.remove(mobName)
+                        if mobName in self.model.currentMobsInRoom:
+                            self.model.currentMobsInRoom.remove(mobName)
                         self.updateMobCountDisplay()
 
             isBuffOrShieldRefreshing, whatEnded = self.model.parser.parseBuffOrShieldIsRefreshing(line)
