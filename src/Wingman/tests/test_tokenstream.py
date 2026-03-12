@@ -42,7 +42,7 @@ def test_ConsumingIf():
 def test_Empty(tokens: Iterable[str], expected: bool):
     ts = TokenStream(tokens)
 
-    assert ts.empty() == expected
+    assert ts.isEmpty() == expected
 
 def test_Remaining():
     expected = ['b', 'c']

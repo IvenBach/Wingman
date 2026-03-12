@@ -30,7 +30,7 @@ class TokenStream:
 
         return None
 
-    def empty(self) -> bool:
+    def isEmpty(self) -> bool:
         '''Check if there are no more tokens.'''
         return not self._tokens
 

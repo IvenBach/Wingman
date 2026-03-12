@@ -18,12 +18,12 @@ class MobMovement(Enum):
     LEAVING = auto()
     ENTERING = auto()
 
-class MobEnteringReason(Enum):
+class MobEnteringReasons(Enum):
     ARRIVES_FROM = auto()
     ENTERS_THE_ROOM = auto()
     CHASES = auto()
 
-class MobLeavingReason(Enum):
+class MobLeavingReasons(Enum):
     LEAVES = auto()
     DIES = auto()
     CHASES = auto()
@@ -31,18 +31,6 @@ class MobLeavingReason(Enum):
 class Parser:
     MOB_NAME_REGEX_PATTERN = r"[a-zA-Z ',\-]+"
     CHARACTER_NAME_REGEX_PATTERN = r"[a-zA-Z '\-]+"
-
-    ENTER_REASON_LOOKUP = {
-        'arrives from': MobEnteringReason.ARRIVES_FROM,
-        'enters the room': MobEnteringReason.ENTERS_THE_ROOM,
-        'chases': MobEnteringReason.CHASES
-    }
-
-    LEAVING_REASON_LOOKUP = {
-        'leaves': MobLeavingReason.LEAVES,
-        'dies': MobLeavingReason.DIES,
-        'chases': MobLeavingReason.CHASES
-    }
 
     def parse_xp_message(self, text_block: str) -> int:
         """Parses text for XP gains."""
@@ -322,6 +310,13 @@ BG	FC	Color			Color
             return listedMobs
 
     class ParseMovement:
+        VERBS = { 'arrives', 'enters', 'leaves', 'dies', 'chases' }
+        CHASE_DIRECTIONS = { 'into', 'out' }
+        ARTICLES = { 'a', 'an' }
+
+        @staticmethod
+        def tokenize_movement(text: str) -> list[str]:
+            return re.findall(r"[a-zA-Z',\-]+", text.lower())
         def playerMovement(self, text: str) -> bool:
             return "Obvious exits:" in text
 
@@ -335,54 +330,62 @@ BG	FC	Color			Color
 - Last Tuple Element: `str` - the mob that moved.
 
 Subsequent removal of mob from the model needs to be dealt with by the caller.'''
-            mobName = rf"(?P<mobName>(A|An) {Parser.MOB_NAME_REGEX_PATTERN})"
+            tokens = TokenStream(Parser.ParseMovement.tokenize_movement(text))
 
-            movementPattern = re.compile(
-                                    rf"""
-                                    {mobName}\s
-                                    (?P<verb>
-                                        arrives\ from
-                                        |enters\ the\ room
-                                        |leaves
-                                        |dies
-                                        |chases
-                                    )
-                                    (?:
-                                        \s
-                                        (?P<characterName>{Parser.CHARACTER_NAME_REGEX_PATTERN})
-                                        \s
-                                        (?P<direction>into|out\ of)
-                                        \sthe\sroom\.
-                                    )?""",
-                                re.IGNORECASE | re.VERBOSE)
+            #deal with extraneous text before the mob movement text
+            while tokens.peek() and tokens.peek() not in Parser.ParseMovement.ARTICLES:
+                if tokens.consume() is None:
+                    return False, None, None, None
 
-            match = movementPattern.search(text)
-            if not match:
+            article = tokens.consume_if(Parser.ParseMovement.ARTICLES)
+            if not article:
                 return False, None, None, None
 
-            verb = match.group('verb').lower()
-            direction = (match.group('direction') or "").lower()
-            mobName = match.group('mobName')
-            mobName = mobName[0].lower() + mobName[1:]
+            mob_words = []
 
-            if verb == 'leaves':
-                movement = MobMovement.LEAVING
-                reason = MobLeavingReason.LEAVES
-            elif verb == 'dies':
-                movement = MobMovement.LEAVING
-                reason = MobLeavingReason.DIES
-            elif verb in {'arrives from', 'enters the room'}:
-                movement = MobMovement.ENTERING
-                reason = Parser.ENTER_REASON_LOOKUP[verb]
-            elif verb == 'chases':
-                if direction == 'out of':
-                    movement = MobMovement.LEAVING
-                    reason = Parser.LEAVING_REASON_LOOKUP[verb]
-                else:
-                    movement = MobMovement.ENTERING
-                    reason = Parser.ENTER_REASON_LOOKUP[verb]
+            while tokens.peek() and tokens.peek() not in Parser.ParseMovement.VERBS:
+                word = tokens.consume()
+                if word is None:
+                    return False, None, None, None
 
-            return True, movement, reason, mobName
+                mob_words.append(word)
+
+            mobName = f"{article} {' '.join(mob_words)}"
+
+            verb = tokens.consume()
+
+            match verb:
+                case 'leaves':
+                    return True, MobMovement.LEAVING, MobLeavingReasons.LEAVES, mobName
+                case 'dies':
+                    return True, MobMovement.LEAVING, MobLeavingReasons.DIES, mobName
+                case 'arrives':
+                    tokens.consume_if("from")
+                    tokens.consume_if("the")
+                    tokens.consume() # direction
+                    return True, MobMovement.ENTERING, MobEnteringReasons.ARRIVES_FROM, mobName
+                case 'enters':
+                    tokens.consume_if('the')
+                    tokens.consume_if('room')
+                    return True, MobMovement.ENTERING, MobEnteringReasons.ENTERS_THE_ROOM, mobName
+                case 'chases':
+                    characterTokens: list[str] = []
+                    while tokens.peek() and  tokens.peek() not in Parser.ParseMovement.CHASE_DIRECTIONS:
+                        characterTokens.append(tokens.consume())
+                    character = ' '.join(characterTokens)
+
+                    if tokens.isEmpty():
+                        raise ValueError("Mob movement text indicates chasing but no direction provided.")
+
+                    direction = tokens.consume()
+                    tokens.consume_if('the')
+                    tokens.consume_if('room')
+                    if direction == 'out':
+                        return True, MobMovement.LEAVING, MobLeavingReasons.CHASES, mobName
+                    else:
+                        return True, MobMovement.ENTERING, MobEnteringReasons.CHASES, mobName
+
+            return False, None, None, None
 
     class ParseBuffOrShieldText(StrEnum):
         Blur_Ended = "The blur about you stops."
@@ -764,7 +767,7 @@ Assumes any item lacking quantity parenthesis to be a non-quantity item and assi
 
         tokens = TokenStream(Parser.tokenizeItemText(text))
 
-        if tokens.empty():
+        if tokens.isEmpty():
             return None
 
         tokens.consume_if(Parser.ARTICLES)
@@ -799,7 +802,7 @@ Assumes any item lacking quantity parenthesis to be a non-quantity item and assi
                 if Item.is_valid_base_item_name(' '.join(enchantmentThenRemainingTokens)):
                     return Item(' '.join(enchantmentThenRemainingTokens))
 
-        if tokens.empty():
+        if tokens.isEmpty():
             return None
 
         item = Item(text)
