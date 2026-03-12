@@ -10,7 +10,7 @@ if __name__ == "__main__":
     sys.path.append(str(srcDirectory))
 
 from Wingman.core.connection_payload_bytes import ConnectionPayloadBytes
-from Wingman.core.parsing.parser import MobMovement, Parser
+from Wingman.core.parsing.parser import MobMovement, Parser, MobEnteringReason, MobLeavingReason
 from Wingman.core.status_indicator import StatusIndicator
 from Wingman.core.group import Group
 from Wingman.core.character import Character
@@ -437,75 +437,83 @@ class TestMobParse:
                                                  "Mob with comma in name"])
         def test_MobRelatedMovement_LeavingByDeath(self, mobName, expectedName):
             text = f"{mobName} dies!"
-            mobsInRoom = [mobName, 'a Kaidite lady']
 
-            isMobMovement, movementType, actualMobName = Parser().ParseMovement().mobRelatedMovement(text, mobsInRoom)
+            isMobMovement, movementCategory, movementReason, actualMobName = Parser.ParseMovement.mobRelatedMovement(text)
 
             assert isMobMovement == True
-            assert movementType == MobMovement.LEAVING
+            assert movementCategory == MobMovement.LEAVING
+            assert movementReason == MobLeavingReason.DIES
             assert actualMobName == expectedName
 
-        @pytest.mark.parametrize("text", ["A windfang hatchling dies!",
-                                        "��X�\x00\x00\x00\x00Hc\x00\x00\x00\x00A windfang hatchling dies!"],
+        @pytest.mark.parametrize("text", ["A windfang hatchling leaves North",
+                                        "��X�\x00\x00\x00\x00Hc\x00\x00\x00\x00A windfang hatchling leaves North!"],
                                         ids=["Only mob text",
                                             "Prefixed with extraneous sequence"])
         def test_MobRelatedMovement_LeavingBy_RoomMovement(self, text):
-            mobsInRoom = ['a razor-backed windfang', 'a windfang hatchling', 'a guardian of the nameless']
-
-            isMobMovement, movementType, mobName = Parser().ParseMovement().mobRelatedMovement(text, mobsInRoom)
+            isMobMovement, mobMovement, movementReason, mobName = Parser().ParseMovement().mobRelatedMovement(text)
 
             assert isMobMovement == True
-            assert movementType == MobMovement.LEAVING
+            assert mobMovement == MobMovement.LEAVING
+            assert movementReason == MobLeavingReason.LEAVES
             assert mobName == 'a windfang hatchling'
 
-        def test_MobRelatedMovement_LeavingBy_Chasing(self):
-            text = "A windfang hatchling chases Foo out of the room."
-            mobsInRoom = ['a windfang hatchling']
+        @pytest.mark.parametrize('characterChased', ['Foo',
+                                                     "primeval eldritch voidwolf",
+                                                     "fierce ancient ba'alwolf",
+                                                     "azure-eyed stormwolf"],
+                                                    ids=['Basic player name',
+                                                         "Shapeshifted wolf name - Basic",
+                                                         "Shapeshifted wolf name - Apostrophe",
+                                                         "Shapeshifted wolf name - Dash"]
+        )
+        def test_MobRelatedMovement_LeavingBy_Chasing(self, characterChased):
+            text = f"A windfang hatchling chases {characterChased} out of the room."
 
-            isMobMovement, movementType, mobName = Parser().ParseMovement().mobRelatedMovement(text, mobsInRoom)
+            isMobMovement, mobMovement, movementReason, mobName = Parser().ParseMovement().mobRelatedMovement(text)
 
             assert isMobMovement == True
-            assert movementType == MobMovement.LEAVING
+            assert mobMovement == MobMovement.LEAVING
+            assert movementReason == MobLeavingReason.CHASES
             assert mobName == 'a windfang hatchling'
 
         def test_MobRelatedMovement_EnteringBy_RoomMovement(self):
             text = 'A windfang hatchling arrives from the north.'
-            mobsInRoom = ['a windfang hatchling']
 
-            isMobMovement, movementType, mobName = Parser().ParseMovement().mobRelatedMovement(text, mobsInRoom)
+            isMobMovement, mobMovement, movementReason, mobName = Parser().ParseMovement().mobRelatedMovement(text)
 
             assert isMobMovement == True
-            assert movementType == MobMovement.ENTERING
+            assert mobMovement == MobMovement.ENTERING
+            assert movementReason == MobEnteringReason.ARRIVES_FROM
             assert mobName == 'a windfang hatchling'
 
         def test_MobRelatedMovement_EnteringBy_SpawningInRoom(self):
             text = 'A mermaid temptress enters the room.'
-            mobsInRoom = ['a mermaid temptress']
 
-            isMobMovement, movementType, mobName = Parser().ParseMovement().mobRelatedMovement(text, mobsInRoom)
+            isMobMovement, mobMovement, movementReason, mobName = Parser().ParseMovement().mobRelatedMovement(text)
 
             assert isMobMovement == True
-            assert movementType == MobMovement.ENTERING
+            assert mobMovement == MobMovement.ENTERING
+            assert movementReason == MobEnteringReason.ENTERS_THE_ROOM
             assert mobName == 'a mermaid temptress'
 
         def test_MobRelatedMovement_EnteringBy_ChasingIntoRoom(self):
             text = 'A windfang hatchling chases Foo into the room.'
-            mobsInRoom = ['a windfang hatchling']
 
-            isMobMovement, movementType, mobName = Parser().ParseMovement().mobRelatedMovement(text, mobsInRoom)
+            isMobMovement, mobMovement, movementReason, mobName = Parser().ParseMovement().mobRelatedMovement(text)
 
             assert isMobMovement == True
-            assert movementType == MobMovement.ENTERING
+            assert mobMovement == MobMovement.ENTERING
+            assert movementReason == MobEnteringReason.CHASES
             assert mobName == 'a windfang hatchling'
 
         def test_PlayerMovement_EnteringBy_RoomMovement_NotConsideredMobRelatedMovement(self):
             text = 'Foo arrives from the north.'
-            mobsInRoom = ['a windfang hatchling']
 
-            isMobMovement, movementType, mobName = Parser().ParseMovement().mobRelatedMovement(text, mobsInRoom)
+            isMobMovement, mobMovement, movementReason, mobName = Parser().ParseMovement().mobRelatedMovement(text)
 
             assert isMobMovement == False
-            assert movementType == None
+            assert mobMovement == None
+            assert movementReason == None
             assert mobName == None
 
 class TestBuffOrShieldEndingParse:

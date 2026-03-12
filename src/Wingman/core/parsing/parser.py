@@ -1,7 +1,7 @@
 from collections import deque
 import re
 from typing import Iterable, List
-from enum import StrEnum
+from enum import Enum, StrEnum, auto
 from Wingman.core.connection_payload_bytes import ConnectionPayloadBytes
 from Wingman.core.parsing.tokenstream import TokenStream
 from Wingman.core.status_indicator import StatusIndicator
@@ -14,13 +14,35 @@ from Wingman.core.item import ItemMaterial_Cloth, ItemMaterial_Leather, ItemMate
 from Wingman.core.affect import Affect
 from Wingman.core.ansi_code_stripper import remove_ANSI_color_codes
 
-class MobMovement(StrEnum):
-    LEAVING = "LEAVING"
-    ENTERING = "ENTERING"
+class MobMovement(Enum):
+    LEAVING = auto()
+    ENTERING = auto()
+
+class MobEnteringReason(Enum):
+    ARRIVES_FROM = auto()
+    ENTERS_THE_ROOM = auto()
+    CHASES = auto()
+
+class MobLeavingReason(Enum):
+    LEAVES = auto()
+    DIES = auto()
+    CHASES = auto()
 
 class Parser:
     MOB_NAME_REGEX_PATTERN = r"[a-zA-Z ',\-]+"
     CHARACTER_NAME_REGEX_PATTERN = r"[a-zA-Z '\-]+"
+
+    ENTER_REASON_LOOKUP = {
+        'arrives from': MobEnteringReason.ARRIVES_FROM,
+        'enters the room': MobEnteringReason.ENTERS_THE_ROOM,
+        'chases': MobEnteringReason.CHASES
+    }
+
+    LEAVING_REASON_LOOKUP = {
+        'leaves': MobLeavingReason.LEAVES,
+        'dies': MobLeavingReason.DIES,
+        'chases': MobLeavingReason.CHASES
+    }
 
     def parse_xp_message(self, text_block: str) -> int:
         """Parses text for XP gains."""
@@ -303,31 +325,64 @@ BG	FC	Color			Color
         def playerMovement(self, text: str) -> bool:
             return "Obvious exits:" in text
 
-        def mobRelatedMovement(self, text: str, mobsInRoom: list[str]) -> tuple[bool, MobMovement | None, str | None]:
+        @staticmethod
+        def mobRelatedMovement(text: str) -> tuple[bool, MobMovement | None, Enum | None, str | None]:
             '''Parse text for mob related movement. Assumes `mobsInRoom` have their indefinite-articles (a, an) lower cased as part of `Also there is `.
 
 - First Tuple Element: `bool` - `True` = mob movement occurred - `False` = no mob movement, remaining Tuple Elements are then `None`.
-- Second Tuple Element: `MobMovement` - indicates the kind of movement, either entering/leaving.
+- Second Tuple Element: `MobMovement` - indicates either entering/leaving.
+- Third Tuple Element: (`MobEnteringReason`|`MobLeavingReason`) Enum - indicates the specific kind of entering or leaving movement. `None` if no mob movement.
 - Last Tuple Element: `str` - the mob that moved.
 
 Subsequent removal of mob from the model needs to be dealt with by the caller.'''
-            mobName = r"(?P<mobName>(A|An) " + Parser.MOB_NAME_REGEX_PATTERN + r")"
+            mobName = rf"(?P<mobName>(A|An) {Parser.MOB_NAME_REGEX_PATTERN})"
 
-            exitType = r"(?P<exitType>leaves|dies|chases " + Parser.CHARACTER_NAME_REGEX_PATTERN + r" out of the room)"
-            exitPattern = re.compile(f'{mobName} {exitType}', re.IGNORECASE)
-            mobExiting = exitPattern.findall(text)
-            if mobExiting:
-                name: str = mobExiting[0][0]
-                return True, MobMovement.LEAVING, name[:1].lower() + name[1:]
+            movementPattern = re.compile(
+                                    rf"""
+                                    {mobName}\s
+                                    (?P<verb>
+                                        arrives\ from
+                                        |enters\ the\ room
+                                        |leaves
+                                        |dies
+                                        |chases
+                                    )
+                                    (?:
+                                        \s
+                                        (?P<characterName>{Parser.CHARACTER_NAME_REGEX_PATTERN})
+                                        \s
+                                        (?P<direction>into|out\ of)
+                                        \sthe\sroom\.
+                                    )?""",
+                                re.IGNORECASE | re.VERBOSE)
 
-            entryType = r"(?P<entryType>arrives from|enters the room|chases " + Parser.CHARACTER_NAME_REGEX_PATTERN + r" into the room)"
-            pattern = re.compile(f'{mobName} {entryType}', re.IGNORECASE)
-            mobEntering = pattern.findall(text)
-            if mobEntering:
-                name: str = mobEntering[0][0]
-                return True, MobMovement.ENTERING, name[:1].lower() + name[1:]
+            match = movementPattern.search(text)
+            if not match:
+                return False, None, None, None
 
-            return False, None, None
+            verb = match.group('verb').lower()
+            direction = (match.group('direction') or "").lower()
+            mobName = match.group('mobName')
+            mobName = mobName[0].lower() + mobName[1:]
+
+            if verb == 'leaves':
+                movement = MobMovement.LEAVING
+                reason = MobLeavingReason.LEAVES
+            elif verb == 'dies':
+                movement = MobMovement.LEAVING
+                reason = MobLeavingReason.DIES
+            elif verb in {'arrives from', 'enters the room'}:
+                movement = MobMovement.ENTERING
+                reason = Parser.ENTER_REASON_LOOKUP[verb]
+            elif verb == 'chases':
+                if direction == 'out of':
+                    movement = MobMovement.LEAVING
+                    reason = Parser.LEAVING_REASON_LOOKUP[verb]
+                else:
+                    movement = MobMovement.ENTERING
+                    reason = Parser.ENTER_REASON_LOOKUP[verb]
+
+            return True, movement, reason, mobName
 
     class ParseBuffOrShieldText(StrEnum):
         Blur_Ended = "The blur about you stops."
