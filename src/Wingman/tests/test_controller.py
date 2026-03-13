@@ -61,7 +61,7 @@ class TestProcessQueue:
             mockedDisplay.assert_called_once_with()
             assert c.model.currentMobsInRoom == ['a windfang hatchling']
 
-        def test_MobMovement_ArrivesFrom_With2Mobs_DisplayUpdatesAndMobsInRoomMatchesExpected(self, testController: Controller):
+        def test_MobArrivesFrom_WithInitially2Mobs_MobCountDisplayUpdateInvoked(self, testController: Controller):
             c = testController
             c.model.currentMobsInRoom = ['a foo bar', 'a bar foo']
             v = c.view
@@ -73,9 +73,19 @@ class TestProcessQueue:
                 v.update_gui()
 
             mockedDisplay.assert_called_once_with()
+
+        def test_MobArrivesFrom_WithInitially2Mobs_MobsInRoomMatchesExpected(self, testController: Controller):
+            c = testController
+            c.model.currentMobsInRoom = ['a foo bar', 'a bar foo']
+            v = c.view
+
+            c.receiver.receive("A windfang hatchling arrives from the east.")
+
+            v.update_gui()
+
             assert c.model.currentMobsInRoom == ['a foo bar', 'a bar foo', 'a windfang hatchling']
 
-        def test_MobMovement_ChasesIn_With1Mob_DisplayUpdatesAndMobsInRoomMatchesExpected(self, testController: Controller):
+        def test_MobChasesAnotherPlayerIn_MobCountDisplayUpdateInvoked(self, testController: Controller):
             c = testController
             c.model.currentMobsInRoom = ['a foo bar']
             v = c.view
@@ -87,9 +97,41 @@ class TestProcessQueue:
                 v.update_gui()
 
             mockedDisplay.assert_called_once_with()
+
+        def test_MobChasesAnotherPlayerIn_MobsInRoomMatchesExpected(self, testController: Controller):
+            c = testController
+            c.model.currentMobsInRoom = ['a foo bar']
+            v = c.view
+
+            c.receiver.receive("A windfang hatchling chases Foo into the room.")
+
+            v.update_gui()
+
             assert c.model.currentMobsInRoom == ['a foo bar', 'a windfang hatchling']
 
-        def test_MobMovement_Dies_With2MobsInRoom_DisplayUpdatesAndMobsInRoomMatchesExpected(self, testController: Controller):
+        def test_ChasesOut_AsOnlyMobInTheRoom_MobCountDisplayUpdateInvoked(self, testController: Controller):
+            c = testController
+            c.model.currentMobsInRoom = ['a windfang hatchling']
+            v = c.view
+
+            c.receiver.receive("A windfang hatchling chases Foo out of the room.")
+            c.process_queue()
+
+            with patch.object(v, v.updateMobCountDisplay.__name__) as mockedDisplay:
+                v.update_gui()
+
+            mockedDisplay.assert_called_once_with()
+
+        def test_ChasesOut_AsOnlyMobInTheRoom_MobsInRoomMatchesExpected(self, testController: Controller):
+            c = testController
+            c.model.currentMobsInRoom = ['a windfang hatchling']
+
+            c.receiver.receive("A windfang hatchling chases Foo out of the room.")
+            c.process_queue()
+
+            assert c.model.currentMobsInRoom == []
+
+        def test_Dies_With2MobsInRoom_MobCountDisplayUpdateInvoked(self, testController: Controller):
             c = testController
             c.model.currentMobsInRoom = ['a foo bar', 'a windfang hatchling']
             v = c.view
@@ -103,7 +145,18 @@ class TestProcessQueue:
             mockedDisplay.assert_called_once_with()
             assert c.model.currentMobsInRoom == ['a foo bar']
 
-        def test_MobMovement_Leaves_With5MobsInRoom_DisplayUpdatesAndMobsInRoomMatchesExpected(self, testController: Controller):
+        def test_Dies_With2MobsInRoom_MobsInRoomMatchesExpected(self, testController: Controller):
+            c = testController
+            c.model.currentMobsInRoom = ['a foo bar', 'a windfang hatchling']
+            v = c.view
+
+            c.receiver.receive("A windfang hatchling dies.")
+
+            v.update_gui()
+
+            assert c.model.currentMobsInRoom == ['a foo bar']
+
+        def test_Leaves_With5MobsInRoom_MobCountDisplayUpdateInvoked(self, testController: Controller):
             c = testController
             c.model.currentMobsInRoom = ['a foo bar', 'a bar foo', 'a dog', 'a cat', 'a windfang hatchling']
             v = c.view
@@ -115,21 +168,17 @@ class TestProcessQueue:
                 v.update_gui()
 
             mockedDisplay.assert_called_once_with()
-            assert c.model.currentMobsInRoom == ['a foo bar', 'a bar foo', 'a dog', 'a windfang hatchling']
 
-        def test_MobMovement_ChasesOut_AsOnlyMobInTheRoom_DisplayUpdatesAndMobsInRoomMatchesExpected(self, testController: Controller):
+        def test_Leaves_With5MobsInRoom_MobsInRoomMatchesExpected(self, testController: Controller):
             c = testController
-            c.model.currentMobsInRoom = ['a windfang hatchling']
+            c.model.currentMobsInRoom = ['a foo bar', 'a bar foo', 'a dog', 'a cat', 'a windfang hatchling']
             v = c.view
 
-            c.receiver.receive("A windfang hatchling chases Foo out of the room.")
-            c.process_queue()
+            c.receiver.receive("A cat leaves North.")
 
-            with patch.object(v, v.updateMobCountDisplay.__name__) as mockedDisplay:
-                v.update_gui()
+            v.update_gui()
 
-            mockedDisplay.assert_called_once_with()
-            assert c.model.currentMobsInRoom == []
+            assert c.model.currentMobsInRoom == ['a foo bar', 'a bar foo', 'a dog', 'a windfang hatchling']
 
         def test_MobDies_ButWasNotListedAsInCurrentRoom_DoesNotRaiseError(self, testController: Controller):
             c = testController
@@ -837,6 +886,15 @@ class TestDisplayingCentralColumnLabelInView:
         assert mob1 in argument
         assert mob2 in argument
         assert '\n' in argument
+
+    def test_MobChasingAnotherPlayerIntoRoom_DisplayLabelNotInvoked(self, testController: Controller):
+        c = testController
+        c.receiver.receive("A ravenous, jeweled scarab chases FooBar into the room.")
+
+        with patch.object(c, c.displayMobIsChasingYouLabel.__name__) as mockedMethod:
+            c.process_queue()
+
+        mockedMethod.assert_not_called()
 
     def test_BeginHiding_HideLabelDisplayedInView(self, testController: Controller):
         c = testController
