@@ -252,7 +252,7 @@ v.setup_ui()
                         self.model.currentMobsInRoom.append(event.mobName)
                         self.updateMobCountDisplay()
 
-                        if event.movementReason == MobEnteringReasons.CHASES and 'you into the room' in line.lower():
+                        if event.movementReason == MobEnteringReasons.CHASES and event.isChasingYou:
                             self.displayMobIsChasingYouLabel(event.mobName)
                     case MobMovementType.LEAVING:
                         if event.mobName in self.model.currentMobsInRoom:
