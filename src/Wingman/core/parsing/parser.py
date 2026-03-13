@@ -1,8 +1,9 @@
 from collections import deque
 import re
 from typing import Iterable, List
-from enum import Enum, StrEnum, auto
+from enum import StrEnum
 from Wingman.core.connection_payload_bytes import ConnectionPayloadBytes
+from Wingman.core.mob_movement_event import MobMovementEvent
 from Wingman.core.parsing.tokenstream import TokenStream
 from Wingman.core.status_indicator import StatusIndicator
 from Wingman.core.resource_bar import ResourceBar
@@ -13,20 +14,7 @@ from Wingman.core.item import Item, ItemSlot, ItemEnchantments
 from Wingman.core.item import ItemMaterial_Cloth, ItemMaterial_Leather, ItemMaterial_Studded_And_Plate, ItemMaterial_Wood
 from Wingman.core.affect import Affect
 from Wingman.core.ansi_code_stripper import remove_ANSI_color_codes
-
-class MobMovement(Enum):
-    LEAVING = auto()
-    ENTERING = auto()
-
-class MobEnteringReasons(Enum):
-    ARRIVES_FROM = auto()
-    ENTERS_THE_ROOM = auto()
-    CHASES = auto()
-
-class MobLeavingReasons(Enum):
-    LEAVES = auto()
-    DIES = auto()
-    CHASES = auto()
+from Wingman.core.mob_movement_event import MobMovementType, MobEnteringReasons, MobLeavingReasons
 
 class Parser:
     MOB_NAME_REGEX_PATTERN = r"[a-zA-Z ',\-]+"
@@ -321,53 +309,81 @@ BG	FC	Color			Color
             return "Obvious exits:" in text
 
         @staticmethod
-        def mobRelatedMovement(text: str) -> tuple[bool, MobMovement | None, Enum | None, str | None]:
-            '''Parse text for mob related movement. Assumes `mobsInRoom` have their indefinite-articles (a, an) lower cased as part of `Also there is `.
+        def parseMobMovements(text:str) -> tuple[list[MobMovementEvent], list[tuple[int, int]]]:
+            '''Parse text for mob related movement.
+- First Tuple Element: A list of `MobMovementEvent`s indicating the mob movement events parsed from the text.
+- Second Tuple Element: A list of tuples indicating the indices in the text where mob movement related text was found.
 
+Subsequent removal of mob from the model needs to be dealt with by the caller.'''
+            movements: list[MobMovementEvent] = []
+            indices: list[tuple[int, int]] = []
+
+            for line in text.splitlines():
+                line = line.strip()
+                if not line: continue
+
+                if not any(verb in line for verb in Parser.ParseMovement.VERBS):
+                    continue
+
+                isMovement, movement, reason, mobName, isChasingYou = Parser.ParseMovement._mobRelatedMovement_SingleLine(line)
+
+                if isMovement:
+                    assert movement is not None
+                    assert reason is not None
+                    assert mobName is not None
+                    movements.append(MobMovementEvent(movement, reason, mobName, isChasingYou))
+
+                    startIndex = text.find(line)
+                    endIndex = startIndex + len(line)
+                    indices.append((startIndex, endIndex))
+            return movements, indices
+
+        @staticmethod
+        def _mobRelatedMovement_SingleLine(text: str) -> tuple[bool, MobMovementType | None, MobEnteringReasons | MobLeavingReasons | None, str | None, bool]:
+            """An empty list indicates no mob related movement. Each tuple in the returned list indicates a mob movement, and includes the following elements:
 - First Tuple Element: `bool` - `True` = mob movement occurred - `False` = no mob movement, remaining Tuple Elements are then `None`.
 - Second Tuple Element: `MobMovement` - indicates either entering/leaving.
 - Third Tuple Element: (`MobEnteringReason`|`MobLeavingReason`) Enum - indicates the specific kind of entering or leaving movement. `None` if no mob movement.
-- Last Tuple Element: `str` - the mob that moved.
-
-Subsequent removal of mob from the model needs to be dealt with by the caller.'''
+- Fourth Tuple Element: `list[str]` - the mob(s) that moved.
+- Last Tuple Element: `bool` - `True` if chasing you, `False` otherwise."""
             tokens = TokenStream(Parser.ParseMovement.tokenize_movement(text))
 
             #deal with extraneous text before the mob movement text
             while tokens.peek() and tokens.peek() not in Parser.ParseMovement.ARTICLES:
                 if tokens.consume() is None:
-                    return False, None, None, None
+                    return False, None, None, None, False
 
             article = tokens.consume_if(Parser.ParseMovement.ARTICLES)
             if not article:
-                return False, None, None, None
+                return False, None, None, None, False
 
-            mob_words = []
+            mobNameParts = []
 
             while tokens.peek() and tokens.peek() not in Parser.ParseMovement.VERBS:
-                word = tokens.consume()
-                if word is None:
-                    return False, None, None, None
+                partOfMobName = tokens.consume()
+                if partOfMobName is None:
+                    return False, None, None, None, False
 
-                mob_words.append(word)
+                mobNameParts.append(partOfMobName)
 
-            mobName = f"{article} {' '.join(mob_words)}"
+            mobName = f"{article} {' '.join(mobNameParts)}"
 
             verb = tokens.consume()
 
             match verb:
                 case 'leaves':
-                    return True, MobMovement.LEAVING, MobLeavingReasons.LEAVES, mobName
+                    return True, MobMovementType.LEAVING, MobLeavingReasons.LEAVES, mobName, False
                 case 'dies':
-                    return True, MobMovement.LEAVING, MobLeavingReasons.DIES, mobName
+                    return True, MobMovementType.LEAVING, MobLeavingReasons.DIES, mobName, False
                 case 'arrives':
                     tokens.consume_if("from")
                     tokens.consume_if("the")
                     tokens.consume() # direction
-                    return True, MobMovement.ENTERING, MobEnteringReasons.ARRIVES_FROM, mobName
+                    return True, MobMovementType.ENTERING, MobEnteringReasons.ARRIVES_FROM, mobName, False
                 case 'enters':
                     tokens.consume_if('the')
                     tokens.consume_if('room')
-                    return True, MobMovement.ENTERING, MobEnteringReasons.ENTERS_THE_ROOM, mobName
+                    return True, MobMovementType.ENTERING, MobEnteringReasons.ENTERS_THE_ROOM, mobName, False
                 case 'chases':
                     characterTokens: list[str] = []
                     while tokens.peek() and  tokens.peek() not in Parser.ParseMovement.CHASE_DIRECTIONS:
@@ -380,12 +396,13 @@ Subsequent removal of mob from the model needs to be dealt with by the caller.''
                     direction = tokens.consume()
                     tokens.consume_if('the')
                     tokens.consume_if('room')
+                    areYouBeingChased = character == 'you'
                     if direction == 'out':
-                        return True, MobMovement.LEAVING, MobLeavingReasons.CHASES, mobName
+                        return True, MobMovementType.LEAVING, MobLeavingReasons.CHASES, mobName, areYouBeingChased
                     else:
-                        return True, MobMovement.ENTERING, MobEnteringReasons.CHASES, mobName
+                        return True, MobMovementType.ENTERING, MobEnteringReasons.CHASES, mobName, areYouBeingChased
 
-            return False, None, None, None
+            return False, None, None, None, False
 
     class ParseBuffOrShieldText(StrEnum):
         Blur_Ended = "The blur about you stops."

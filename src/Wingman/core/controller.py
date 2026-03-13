@@ -6,10 +6,11 @@ import configparser
 from pathlib import Path
 from Wingman.core.affect import Affect
 from Wingman.core.group import Group
+from Wingman.core.mobs_chasing_you import MobsChasingYou
 from Wingman.core.session import GameSession
 from Wingman.core.network_listener import NetworkListener
 from Wingman.core.model import Model
-from Wingman.core.parsing.parser import Parser, MobMovement
+from Wingman.core.parsing.parser import MobEnteringReasons, Parser, MobMovementType
 from Wingman.core.mobs_in_room import MobsInRoom
 from Wingman.core.item import Item, ItemSlot, QuantityComparer
 from Wingman.core.inventory import Inventory, Equipment
@@ -166,6 +167,10 @@ v.setup_ui()
                 self.model.AffectsWithTimeExpiration = affectsWithTimeExpiration
                 continue
 
+            if isinstance(line, MobsChasingYou):
+                self.displayMobIsChasingYouLabel('\n'.join(line.mobsChasingYou))
+                continue
+
             assert isinstance(line, str)
 
             if needToClearGroupData(line, self.gameSession.group):
@@ -237,16 +242,21 @@ v.setup_ui()
                 self.updateMobCountDisplay()
                 self.clearSoughtAfterItemsThatDropped()
 
-            mobMovementRelated, movement, mobName = self.model.parser.ParseMovement().mobRelatedMovement(line, self.model.currentMobsInRoom)
-            if mobMovementRelated:
-                assert isinstance(mobName, str)
-                match movement:
-                    case MobMovement.ENTERING:
-                        self.model.currentMobsInRoom.append(mobName)
+            mobMovementEvent, _ = self.model.parser.ParseMovement().parseMobMovements(line)
+            if mobMovementEvent:
+                assert len(mobMovementEvent) == 1
+                event = mobMovementEvent[0]
+                assert isinstance(event.mobName, str)
+                match event.movementType:
+                    case MobMovementType.ENTERING:
+                        self.model.currentMobsInRoom.append(event.mobName)
                         self.updateMobCountDisplay()
-                    case MobMovement.LEAVING:
-                        if mobName in self.model.currentMobsInRoom:
-                            self.model.currentMobsInRoom.remove(mobName)
+
+                        if event.movementReason == MobEnteringReasons.CHASES and 'you into the room' in line.lower():
+                            self.displayMobIsChasingYouLabel(event.mobName)
+                    case MobMovementType.LEAVING:
+                        if event.mobName in self.model.currentMobsInRoom:
+                            self.model.currentMobsInRoom.remove(event.mobName)
                         self.updateMobCountDisplay()
 
             isBuffOrShieldRefreshing, whatEnded = self.model.parser.parseBuffOrShieldIsRefreshing(line)
@@ -799,3 +809,8 @@ Returns a `list[Item]` of missing items
                 itemNamesSet.add(checkName)
 
         return (itemNamesSet, baseItemNamesSet)
+
+    def displayMobIsChasingYouLabel(self, mobName: str):
+        self.view.displayMobIsChasingYouLabel(mobName)
+    def hideMobIsChasingYouLabel(self):
+        self.view.hideMobIsChasingYouLabel()

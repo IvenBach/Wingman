@@ -2,6 +2,7 @@ import re
 from typing import Any, overload
 from collections import deque
 from Wingman.core.affect import Affect
+from Wingman.core.mobs_chasing_you import MobsChasingYou
 from Wingman.core.mobs_in_room import MobsInRoom
 from Wingman.core.inventory import Inventory
 from Wingman.core.equipment import Equipment
@@ -29,6 +30,8 @@ class InputReceiver:
     def receive(self, equippedGear: Equipment) -> None: ...
     @overload
     def receive(self, affects: list[Affect]) -> None: ...
+    @overload
+    def receive(self, mobsChasingYou: MobsChasingYou) -> None: ...
 
     def receive(self, input):
         '''

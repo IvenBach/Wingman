@@ -19,6 +19,7 @@ from Wingman.core.parsing.parser import Parser
 from Wingman.core.health_Tagger import HealthTagger
 from Wingman.core.inventory import Equipment, Inventory
 from Wingman.core.item import Item
+from Wingman.core.mobs_chasing_you import MobsChasingYou
 
 @pytest.fixture(scope="function")
 def testController():
@@ -46,7 +47,7 @@ class TestProcessQueue:
         assert len(logs) == 1
 
     class TestMobRoomMovement:
-        def test_MobMovement_Enters_EmptyRoom_DisplayUpdatesAndMobsInRoomMatchesExpected(self, testController: Controller):
+        def test_EntersEmptyRoom_DisplayUpdatesAndMobsInRoomMatchesExpected(self, testController: Controller):
             c = testController
             c.model.currentMobsInRoom = []
             v = c.view
@@ -814,6 +815,28 @@ class TestDisplayingCentralColumnLabelInView:
         with patch.object(md, md.meditationDurationInSeconds.__name__) as mockedDuration:
             mockedDuration.return_value = 40
 
+    def test_SingleMobIsChasingYou(self, testController: Controller):
+        c = testController
+        c.receiver.receive("A ravenous, jeweled scarab chases you into the room.")
+
+        with patch.object(c, c.displayMobIsChasingYouLabel.__name__) as mockedMethod:
+            c.process_queue()
+
+        mockedMethod.assert_called_once_with('a ravenous, jeweled scarab')
+
+    def test_TwoMobsAreChasingYou_SingleDisplayLabelInvokedWithNewlineSeparatingMobNames(self, testController: Controller):
+        mob1 = "a brilliant bronze-scaled dragon"
+        mob2 = "a diabolic infernal nomad"
+        c = testController
+        c.receiver.receive(MobsChasingYou([mob1, mob2]))
+
+        with patch.object(c, c.displayMobIsChasingYouLabel.__name__) as mockedMethod:
+            c.process_queue()
+
+        argument = mockedMethod.mock_calls[0].args[0]
+        assert mob1 in argument
+        assert mob2 in argument
+        assert '\n' in argument
 
     def test_BeginHiding_HideLabelDisplayedInView(self, testController: Controller):
         c = testController

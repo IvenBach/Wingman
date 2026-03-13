@@ -9,6 +9,7 @@ from Wingman.core.controller import Controller
 from Wingman.core.parsing.parser import Parser
 from Wingman.core.affect import Affect
 from Wingman.core.connection_payload_bytes import ConnectionPayloadBytes
+from Wingman.core.mobs_chasing_you import MobsChasingYou
 
 # Helper class to mock Scapy packet behavior cleanly
 class MockPacket:
@@ -149,8 +150,6 @@ def test_MeditationWithTrailingCharStateInfo_ExpectedMeditationStateIsReceived_T
         listener.packet_callback(pkt)
 
     mockedReceiveMethod.assert_has_calls([call(Parser.MeditationState.Begin),
-                                          call(''), #These zero-length strings aren't dealt with in the non-mocked receiver
-                                          call(''),
                                           call('���charstate {"combat":"AGGRESSIVE","currentWeight":67,"maxWeight":230,"pos":"Standing"}')],
                                         any_order=False)
 
@@ -218,8 +217,85 @@ def test_AffectsWithPrefixedAndSuffixedInfo_PrefixedAndSuffixedInfoContinueOnToR
 
     assert all(isinstance(affect, Affect) for affect in mockCalls[0].args[0])
     assert mockCalls[1].args[0] == "Some text before."
-    assert mockCalls[2].args[0] == ''
-    assert mockCalls[3].args[0] == "Some text after."
+    assert mockCalls[2].args[0] == "Some text after."
+
+def test_MultipleMobsChaseYouIntoTheRoom_MobChaseDataStructureArgumentSentToReceiver(listener_stack):
+    listener, receiver = listener_stack
+    target_ip = listener.target_ip
+    target_port = listener.target_port
+
+    text = """A brilliant bronze-scaled dragon chases you into the room.
+A diabolic infernal nomad chases you into the room."""
+
+    payload = (text).encode('utf-8')
+    pkt = MockPacket(target_ip, target_port, payload)
+
+    with patch.object(receiver, receiver.receive.__name__) as mockedReceiveMethod:
+        listener.packet_callback(pkt)
+
+    assert isinstance(mockedReceiveMethod.mock_calls[0].args[0], MobsChasingYou)
+
+def test_MobsChasingYouIntoRoom_RoomDescriptionTextSentBeforeMobChasingDataClass(listener_stack):
+    listener, receiver = listener_stack
+    target_ip = listener.target_ip
+    target_port = listener.target_port
+
+    text = """You silently sneak west.
+A brilliant bronze-scaled dragon chases you into the room.
+A diabolic infernal nomad chases you into the room.
+[Eastern Desert]
+You're at the western edge of the Stone Sea, a desolate, arid wasteland of rocky terrain. To the west is a vast expanse of
+
+sandy dunes, and in the far distance is a high mountain range.
+
+Obvious exits: east and a wasteland to the west.
+
+Also there is a brilliant bronze-scaled dragon and a diabolic infernal nomad."""
+
+    payload = (text).encode('utf-8')
+    pkt = MockPacket(target_ip, target_port, payload)
+
+    with patch.object(receiver, receiver.receive.__name__) as mockedReceiveMethod:
+        listener.packet_callback(pkt)
+
+    roomDescriptionIndex = -1
+    mobsChasingIndex = -1
+    for index, arg in enumerate(mockedReceiveMethod.call_args_list):
+        if roomDescriptionIndex == -1 and 'Obvious exits' in arg[0][0]:
+            roomDescriptionIndex = index
+            continue
+
+        if isinstance(arg[0][0], MobsChasingYou):
+            mobsChasingIndex = index
+            break
+
+    assert roomDescriptionIndex != -1
+    assert mobsChasingIndex != -1
+    assert roomDescriptionIndex < mobsChasingIndex
+
+def test_EmptyLinesNotSentToReceiver(listener_stack):
+    text = """You silently sneak west.
+[Eastern Desert]
+You're at the western edge of the Stone Sea, a desolate, arid wasteland of rocky terrain. To the west is a vast expanse of
+
+sandy dunes, and in the far distance is a high mountain range.
+
+Obvious exits: east and a wasteland to the west.
+
+Also there is a brilliant bronze-scaled dragon and a diabolic infernal nomad."""
+    listener, receiver = listener_stack
+    target_ip = listener.target_ip
+    target_port = listener.target_port
+
+    payload = (text).encode('utf-8')
+    pkt = MockPacket(target_ip, target_port, payload)
+
+    with patch.object(receiver, receiver.receive.__name__) as mockedReceiveMethod:
+        listener.packet_callback(pkt)
+
+    emptyArgs = [callArgs[0][0] for callArgs in mockedReceiveMethod.call_args_list if callArgs[0][0].strip() == ""]
+
+    assert len(emptyArgs) == 0
 
 class TestConnectionPayload:
     def test_LogoutPayload_MethodToPauseInvoked(self, listener_stack: tuple[NetworkListener, InputReceiver]):

@@ -151,6 +151,10 @@ c = Controller.ForTesting()
         self._hidingLabel.grid(row=1, column=0, sticky=tk.EW)
         self._hidingLabel.grid_remove()
 
+        self._mobIsChasingYouLabel = ttk.Label(centerFrame, name='mobIsChasingYouLabel', anchor=tk.CENTER)
+        self._mobIsChasingYouLabel.grid(row=1, column=0, sticky=tk.EW)
+        self._mobIsChasingYouLabel.grid_remove()
+
         pauseSettingsTimerFrame = ttk.Frame(stats_frame)
         pauseSettingsTimerFrame.grid(row=0, column=2, sticky=tk.E, padx=5)
         ttk.Label(pauseSettingsTimerFrame, textvariable=self.var_duration, font=("Consolas", 10)).grid(row=0, column=0,sticky=tk.E, pady=(0,5))
@@ -788,3 +792,10 @@ c = Controller.ForTesting()
         self.missingGearSetItemsLabel.grid()
     def hideMissingGearSetItemsLabel(self):
         self.missingGearSetItemsLabel.grid_remove()
+
+    def displayMobIsChasingYouLabel(self, mobName: str):
+        self._mobIsChasingYouLabel.config(text=f"{mobName} is chasing you!")
+        self._mobIsChasingYouLabel.grid()
+        self.after(self.var_hideDisplayedLabelCallbackTimerInMilliseconds.get(), self.hideMobIsChasingYouLabel)
+    def hideMobIsChasingYouLabel(self):
+        self._mobIsChasingYouLabel.grid_remove()

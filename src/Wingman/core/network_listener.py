@@ -1,9 +1,10 @@
 import threading
 from scapy.all import sniff, IP, TCP
 from Wingman.core.input_receiver import InputReceiver
-from Wingman.core.parsing.parser import Parser
+from Wingman.core.parsing.parser import MobEnteringReasons, Parser
 from Wingman.core.mobs_in_room import MobsInRoom
 from Wingman.core.ansi_code_stripper import remove_ANSI_color_codes
+from Wingman.core.mobs_chasing_you import MobsChasingYou
 
 class NetworkListener:
     def __init__(self, input_receiver: InputReceiver, controller, target_ip, target_port):
@@ -27,7 +28,7 @@ class NetworkListener:
         if IP in packet and TCP in packet:
             if packet[IP].src == self.target_ip and packet[TCP].sport == self.target_port:
                 if len(packet[TCP].payload) <= 0:
-                    return 
+                    return
 
                 try:
                     payload_bytes = bytes(packet[TCP].payload)
@@ -54,6 +55,18 @@ class NetworkListener:
 
                     if Parser.ParseMobs().hasAnsiColorCodedMobs(chunk, predeterminedChunkMobList):
                         mobsInRoom = MobsInRoom(predeterminedChunkMobList)
+
+                    mobMovements, movementIndices = Parser.ParseMovement.parseMobMovements(chunk)
+                    if mobMovements:
+                        followingMobs = [movementEvent.mobName for movementEvent in mobMovements if movementEvent.movementReason == MobEnteringReasons.CHASES and movementEvent.isChasingYou]
+
+                        movementIndices.reverse()
+                        # Work from back to front removing mob movement related text from chunk.
+                        # Keeps from maintaining a shift index/counter.
+                        for startIndex, endIndex in movementIndices:
+                            chunk = chunk[:startIndex] + chunk[endIndex:]
+                        # Permit remaining chunk to continue, it may have room description text.
+
 
                     isAffect, affects, affectIndices = Parser.ParseAffect().parseAffects(chunk)
                     if isAffect:
@@ -83,12 +96,16 @@ class NetworkListener:
                         line, self._buffer = self._buffer.split('\n', 1)
 
                         # Clean up carriage returns common in MUDs
-                        line = line.replace('\r', '')
-                        self.receiver.receive(line)
+                        line = line.replace('\r', '').strip()
+                        if line: # Don't send empty lines to the receiver
+                            self.receiver.receive(line)
 
                     if mobsInRoom is not None:
                         self.receiver.receive(mobsInRoom)
                         mobsInRoom = None
+
+                    if mobMovements:
+                        self.receiver.receive(MobsChasingYou(followingMobs))
 
                 except Exception as e:
                     print(f"Error decoding packet: {e}")
