@@ -576,7 +576,8 @@ c = Controller.ForTesting()
                 self._controller.hideAffectSpellDropWarningLabel()
 
         if self._controller.model.SoughtAfterItems_ThatDropped:
-            self._controller.displayDropAlertLabel(", ".join(self._controller.model.SoughtAfterItems_ThatDropped))
+            self._controller.displayDropAlertLabel(", ".join(self._controller.model.SoughtAfterItems_ThatDropped),
+                                                   self.var_hideDisplayedLabelCallbackTimerInMilliseconds.get())
             self._controller.model.SoughtAfterItems_ThatDropped.clear()
 
     def updateTimeRelatedValues(self, currentTime: float):
@@ -649,9 +650,9 @@ c = Controller.ForTesting()
     def hideMeditationLabel(self):
         self._meditatingLabel.grid_remove()
 
-    def displayFullPowerLabel(self):
+    def displayFullPowerLabel(self, hideDelayTimerInMilliseconds: int):
         self._fullPowerLabel.grid()
-        self.after(self.var_hideDisplayedLabelCallbackTimerInMilliseconds.get(), self.hideFullPowerLabel)
+        self.after(hideDelayTimerInMilliseconds, self.hideFullPowerLabel)
     def hideFullPowerLabel(self):
         self._fullPowerLabel.grid_remove()
 
@@ -745,10 +746,10 @@ c = Controller.ForTesting()
     def hideAffectSpellDropWarningLabel(self):
         self.spellDropWarningLabel.grid_remove()
 
-    def displayDropAlertLabel(self, text: str):
+    def displayDropAlertLabel(self, text: str, hideDelayTimerInMilliseconds: int):
         self.var_spellDropWarningText.set("Dropped: " + text)
         self._dropAlertLabel.grid()
-        self.after(self.var_hideDisplayedLabelCallbackTimerInMilliseconds.get(), self.hideDropAlertLabel)
+        self.after(hideDelayTimerInMilliseconds, self.hideDropAlertLabel)
     def hideDropAlertLabel(self):
         self._dropAlertLabel.grid_remove()
 
@@ -793,9 +794,9 @@ c = Controller.ForTesting()
     def hideMissingGearSetItemsLabel(self):
         self.missingGearSetItemsLabel.grid_remove()
 
-    def displayMobIsChasingYouLabel(self, mobName: str):
+    def displayMobIsChasingYouLabel(self, mobName: str, hideDelayTimerInMilliseconds: int):
         self._mobIsChasingYouLabel.config(text=f"{mobName} is chasing you!")
         self._mobIsChasingYouLabel.grid()
-        self.after(self.var_hideDisplayedLabelCallbackTimerInMilliseconds.get(), self.hideMobIsChasingYouLabel)
+        self.after(hideDelayTimerInMilliseconds, self.hideMobIsChasingYouLabel)
     def hideMobIsChasingYouLabel(self):
         self._mobIsChasingYouLabel.grid_remove()

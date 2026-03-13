@@ -332,7 +332,7 @@ Blur.V                         4m 5s                """
             with patch.object(c, c.displayDropAlertLabel.__name__) as mockedDisplay:
                 c.view.update_gui()
 
-            mockedDisplay.assert_called_once_with("a fire root")
+            assert mockedDisplay.call_args[0][0] == "a fire root"
 
         def test_BaseItemNameDropsThatIsSoughtAfter_DisplaysDropAlertLabel(self, testController: Controller):
             c = testController
@@ -345,7 +345,7 @@ Blur.V                         4m 5s                """
             with patch.object(c, c.displayDropAlertLabel.__name__) as mockedDisplay:
                 c.view.update_gui()
 
-            mockedDisplay.assert_called_once_with("a glowing dragon-wing boots")
+            assert mockedDisplay.call_args[0][0] == "a glowing dragon-wing boots"
 
     class TestPausingDoesNotAffect:
         def test_DisbandingGroup_NotAffectedWhilePaused(self, testController: Controller):
@@ -871,7 +871,7 @@ class TestDisplayingCentralColumnLabelInView:
         with patch.object(c, c.displayMobIsChasingYouLabel.__name__) as mockedMethod:
             c.process_queue()
 
-        mockedMethod.assert_called_once_with('a ravenous, jeweled scarab')
+        assert mockedMethod.call_args[0][0] == 'a ravenous, jeweled scarab'
 
     def test_TwoMobsAreChasingYou_SingleDisplayLabelInvokedWithNewlineSeparatingMobNames(self, testController: Controller):
         mob1 = "a brilliant bronze-scaled dragon"

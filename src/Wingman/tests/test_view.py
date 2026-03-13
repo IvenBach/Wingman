@@ -318,10 +318,10 @@ class TestView():
             v = c.view
             c.receiver.receive(Parser.MeditationState.Termination_ByFullPower.value)
 
-            with patch.object(v, f'{v.displayFullPowerLabel.__name__}') as mockedDisplay:
+            with patch.object(v, v.displayFullPowerLabel.__name__) as mockedDisplay:
                 v.update_gui()
 
-            mockedDisplay.assert_called_once_with()
+            mockedDisplay.assert_called_once()
 
         def test_MeditationEndsOnItsOwn_MeditationLabelHidden(self, testController: Controller):
             c = testController

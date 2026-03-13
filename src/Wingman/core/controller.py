@@ -222,7 +222,7 @@ v.setup_ui()
                     self.model.isMeditating = False
 
                     if meditationState == self.model.parser.MeditationState.Termination_ByFullPower:
-                        self.displayFullPowerLabel()
+                        self.displayFullPowerLabel(self.view.var_hideDisplayedLabelCallbackTimerInMilliseconds.get())
                 case None:
                     pass
 
@@ -253,7 +253,7 @@ v.setup_ui()
                         self.updateMobCountDisplay()
 
                         if event.movementReason == MobEnteringReasons.CHASES and event.isChasingYou:
-                            self.displayMobIsChasingYouLabel(event.mobName)
+                            self.displayMobIsChasingYouLabel(event.mobName, self.view.var_hideDisplayedLabelCallbackTimerInMilliseconds.get())
                     case MobMovementType.LEAVING:
                         if event.mobName in self.model.currentMobsInRoom:
                             self.model.currentMobsInRoom.remove(event.mobName)
@@ -286,8 +286,8 @@ v.setup_ui()
         '''Method used to inform subscribers of `MeditationDisplay.attach(...)` that a change has occurred.'''
         self.view.var_meditationRegenDisplay.set(self.model.meditationDisplay.displayValue())
 
-    def displayFullPowerLabel(self):
-        self.view.displayFullPowerLabel()
+    def displayFullPowerLabel(self, hideDelayTimerInMilliseconds: int):
+        self.view.displayFullPowerLabel(hideDelayTimerInMilliseconds)
     def hideFullPowerLabel(self):
         self.view.hideFullPowerLabel()
 
@@ -569,8 +569,8 @@ Returns a `list[Item]` of missing items
     def displayAffectSpellDropWarningLabel(self, warningText: str):
         self.view.displayAffectSpellDropWarningLabel(warningText)
 
-    def displayDropAlertLabel(self, text: str):
-        self.view.displayDropAlertLabel(text)
+    def displayDropAlertLabel(self, text: str, hideAfterMilliseconds: int):
+        self.view.displayDropAlertLabel(text, hideAfterMilliseconds)
     def hideDropAlertLabel(self):
         self.view.hideDropAlertLabel()
 
@@ -810,7 +810,7 @@ Returns a `list[Item]` of missing items
 
         return (itemNamesSet, baseItemNamesSet)
 
-    def displayMobIsChasingYouLabel(self, mobName: str):
-        self.view.displayMobIsChasingYouLabel(mobName)
+    def displayMobIsChasingYouLabel(self, mobName: str, hideDelayTimerInMilliseconds: int):
+        self.view.displayMobIsChasingYouLabel(mobName, hideDelayTimerInMilliseconds)
     def hideMobIsChasingYouLabel(self):
         self.view.hideMobIsChasingYouLabel()
