@@ -917,7 +917,7 @@ class TestDisplayingCentralColumnLabelInView:
             v.update_gui()
 
         mockedMethod.assert_called_once_with()
-    
+
     def test_HidingNotAffectedByNonHidingInput_NeitherDisplayNorHideInvoked(self, testController: Controller):
         c = testController
         v = c.view
