@@ -318,14 +318,17 @@ Subsequent removal of mob from the model needs to be dealt with by the caller.''
             movements: list[MobMovementEvent] = []
             indices: list[tuple[int, int]] = []
 
-            for line in text.splitlines():
-                line = line.strip()
+            duplicateMobNameOffset: int = 0
+            for raw_line in text.splitlines(keepends=True):
+                line = raw_line.strip()
                 if not line: continue
 
-                if not any(verb in line for verb in Parser.ParseMovement.VERBS):
+                tokens = Parser.ParseMovement.tokenize_movement(line)
+
+                if not Parser.ParseMovement.VERBS.intersection(tokens):
                     continue
 
-                isMovement, movement, reason, mobName, isChasingYou = Parser.ParseMovement._mobRelatedMovement_SingleLine(line)
+                isMovement, movement, reason, mobName, isChasingYou = Parser.ParseMovement._mobRelatedMovement_SingleLine(tokens)
 
                 if isMovement:
                     assert movement is not None
@@ -333,20 +336,22 @@ Subsequent removal of mob from the model needs to be dealt with by the caller.''
                     assert mobName is not None
                     movements.append(MobMovementEvent(movement, reason, mobName, isChasingYou))
 
-                    startIndex = text.find(line)
+                    startIndex = duplicateMobNameOffset + raw_line.find(line)
                     endIndex = startIndex + len(line)
                     indices.append((startIndex, endIndex))
+
+                    duplicateMobNameOffset += len(raw_line)
             return movements, indices
 
         @staticmethod
-        def _mobRelatedMovement_SingleLine(text: str) -> tuple[bool, MobMovementType | None, MobEnteringReasons | MobLeavingReasons | None, str | None, bool]:
+        def _mobRelatedMovement_SingleLine(tokenList: list[str]) -> tuple[bool, MobMovementType | None, MobEnteringReasons | MobLeavingReasons | None, str | None, bool]:
             """An empty list indicates no mob related movement. Each tuple in the returned list indicates a mob movement, and includes the following elements:
 - First Tuple Element: `bool` - `True` = mob movement occurred - `False` = no mob movement, remaining Tuple Elements are then `None`.
 - Second Tuple Element: `MobMovement` - indicates either entering/leaving.
 - Third Tuple Element: (`MobEnteringReason`|`MobLeavingReason`) Enum - indicates the specific kind of entering or leaving movement. `None` if no mob movement.
 - Fourth Tuple Element: `list[str]` - the mob(s) that moved.
 - Last Tuple Element: `bool` - `True` if chasing you, `False` otherwise."""
-            tokens = TokenStream(Parser.ParseMovement.tokenize_movement(text))
+            tokens = TokenStream(tokenList)
 
             #deal with extraneous text before the mob movement text
             while tokens.peek() and tokens.peek() not in Parser.ParseMovement.ARTICLES:

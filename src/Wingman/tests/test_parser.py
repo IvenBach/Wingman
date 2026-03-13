@@ -431,7 +431,7 @@ class TestMobParse:
     class TestMobRelatedMovement:
         def test_MovementIsPrefixedByExtraneousSequence_StillCorrectlyParsesMobRelatedMovement(self):
             text = "��X�\x00\x00\x00\x00Hc\x00\x00\x00\x00A windfang hatchling leaves North!"
-            movementEvent = Parser.ParseMovement().parseMobMovements(text)[0][0]
+            movementEvent = Parser.ParseMovement.parseMobMovements(text)[0][0]
 
             assert movementEvent.movementType == MobMovementType.LEAVING
             assert movementEvent.movementReason == MobLeavingReasons.LEAVES
@@ -455,7 +455,7 @@ class TestMobParse:
 
             def test_RoomMovement(self):
                 text = "A windfang hatchling leaves North"
-                movementEvent = Parser().ParseMovement().parseMobMovements(text)[0][0]
+                movementEvent = Parser.ParseMovement.parseMobMovements(text)[0][0]
 
                 assert movementEvent.movementType == MobMovementType.LEAVING
                 assert movementEvent.movementReason == MobLeavingReasons.LEAVES
@@ -473,7 +473,7 @@ class TestMobParse:
             def test_Chasing(self, characterChased):
                 text = f"A windfang hatchling chases {characterChased} out of the room."
 
-                movementEvent = Parser().ParseMovement().parseMobMovements(text)[0][0]
+                movementEvent = Parser.ParseMovement.parseMobMovements(text)[0][0]
 
                 assert movementEvent.movementType == MobMovementType.LEAVING
                 assert movementEvent.movementReason == MobLeavingReasons.CHASES
@@ -483,7 +483,7 @@ class TestMobParse:
             def test_RoomMovement(self):
                 text = 'A windfang hatchling arrives from the north.'
 
-                movementEvent = Parser().ParseMovement().parseMobMovements(text)[0][0]
+                movementEvent = Parser.ParseMovement.parseMobMovements(text)[0][0]
 
                 assert movementEvent.movementType == MobMovementType.ENTERING
                 assert movementEvent.movementReason == MobEnteringReasons.ARRIVES_FROM
@@ -492,7 +492,7 @@ class TestMobParse:
             def test_SpawningInRoom(self):
                 text = 'A mermaid temptress enters the room.'
 
-                movementEvent = Parser().ParseMovement().parseMobMovements(text)[0][0]
+                movementEvent = Parser.ParseMovement.parseMobMovements(text)[0][0]
 
                 assert movementEvent.movementType == MobMovementType.ENTERING
                 assert movementEvent.movementReason == MobEnteringReasons.ENTERS_THE_ROOM
@@ -501,7 +501,7 @@ class TestMobParse:
             def test_ChasingIntoRoom(self):
                 text = 'A windfang hatchling chases Foo into the room.'
 
-                movementEvent = Parser().ParseMovement().parseMobMovements(text)[0][0]
+                movementEvent = Parser.ParseMovement.parseMobMovements(text)[0][0]
 
                 assert movementEvent.movementType == MobMovementType.ENTERING
                 assert movementEvent.movementReason == MobEnteringReasons.CHASES
@@ -511,20 +511,20 @@ class TestMobParse:
             text = 'A windfang hatchling chases Foo'
 
             with pytest.raises(ValueError):
-                Parser().ParseMovement().parseMobMovements(text)
+                Parser.ParseMovement.parseMobMovements(text)
 
         def test_PlayerMovement_NotConsideredMobRelatedMovement(self):
             text = 'Foo arrives from the north.'
 
-            movementEvents, _ = Parser().ParseMovement().parseMobMovements(text)
+            movementEvents, _ = Parser.ParseMovement.parseMobMovements(text)
 
             assert movementEvents == []
 
-        def test_ChasedByTwoMobs_ParsesTwoSeparateMobMovements(self):
+        def test_ChasedByTwoDifferentlyNamedMobs_ParsesTwoSeparateMobMovements(self):
             text = """A brilliant bronze-scaled dragon chases you into the room.
 A diabolic infernal nomad chases you into the room."""
 
-            movementEvents, _ = Parser().ParseMovement().parseMobMovements(text)
+            movementEvents, _ = Parser.ParseMovement.parseMobMovements(text)
 
             assert len(movementEvents) == 2
             assert movementEvents[0].movementType == MobMovementType.ENTERING
@@ -533,6 +533,28 @@ A diabolic infernal nomad chases you into the room."""
             assert movementEvents[1].movementType == MobMovementType.ENTERING
             assert movementEvents[1].movementReason == MobEnteringReasons.CHASES
             assert movementEvents[1].mobName == 'a diabolic infernal nomad'
+
+        def test_ChasedByTwoIdenticallyNamedMobs_IndicesToRemoveFromChunkAreNotTheSame(self):
+            text = """A foobar chases you into the room.
+A foobar chases you into the room."""
+
+            _, indices = Parser.ParseMovement.parseMobMovements(text)
+            first, second = indices
+
+            assert first != second
+
+        def test_ChasedByTwoIdenticallyNamedMobs_IndicesToRemoveFromChunkDoNotAverlapAtAll(self):
+            text = """A foobar chases you into the room.
+A foobar chases you into the room."""
+
+            _, indices = Parser.ParseMovement.parseMobMovements(text)
+            first, second = indices
+            firstStart, firstEnd = first
+            secondStart, _ = second
+
+            assert firstStart < firstEnd
+            assert firstEnd < secondStart
+
 
 class TestBuffOrShieldEndingParse:
     @pytest.mark.parametrize("enumMember", [Parser.ParseBuffOrShieldText.Shield_Ended,
@@ -935,7 +957,7 @@ class TestEquippedGearParse:
         assert eg.Feet.Name == "a GLOWING WISPWEAVE dragon-wing boots"
         assert eg.Held_Right.Name == "a bright jeweled greatsword of the phoenix"
         assert eg.Held_Left.Name == "a bright jeweled greatsword of the phoenix"
-    
+
     def test_NoEquippedGear_PlacesNoItemsInGearSlots(self):
         text = """Items in use:
      On Head:  nothing
@@ -961,7 +983,7 @@ class TestEquippedGearParse:
         assert eg.Feet == None
         assert eg.Held_Right == None
         assert eg.Held_Left == None
-    
+
     def test_SomeEquippedGear_PlacesItemsInCorrectGearSlotsAndLeavesEmptySlotsAsNone(self):
         text = """Items in use:
      On Head:  a WISPWEAVE spellbinder's crown
@@ -974,7 +996,7 @@ class TestEquippedGearParse:
      On Feet:  a GLOWING WISPWEAVE dragon-wing boots
   Held Right:  a bright jeweled greatsword of the phoenix
    Held Left:  a bright jeweled greatsword of the phoenix"""
-        
+
         eg = Parser().parseEquippedGear(text)
 
         assert eg.Head.Name == "a WISPWEAVE spellbinder's crown"
