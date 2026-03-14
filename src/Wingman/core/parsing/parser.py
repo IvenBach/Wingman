@@ -17,8 +17,8 @@ from Wingman.core.ansi_code_stripper import remove_ANSI_color_codes
 from Wingman.core.mob_movement_event import MobMovementType, MobEnteringReasons, MobLeavingReasons
 
 class Parser:
-    MOB_NAME_REGEX_PATTERN = r"[a-zA-Z ',\-]+"
-    CHARACTER_NAME_REGEX_PATTERN = r"[a-zA-Z '\-]+"
+    MOB_NAME_REGEX_TEXT = r"[a-zA-Z ',\-]+"
+    CHARACTER_NAME_REGEX_TEXT = r"[a-zA-Z '\-]+"
 
     SHAPESHIFTED_WEREWOLF_NAMES = frozenset([
         "small wolf",
@@ -39,19 +39,41 @@ class Parser:
         "primeval eldritch voidwolf"
         ])
 
+    XP_PATTERN = re.compile(r'You gain\s+(\d+)(?:\s+\(\+(\d+)\))?.*experience', re.IGNORECASE)
     def parse_xp_message(self, text_block: str) -> int:
         """Parses text for XP gains."""
         # Use finditer to find ALL occurrences in the block
-        xp_pattern = re.compile(r'You gain\s+(\d+)(?:\s+\(\+(\d+)\))?.*experience', re.IGNORECASE)
 
         total_xp = 0
-        for match in xp_pattern.finditer(text_block):
+        for match in self.XP_PATTERN.finditer(text_block):
             base = int(match.group(1))
             bonus = int(match.group(2)) if match.group(2) else 0
             total_xp += (base + bonus)
 
         return total_xp
 
+    # Regex Breakdown:
+    _GROUP_PARSE__CLASS_AND_LEVEL_TEXT = r"\[\s*(?P<cls>[A-Za-z]+)\s+(?P<lvl>\d+)\s*\]"
+    _GROUP_PARSE__SPACE_AFTER_BRACKET_TEXT = r"\s+"
+    _GROUP_PARSE__STATUS_INDICATORS_TEXT = r"(?P<status>(?:[BPDS]\s)*)"
+    _GROUP_PARSE__CHARACTER_NAME_TEXT = r"(?P<name>.+?)"
+    _GROUP_PARSE__HEALTH_TEXT = r"\s+(?P<hp>\d+/\s*\d+)"
+    _GROUP_PARSE__SKIP_PERCENT_INDICATORS_TEXT = r".*?"
+    _GROUP_PARSE__FATIGUE_TEXT = r"\s+(?P<fat>\d+/\s*\d+)"
+    _GROUP_PARSE__POWER_TEXT = r"\s+(?P<pwr>\d+/\s*\d+)"
+
+    GROUP_PARSE__CURRENT_PARTY_MEMBER_TEXT = _GROUP_PARSE__CLASS_AND_LEVEL_TEXT + _GROUP_PARSE__SPACE_AFTER_BRACKET_TEXT + _GROUP_PARSE__STATUS_INDICATORS_TEXT + _GROUP_PARSE__CHARACTER_NAME_TEXT \
+                        + _GROUP_PARSE__HEALTH_TEXT + _GROUP_PARSE__SKIP_PERCENT_INDICATORS_TEXT \
+                        + _GROUP_PARSE__FATIGUE_TEXT + _GROUP_PARSE__SKIP_PERCENT_INDICATORS_TEXT \
+                        + _GROUP_PARSE__POWER_TEXT
+
+    _GROUP_PARSE__NEW_FOLLOWERS_NAME_TEXT = r"(?P<NewGroupMember>[A-Za-z -]+)"
+    _GROUP_PARSE__NEW_FOLLOWER_TEXT = f"{_GROUP_PARSE__NEW_FOLLOWERS_NAME_TEXT} follows you"
+    _GROUP_PARSE__IS_BEING_DRAGGED_TEXT = r"You drag (?P<draggedCorpse>[A-Za-z]+)'s corpse."
+
+    _GROUP_PARSE__GROUP_PARSER_STRING_TEXT = f"({GROUP_PARSE__CURRENT_PARTY_MEMBER_TEXT}|{_GROUP_PARSE__NEW_FOLLOWER_TEXT}|{_GROUP_PARSE__IS_BEING_DRAGGED_TEXT})"
+
+    _GROUP_PARSE__PATTERN = re.compile(_GROUP_PARSE__GROUP_PARSER_STRING_TEXT, re.DOTALL)
     def parse_group_status(self, text_block: str, includePets: bool = False) -> List[Character]:
         """
         Parses a text block for group member status.
@@ -59,31 +81,6 @@ class Parser:
         :returns: Returns a list of dictionaries for valid rows found.
         """
         members: List[Character] = []
-
-        # Regex Breakdown:
-        classAndLevel = r"\[\s*(?P<cls>[A-Za-z]+)\s+(?P<lvl>\d+)\s*\]"
-        spaceAfterBracket = r"\s+"
-        statusIndicators = r"(?P<status>(?:[BPDS]\s)*)"
-        characterName = r"(?P<name>.+?)"
-        health = r"\s+(?P<hp>\d+/\s*\d+)"
-        skipPercentIndicators = r".*?"
-        fatigue = r"\s+(?P<fat>\d+/\s*\d+)"
-        power = r"\s+(?P<pwr>\d+/\s*\d+)"
-
-        currentPartyMember = classAndLevel + spaceAfterBracket + statusIndicators + characterName \
-                            + health + skipPercentIndicators \
-                            + fatigue + skipPercentIndicators \
-                            + power
-
-        newFollowersName = r"(?P<NewGroupMember>[A-Za-z -]+)"
-        newFollower = f"{newFollowersName} follows you"
-        isBeingDragged = r"You drag (?P<draggedCorpse>[A-Za-z]+)'s corpse."
-
-        groupParserString = f"({currentPartyMember}|{newFollower}|{isBeingDragged})"
-
-        pattern = re.compile(groupParserString,
-            re.DOTALL
-        )
 
         def isCurrentPartyMember(line: str) -> bool:
             return ']' in line and '/' in line
@@ -96,7 +93,7 @@ class Parser:
 
         for line in text_block.splitlines():
             if isCurrentPartyMember(line):
-                match = pattern.search(line)
+                match = Parser._GROUP_PARSE__PATTERN.search(line)
                 if match:
                     data = match.groupdict()
 
@@ -115,7 +112,7 @@ class Parser:
                     members.append(c)
 
             elif isNewFollower(line):
-                match = pattern.search(line)
+                match = Parser._GROUP_PARSE__PATTERN.search(line)
                 if match:
                     data = match.groupdict()
                     c = Character(data['NewGroupMember'],
@@ -123,7 +120,7 @@ class Parser:
                     members.append(c)
 
             elif isACorpseBeingDragged(line):
-                match = pattern.search(line)
+                match = Parser._GROUP_PARSE__PATTERN.search(line)
                 if match:
                     data = match.groupdict()
                     c = Character(data['draggedCorpse'],
@@ -132,23 +129,25 @@ class Parser:
 
         return members
 
+    _LEAVE_GROUP__PET_ARTICLE_IDENTIFIER_TEXT = r"(?P<petArticleIdentifier>(A |An )?)"
+    _LEAVE_GROUP__LEAVING_MEMBER_TEXT = r"(?P<leavingMember>([A-Za-z -]+))"
+    _LEAVE_GROUP__PATTERN = re.compile(f"{_LEAVE_GROUP__PET_ARTICLE_IDENTIFIER_TEXT}{_LEAVE_GROUP__LEAVING_MEMBER_TEXT} disbands from (your|the) group", re.IGNORECASE)
     def parse_leaveGroup(self, text: str) -> List[str]:
         """Input of text to check.
 
         :param text: The text to check for a leaving group member.
 
         :returns: The name of the member(s) who is/are leaving the group."""
-        petArticleIdentifier = r"(?P<petArticleIdentifier>(A |An )?)"
-        leavingMember = r"(?P<leavingMember>([A-Za-z -]+))"
-        pattern = re.compile(f"{petArticleIdentifier}{leavingMember} disbands from (your|the) group", re.IGNORECASE)
 
         members = []
-        leavingMembers = pattern.findall(text)
+        leavingMembers = Parser._LEAVE_GROUP__PATTERN.findall(text)
         for member in leavingMembers:
             members.append(member[2].strip())
 
         return members
 
+    _GROUP_DISBAND__GROUP_LEADER_NAME_TEXTgroupLeaderName = r"(?P<leaderName>[A-Za-z -']+)"
+    _GROUP_DISBAND__PATTERN = re.compile(f'{_GROUP_DISBAND__GROUP_LEADER_NAME_TEXTgroupLeaderName} disbanded their group.', re.IGNORECASE)
     def parse_has_group_leader_disbanded_party(self, text: str, group:Group) -> bool:
         """
         Checks whether the group leader has disbanded the party.
@@ -168,15 +167,15 @@ class Parser:
         if ' disbanded their group.' not in text:
             return False
 
-        groupLeaderName = r"(?P<leaderName>[A-Za-z -']+)"
-        pattern = re.compile(f'{groupLeaderName} disbanded their group.', re.IGNORECASE)
-
-        disbandingGroup = pattern.findall(text)
+        disbandingGroup = Parser._GROUP_DISBAND__PATTERN.findall(text)
         return disbandingGroup[0] == group.Leader.Name
 
     class AfkStatus(StrEnum):
         BeginAfk = "You are now listed as AFK."
         EndAfk = "You are no longer AFK."
+
+    _AFK__PATTERN = re.compile(AfkStatus.BeginAfk.value, re.IGNORECASE)
+    _AFK_NOT__PATTERN = re.compile(AfkStatus.EndAfk.value, re.IGNORECASE)
     def parseAfkStatus(self, text: str) -> bool | None:
         """
         Parse line of text to determine if it indicates AFK status.
@@ -193,16 +192,14 @@ class Parser:
         if "AFK" not in text:
             return None
 
-        afkPattern = re.compile(self.AfkStatus.BeginAfk.value, re.IGNORECASE)
-        foundAfk = afkPattern.findall(text)
+        foundAfk = Parser._AFK__PATTERN.findall(text)
         if len(foundAfk) > 0:
             return True
 
-        notAfkPattern = re.compile(self.AfkStatus.EndAfk.value, re.IGNORECASE)
-        notAfk = notAfkPattern.findall(text)
+        notAfk = Parser._AFK_NOT__PATTERN.findall(text)
         if len(notAfk) > 0:
             return False
-        
+
         return None
 
     class MeditationState(StrEnum):
@@ -253,6 +250,8 @@ class Parser:
         
         return None
 
+    _PARSE_MOBS__MOB_INDICATOR = r"(?P<subMob>\x1b\[1;31m(?P<name>" + MOB_NAME_REGEX_TEXT + r")+)"
+    _PARSE_MOBS__SEARCH_PATTERN = re.compile(_PARSE_MOBS__MOB_INDICATOR)
     class ParseMobs:
         def hasAnsiColorCodedMobs(self, text: str, outMobList: list[str]) -> bool:
             '''Parse text for mobs that still have Ansi color coding applied. The color codes permit parsing via `re` to get the mob names.
@@ -304,9 +303,7 @@ BG	FC	Color			Color
             if "Also there is " not in text:
                 return []
 
-            mobIndicator = r"(?P<subMob>\x1b\[1;31m(?P<name>" + Parser.MOB_NAME_REGEX_PATTERN + r")+)"
-            searchPattern = re.compile(mobIndicator)
-            foundMobs = searchPattern.findall(text)
+            foundMobs = Parser._PARSE_MOBS__SEARCH_PATTERN.findall(text)
 
             if not foundMobs:
                 return []
@@ -648,13 +645,15 @@ That parse is intended to overwrite with the correct worn gear.'''
 
         return Inventory(eg, backpack)
 
+    _INVENTORY_COUNT_FOOTER_PATTERN = re.compile(r"Inventory:\s+(\d|\w)+\s*/\s*(\d|\w)+")
     def _inventoryCountFooterPattern(self) -> re.Pattern[str]:
         '''Pattern to search for inventory count footer `Inventory: xx / XX`'''
-        return re.compile(r"Inventory:\s+(\d|\w)+\s*/\s*(\d|\w)+")
+        return self._INVENTORY_COUNT_FOOTER_PATTERN
 
+    _INVENTORY_WEIGHT_FOOTER_PATTERN = re.compile(r"Encumbrance:\s+(\d|\w)+\s*/\s*(\d|\w)+")
     def _inventoryWeightFooterPattern(self) -> re.Pattern[str]:
         '''Pattern to search for inventory weight footer `Encumbrance: yy / YYY`'''
-        return re.compile(r"Encumbrance:\s+(\d|\w)+\s*/\s*(\d|\w)+")
+        return self._INVENTORY_WEIGHT_FOOTER_PATTERN
 
     EQUIPPED_GEAR_PATTERN = re.compile(r"On (Head|Jewel|Cloak|Body|Hands|Legs|Feet|Held Right|Held Left):  .+")
 
@@ -721,15 +720,15 @@ Assumes any item lacking quantity parenthesis to be a non-quantity item and assi
         return Item(name, quantity=quantity)
 
     class ParseAffect:
-        affectNamePortion = r"(?P<affectName>\S+)"
+        _AFFECT_NAME_TEXT = r"(?P<affectName>\S+)"
         #https://www.regextutorial.org/positive-and-negative-lookahead-assertions.php
-        positiveLookaheadPortion = r"(?=(?:.*\d+[hms]))" # asserts the regex includes a time component
+        _POSITIVE_LOOKAHEAD_TEXT = r"(?=(?:.*\d+[hms]))" # asserts the regex includes a time component
 
-        hourPortion = r"(?:(?P<hours>\d+)h\s*)?" # capture group for time portion
-        minutePortion = r"(?:(?P<minutes>\d+)m\s*)?"
-        secondPortion = r"(?:(?P<seconds>\d+)s\s*)?"
-        timePortion = r"(?P<time>" + hourPortion + minutePortion + secondPortion + r")"
-        pattern = re.compile(r"^\s*" + affectNamePortion + r"(?:\s+" + positiveLookaheadPortion + timePortion + r")?\s*$",
+        _HOURS_TEXT = r"(?:(?P<hours>\d+)h\s*)?" # capture group for time portion
+        _MINUTES_TEXT = r"(?:(?P<minutes>\d+)m\s*)?"
+        _SECONDS_TEXT = r"(?:(?P<seconds>\d+)s\s*)?"
+        _TIME_TEXT = r"(?P<time>" + _HOURS_TEXT + _MINUTES_TEXT + _SECONDS_TEXT + r")"
+        PATTERN = re.compile(r"^\s*" + _AFFECT_NAME_TEXT + r"(?:\s+" + _POSITIVE_LOOKAHEAD_TEXT + _TIME_TEXT + r")?\s*$",
             re.MULTILINE)
 
         def parseAffects(self, text: str) -> tuple[bool, list[Affect], tuple[int, int]]:
@@ -747,7 +746,7 @@ Assumes any item lacking quantity parenthesis to be a non-quantity item and assi
                 return (False, [], (-1, -1))
 
             affects: list[Affect] = []
-            for line in Parser.ParseAffect.pattern.finditer(cleanedText):
+            for line in Parser.ParseAffect.PATTERN.finditer(cleanedText):
                 affectName = line.groupdict('affectName')['affectName']
 
                 if line.lastgroup == 'affectName':
@@ -763,7 +762,7 @@ Assumes any item lacking quantity parenthesis to be a non-quantity item and assi
             return True, affects, (startIndex, endIndex)
 
         def parseAffectTime(self, text: str) -> float | None:
-            match = Parser.ParseAffect.pattern.search(text)
+            match = Parser.ParseAffect.PATTERN.search(text)
             if not match:
                 return None
 
@@ -867,7 +866,7 @@ Assumes any item lacking quantity parenthesis to be a non-quantity item and assi
 rf"""
 ^
 (?:A|An)\s+
-(?P<mobName>{MOB_NAME_REGEX_PATTERN})
+(?P<mobName>{MOB_NAME_REGEX_TEXT})
 
 \s+drops\s+
 
