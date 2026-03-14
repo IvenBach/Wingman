@@ -20,6 +20,25 @@ class Parser:
     MOB_NAME_REGEX_PATTERN = r"[a-zA-Z ',\-]+"
     CHARACTER_NAME_REGEX_PATTERN = r"[a-zA-Z '\-]+"
 
+    SHAPESHIFTED_WEREWOLF_NAMES = frozenset([
+        "small wolf",
+        "fierce wolf",
+        "berserking wolf",
+        "crimson-furred wolf",
+        "ebon-furred stonewolf",
+        "ice-blue frostwolf",
+        "fiery-maned hellwolf",
+        "arctic ghostwolf",
+        "white-fanged banewolf",
+        "ethereal wraithwolf",
+        "storm-grey thunderwolf",
+        "icy cobalt tundrawolf",
+        "fierce ancient ba'alwolf",
+        "vapor-shrouded mistwolf",
+        "azure-eyed stormwolf",
+        "primeval eldritch voidwolf"
+        ])
+
     def parse_xp_message(self, text_block: str) -> int:
         """Parses text for XP gains."""
         # Use finditer to find ALL occurrences in the block
@@ -371,7 +390,11 @@ Subsequent removal of mob from the model needs to be dealt with by the caller.''
 
                 mobNameParts.append(partOfMobName)
 
-            mobName = f"{article} {' '.join(mobNameParts)}"
+            unarticledMobName = ' '.join(mobNameParts)
+            if unarticledMobName in Parser.SHAPESHIFTED_WEREWOLF_NAMES:
+                return False, None, None, None, False
+
+            mobName = f"{article} {unarticledMobName}"
 
             verb = tokens.consume()
 
@@ -850,26 +873,6 @@ rf"""
 $
 """, re.VERBOSE | re.IGNORECASE
 )
-
-    SHAPESHIFTED_WEREWOLF_NAMES = set([
-        "small wolf",
-        "fierce wolf",
-        "berserking wolf",
-        "crimson-furred wolf",
-        "ebon-furred stonewolf",
-        "ice-blue frostwolf",
-        "fiery-maned hellwolf",
-        "arctic ghostwolf",
-        "white-fanged banewolf",
-        "ethereal wraithwolf",
-        "storm-grey thunderwolf",
-        "icy cobalt tundrawolf",
-        "fierce ancient ba'alwolf",
-        "vapor-shrouded mistwolf",
-        "azure-eyed stormwolf",
-        "primeval eldritch voidwolf"
-        ])
-
 
     @staticmethod
     def parseMobDroppedItem(text: str) -> tuple[bool, Item | None]:

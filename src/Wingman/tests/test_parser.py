@@ -520,6 +520,13 @@ class TestMobParse:
 
             assert movementEvents == []
 
+        def test_ShapeshiftedWolfMovement_NotConsideredMobRelatedMovement(self):
+            text = 'An azure-eyed stormwolf arrives from the north.'
+
+            movementEvents, _ = Parser.ParseMovement.parseMobMovements(text)
+
+            assert movementEvents == []
+
         def test_ChasedByTwoDifferentlyNamedMobs_ParsesTwoSeparateMobMovements(self):
             text = """A brilliant bronze-scaled dragon chases you into the room.
 A diabolic infernal nomad chases you into the room."""
