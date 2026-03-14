@@ -656,12 +656,10 @@ That parse is intended to overwrite with the correct worn gear.'''
         '''Pattern to search for inventory weight footer `Encumbrance: yy / YYY`'''
         return re.compile(r"Encumbrance:\s+(\d|\w)+\s*/\s*(\d|\w)+")
 
-    def parseEquippedGear(self, text: str) -> Equipment | None:
-        # if "Items in use:" not in text:
-        #     return None
-        pattern = re.compile(r"On (Head|Jewel|Cloak|Body|Hands|Legs|Feet|Held Right|Held Left):  .+")
+    EQUIPPED_GEAR_PATTERN = re.compile(r"On (Head|Jewel|Cloak|Body|Hands|Legs|Feet|Held Right|Held Left):  .+")
 
-        if not pattern.findall(text):
+    def parseEquippedGear(self, text: str) -> Equipment | None:
+        if not Parser.EQUIPPED_GEAR_PATTERN.findall(text):
             return None
 
         eg = Equipment()
