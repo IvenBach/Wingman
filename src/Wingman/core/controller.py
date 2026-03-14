@@ -168,7 +168,7 @@ v.setup_ui()
                 continue
 
             if isinstance(line, MobsChasingYou):
-                self.displayMobIsChasingYouLabel('\n'.join(line.mobsChasingYou))
+                self.displayMobIsChasingYouLabel('\n'.join(line.mobsChasingYou), self.view.var_hideDisplayedLabelCallbackTimerInMilliseconds.get())
                 continue
 
             assert isinstance(line, str)
@@ -241,6 +241,7 @@ v.setup_ui()
                 self.clearCountOfMobsInRoom()
                 self.updateMobCountDisplay()
                 self.clearSoughtAfterItemsThatDropped()
+                self.hideMobIsChasingYouLabel()
 
             mobMovementEvent, _ = self.model.parser.ParseMovement().parseMobMovements(line)
             if mobMovementEvent:
@@ -250,14 +251,11 @@ v.setup_ui()
                 match event.movementType:
                     case MobMovementType.ENTERING:
                         self.model.currentMobsInRoom.append(event.mobName)
-                        self.updateMobCountDisplay()
-
-                        if event.movementReason == MobEnteringReasons.CHASES and event.isChasingYou:
-                            self.displayMobIsChasingYouLabel(event.mobName, self.view.var_hideDisplayedLabelCallbackTimerInMilliseconds.get())
                     case MobMovementType.LEAVING:
                         if event.mobName in self.model.currentMobsInRoom:
                             self.model.currentMobsInRoom.remove(event.mobName)
-                        self.updateMobCountDisplay()
+
+                self.updateMobCountDisplay()
 
             isBuffOrShieldRefreshing, whatEnded = self.model.parser.parseBuffOrShieldIsRefreshing(line)
             if isBuffOrShieldRefreshing == False:

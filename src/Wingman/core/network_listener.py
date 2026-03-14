@@ -25,6 +25,7 @@ class NetworkListener:
     def packet_callback(self, packet):
         predeterminedChunkMobList = []
         mobsInRoom: MobsInRoom | None = None
+        isBeingChased: list[str] | None = None
         if IP in packet and TCP in packet:
             if packet[IP].src == self.target_ip and packet[TCP].sport == self.target_port:
                 if len(packet[TCP].payload) <= 0:
@@ -58,15 +59,14 @@ class NetworkListener:
 
                     mobMovements, movementIndices = Parser.ParseMovement.parseMobMovements(chunk)
                     if mobMovements:
-                        followingMobs = [movementEvent.mobName for movementEvent in mobMovements if movementEvent.movementReason == MobEnteringReasons.CHASES and movementEvent.isChasingYou]
+                        isBeingChased = [movementEvent.mobName for movementEvent in mobMovements if movementEvent.movementReason == MobEnteringReasons.CHASES and movementEvent.isChasingYou]
 
                         movementIndices.reverse()
                         # Work from back to front removing mob movement related text from chunk.
-                        # Keeps from maintaining a shift index/counter.
+                        # Keep from maintaining a shift index/counter.
                         for startIndex, endIndex in movementIndices:
                             chunk = chunk[:startIndex] + chunk[endIndex:]
                         # Permit remaining chunk to continue, it may have room description text.
-
 
                     isAffect, affects, affectIndices = Parser.ParseAffect().parseAffects(chunk)
                     if isAffect:
@@ -104,8 +104,9 @@ class NetworkListener:
                         self.receiver.receive(mobsInRoom)
                         mobsInRoom = None
 
-                    if mobMovements:
-                        self.receiver.receive(MobsChasingYou(followingMobs))
+                    if isBeingChased:
+                        self.receiver.receive(MobsChasingYou(isBeingChased))
+                        isBeingChased = None
 
                 except Exception as e:
                     print(f"Error decoding packet: {e}")

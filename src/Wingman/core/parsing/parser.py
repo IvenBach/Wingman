@@ -336,7 +336,7 @@ Subsequent removal of mob from the model needs to be dealt with by the caller.''
                     assert mobName is not None
                     movements.append(MobMovementEvent(movement, reason, mobName, isChasingYou))
 
-                    startIndex = duplicateMobNameOffset + raw_line.find(line)
+                    startIndex = duplicateMobNameOffset + text.find(line)
                     endIndex = startIndex + len(line)
                     indices.append((startIndex, endIndex))
 
