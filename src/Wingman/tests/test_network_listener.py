@@ -225,7 +225,7 @@ def test_MultipleMobsChaseYouIntoTheRoom_MobChaseDataStructureArgumentSentToRece
     target_port = listener.target_port
 
     text = """A brilliant bronze-scaled dragon chases you into the room.
-A diabolic infernal nomad chases you into the room."""
+A diabolic infernal nomad chases you into the room.\n"""
 
     payload = (text).encode('utf-8')
     pkt = MockPacket(target_ip, target_port, payload)

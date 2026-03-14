@@ -338,6 +338,7 @@ Subsequent removal of mob from the model needs to be dealt with by the caller.''
             indices: list[tuple[int, int]] = []
 
             duplicateMobNameOffset: int = 0
+            checkedMobNames: set[str] = set()
             for raw_line in text.splitlines(keepends=True):
                 line = raw_line.strip()
                 if not line: continue
@@ -355,11 +356,16 @@ Subsequent removal of mob from the model needs to be dealt with by the caller.''
                     assert mobName is not None
                     movements.append(MobMovementEvent(movement, reason, mobName, isChasingYou))
 
-                    startIndex = duplicateMobNameOffset + text.find(line)
+                    if mobName in checkedMobNames:
+                        duplicateMobNameOffset += len(line)
+                        startIndex = text.find(line, duplicateMobNameOffset)
+                    else:
+                        startIndex = text.find(line)
+                        checkedMobNames.add(mobName)
+
                     endIndex = startIndex + len(line)
                     indices.append((startIndex, endIndex))
 
-                    duplicateMobNameOffset += len(raw_line)
             return movements, indices
 
         @staticmethod

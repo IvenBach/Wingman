@@ -864,9 +864,18 @@ class TestDisplayingCentralColumnLabelInView:
         with patch.object(md, md.meditationDurationInSeconds.__name__) as mockedDuration:
             mockedDuration.return_value = 40
 
-    def test_SingleMobIsChasingYou(self, testController: Controller):
+    def test_ChaseTextNotSentInChaseDataStructure_NoInvocationOfChaseDisplayLabel(self, testController: Controller):
         c = testController
         c.receiver.receive("A ravenous, jeweled scarab chases you into the room.")
+
+        with patch.object(c, c.displayMobIsChasingYouLabel.__name__) as mockedMethod:
+            c.process_queue()
+
+        mockedMethod.assert_not_called()
+
+    def test_SingleMobIsChasingYou(self, testController: Controller):
+        c = testController
+        c.receiver.receive(MobsChasingYou(["a ravenous, jeweled scarab"]))
 
         with patch.object(c, c.displayMobIsChasingYouLabel.__name__) as mockedMethod:
             c.process_queue()
