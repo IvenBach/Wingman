@@ -235,12 +235,7 @@ A diabolic infernal nomad chases you into the room.\n"""
 
     assert isinstance(mockedReceiveMethod.mock_calls[0].args[0], MobsChasingYou)
 
-def test_MobsChasingYouIntoRoom_RoomDescriptionTextSentBeforeMobChasingDataClass(listener_stack):
-    listener, receiver = listener_stack
-    target_ip = listener.target_ip
-    target_port = listener.target_port
-
-    text = """You silently sneak west.
+@pytest.mark.parametrize("text", ["""You silently sneak west.
 A brilliant bronze-scaled dragon chases you into the room.
 A diabolic infernal nomad chases you into the room.
 [Eastern Desert]
@@ -250,7 +245,14 @@ sandy dunes, and in the far distance is a high mountain range.
 
 Obvious exits: east and a wasteland to the west.
 
-Also there is a brilliant bronze-scaled dragon and a diabolic infernal nomad."""
+Also there is a brilliant bronze-scaled dragon and a diabolic infernal nomad.""",
+"""You cannot sneak while in a group!\n\nYou fail to sneak!\nA greater obsidian basilisk chases you into the room.\n[\x1b[1;36mEastern Desert\x1b[1;30m]\n\x1b[1;30mYou're at the northern edge of a region of broken stones, blistering sand and blazing heat. To the north are high, steep\n\rhills that seem very difficult to traverse.\x1b[1;30m\n\n\x1b[1;37mObvious exits: south, east, and \x1b[1;32ma shimmering door in the sand\x1b[0;0m\x1b[1;37m\x1b[0;0m.\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31ma brilliant bronze-scaled dragon\x1b[1;30m\x1b[0;37m and\x1b[0;0m\x1b[1;30m \x1b[1;30m\x1b[1;30m\x1b[1;31ma greater obsidian basilisk\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\nAn angel of death follows Beautiful in.\n\n\x1b[8m"""],
+                                ids=["No AnsiColorCoding", "WithAnsiColorCoding"]
+)
+def test_MobsChasingYouIntoRoom_RoomDescriptionTextSentBeforeMobChasingDataClass(listener_stack, text):
+    listener, receiver = listener_stack
+    target_ip = listener.target_ip
+    target_port = listener.target_port
 
     payload = (text).encode('utf-8')
     pkt = MockPacket(target_ip, target_port, payload)
