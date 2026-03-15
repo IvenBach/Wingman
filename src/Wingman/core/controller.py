@@ -177,7 +177,7 @@ v.setup_ui()
                 self.disbandGroup()
 
             # Check for member rows in this line
-            found_members = self.model.parser.parse_group_status(line, self.model.includePetsInGroup)
+            found_members = self.model.parser.ParseGroup.parse_group_status(line, self.model.includePetsInGroup)
             if found_members:
                 # Add found members to our "dashboard" list
                 self.gameSession.group.AddMembers(found_members)

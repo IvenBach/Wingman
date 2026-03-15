@@ -49,3 +49,11 @@ class TestResourceBar:
     )
     def test_Equality_ResourceBarAndStringRepresentation(self, input: ResourceBar, stringRepresentation: str):
         assert input == stringRepresentation
+
+    def test_CurrentWithNonDigitCharacter_RaisesValueError(self):
+        with pytest.raises(ValueError):
+            ResourceBar.FromString("7a/150")
+
+    def test_MaximumWithNonDigitCharacter_RaisesValueError(self):
+        with pytest.raises(ValueError):
+            ResourceBar.FromString("75/1b0")

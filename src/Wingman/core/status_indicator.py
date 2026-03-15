@@ -3,7 +3,7 @@ class StatusIndicator(Flag):
     BLEED = auto()
     POISON = auto()
     DISEASE = auto()
-    STUN = auto()     
+    STUN = auto()
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, StatusIndicator):

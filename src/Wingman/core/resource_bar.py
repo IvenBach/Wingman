@@ -6,8 +6,13 @@ class ResourceBar:
     @staticmethod
     def FromString(value: str) -> 'ResourceBar':
         parts = value.strip().split('/')
-        current = int(parts[0].strip())
-        maximum = int(parts[1].strip())
+        currentString = parts[0].strip()
+        maximumString = parts[1].strip()
+        if not currentString.isdigit() or not maximumString.isdigit():
+            raise ValueError(f"Invalid resource bar format: {value}")
+
+        current = int(currentString)
+        maximum = int(maximumString)
         return ResourceBar(current, maximum)
 
     def __str__(self):

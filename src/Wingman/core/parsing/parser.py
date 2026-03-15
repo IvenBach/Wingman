@@ -52,82 +52,138 @@ class Parser:
 
         return total_xp
 
-    # Regex Breakdown:
-    _GROUP_PARSE__CLASS_AND_LEVEL_TEXT = r"\[\s*(?P<cls>[A-Za-z]+)\s+(?P<lvl>\d+)\s*\]"
-    _GROUP_PARSE__SPACE_AFTER_BRACKET_TEXT = r"\s+"
-    _GROUP_PARSE__STATUS_INDICATORS_TEXT = r"(?P<status>(?:[BPDS]\s)*)"
-    _GROUP_PARSE__CHARACTER_NAME_TEXT = r"(?P<name>.+?)"
-    _GROUP_PARSE__HEALTH_TEXT = r"\s+(?P<hp>\d+/\s*\d+)"
-    _GROUP_PARSE__SKIP_PERCENT_INDICATORS_TEXT = r".*?"
-    _GROUP_PARSE__FATIGUE_TEXT = r"\s+(?P<fat>\d+/\s*\d+)"
-    _GROUP_PARSE__POWER_TEXT = r"\s+(?P<pwr>\d+/\s*\d+)"
+    class ParseGroup:
+        _MAX_NAME_WORDS = 6
+        _CHAR_STATE_ENDING_SET = { 'Standing', 'Sitting', 'Kneeling', 'Lying' }
 
-    GROUP_PARSE__CURRENT_PARTY_MEMBER_TEXT = _GROUP_PARSE__CLASS_AND_LEVEL_TEXT + _GROUP_PARSE__SPACE_AFTER_BRACKET_TEXT + _GROUP_PARSE__STATUS_INDICATORS_TEXT + _GROUP_PARSE__CHARACTER_NAME_TEXT \
-                        + _GROUP_PARSE__HEALTH_TEXT + _GROUP_PARSE__SKIP_PERCENT_INDICATORS_TEXT \
-                        + _GROUP_PARSE__FATIGUE_TEXT + _GROUP_PARSE__SKIP_PERCENT_INDICATORS_TEXT \
-                        + _GROUP_PARSE__POWER_TEXT
+        _BRACKETS_TEXT = r"\[|\]"
+        _RESOURCE_BAR_TEXT = r"\d+\/\s*\d+"
+        _WORDS_TEXT = r"[A-Za-z]+(?:[-'][A-Za-z]+)*"
+        _STANDALONE_NUMBERS_TEXT = r"\d+"
+        _TOKENIZE_GROUP_PATTERN = re.compile(rf"{_BRACKETS_TEXT}|{_RESOURCE_BAR_TEXT}|{_WORDS_TEXT}|{_STANDALONE_NUMBERS_TEXT}")
+        @staticmethod
+        def tokenize_group_line(text: str) -> list[str]:
+            return Parser.ParseGroup._TOKENIZE_GROUP_PATTERN.findall(text)
 
-    _GROUP_PARSE__NEW_FOLLOWERS_NAME_TEXT = r"(?P<NewGroupMember>[A-Za-z -]+)"
-    _GROUP_PARSE__NEW_FOLLOWER_TEXT = f"{_GROUP_PARSE__NEW_FOLLOWERS_NAME_TEXT} follows you"
-    _GROUP_PARSE__IS_BEING_DRAGGED_TEXT = r"You drag (?P<draggedCorpse>[A-Za-z]+)'s corpse."
+        @staticmethod
+        def parse_current_member(tokens: list[str], includePets: bool) -> Character | None:
+            ts = TokenStream(tokens)
 
-    _GROUP_PARSE__GROUP_PARSER_STRING_TEXT = f"({GROUP_PARSE__CURRENT_PARTY_MEMBER_TEXT}|{_GROUP_PARSE__NEW_FOLLOWER_TEXT}|{_GROUP_PARSE__IS_BEING_DRAGGED_TEXT})"
+            if ts.consume() != '[':
+                return None
 
-    _GROUP_PARSE__PATTERN = re.compile(_GROUP_PARSE__GROUP_PARSER_STRING_TEXT, re.DOTALL)
-    def parse_group_status(self, text_block: str, includePets: bool = False) -> List[Character]:
-        """
-        Parses a text block for group member status.
+            class_ = ts.consume()
+            possible_Level = ts.consume()
+            if not possible_Level or not possible_Level.isdigit():
+                return None
+            level = int(possible_Level)
 
-        :returns: Returns a list of dictionaries for valid rows found.
-        """
-        members: List[Character] = []
+            if not includePets and class_ == 'mob':
+                return None
 
-        def isCurrentPartyMember(line: str) -> bool:
-            return ']' in line and '/' in line
+            if ts.consume() != ']':
+                return None
 
-        def isNewFollower(line: str) -> bool:
-            return 'follows you' in line
+            status_tokens: list[str] = []
+            while ts.peek() in {'B', 'P', 'D', 'S'}:
+                status_tokens.append(ts.consume())
 
-        def isACorpseBeingDragged(line: str) -> bool:
-            return "You drag " in line and "'s corpse." in line
+            name_parts: list[str] = []
+            while ts.peek() and '/' not in ts.peek():
+                name_parts.append(ts.consume())
 
-        for line in text_block.splitlines():
-            if isCurrentPartyMember(line):
-                match = Parser._GROUP_PARSE__PATTERN.search(line)
-                if match:
-                    data = match.groupdict()
+            hp = ts.consume()
+            _ = ts.consume() # skip over percentage if it exists
+            fat = ts.consume()
+            _ = ts.consume() # skip over percentage if it exists
+            pow = ts.consume()
+            _ = ts.consume() # skip over percentage if it exists
 
-                    # NEW: Exclude pets/mobs immediately
-                    if not includePets and data['cls'] == 'mob':
-                        continue
+            return Character(' '.join(name_parts),
+                            class_,
+                            level,
+                            StatusIndicator.FromString(status_tokens),
+                            ResourceBar.FromString(hp),
+                            ResourceBar.FromString(fat),
+                            ResourceBar.FromString(pow)
+            )
 
-                    c = Character(data['name'],
-                                data['cls'],
-                                int(data['lvl']),
-                                StatusIndicator.FromString(data['status']),
-                                ResourceBar.FromString(data['hp']),
-                                ResourceBar.FromString(data['fat']),
-                                ResourceBar.FromString(data['pwr']))
+        @staticmethod
+        def parse_new_follower(tokens: list[str]) -> Character | None:
+            if len(tokens) < 3:
+                return None
 
-                    members.append(c)
+            if tokens[-2:] != ['follows', 'you']:
+                return None
 
-            elif isNewFollower(line):
-                match = Parser._GROUP_PARSE__PATTERN.search(line)
-                if match:
-                    data = match.groupdict()
-                    c = Character(data['NewGroupMember'],
-                                isNewFollower=True)
-                    members.append(c)
+            i = len(tokens) - 3 # start of name is 3rd from the end
+            potential_name_parts: list[str] = []
+            while i >= 0 and len(potential_name_parts) < Parser.ParseGroup._MAX_NAME_WORDS:
+                t = tokens[i]
 
-            elif isACorpseBeingDragged(line):
-                match = Parser._GROUP_PARSE__PATTERN.search(line)
-                if match:
-                    data = match.groupdict()
-                    c = Character(data['draggedCorpse'],
-                                isNewFollower=True)
-                    members.append(c)
+                if t in Parser.ParseGroup._CHAR_STATE_ENDING_SET and tokens[i-1] == 'pos': #position: Standing, Sitting, Kneeling, Lying
+                    break
 
-        return members
+                if not t.replace('-', "").replace("'", '').isalpha():
+                    break
+
+                potential_name_parts.append(t)
+                i -= 1
+
+            if not potential_name_parts:
+                return None
+
+            name = ' '.join(reversed(potential_name_parts))
+
+            return Character(name, isNewFollower=True)
+
+        @staticmethod
+        def parse_dragged_corpse(tokens: list[str]) -> Character | None:
+            if len(tokens) < 4:
+                return None
+
+            if tokens[0] != 'You' or tokens[1] != 'drag':
+                return None
+
+            name = tokens[2].removesuffix("'s")
+
+            return Character(name, isNewFollower=True)
+
+        @staticmethod
+        def parse_group_status(text_block: str, includePets: bool = False) -> List[Character]:
+            """
+            Parses a text block for group member status.
+
+            :returns: Returns a list of dictionaries for valid rows found.
+            """
+            members: List[Character] = []
+
+            for line in text_block.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+
+                if line.endswith("group:"):
+                    continue
+
+                if line.startswith('[ Class'):
+                    continue
+
+                tokens = Parser.ParseGroup.tokenize_group_line(line)
+
+                if line.startswith('['):
+                    character = Parser.ParseGroup.parse_current_member(tokens, includePets)
+                elif line.endswith('follows you'):
+                    character = Parser.ParseGroup.parse_new_follower(tokens)
+                elif line.startswith('You drag'):
+                    character = Parser.ParseGroup.parse_dragged_corpse(tokens)
+                else:
+                    continue
+
+                if character:
+                    members.append(character)
+
+            return members
 
     _LEAVE_GROUP__PET_ARTICLE_IDENTIFIER_TEXT = r"(?P<petArticleIdentifier>(A |An )?)"
     _LEAVE_GROUP__LEAVING_MEMBER_TEXT = r"(?P<leavingMember>([A-Za-z -]+))"
@@ -146,8 +202,8 @@ class Parser:
 
         return members
 
-    _GROUP_DISBAND__GROUP_LEADER_NAME_TEXTgroupLeaderName = r"(?P<leaderName>[A-Za-z -']+)"
-    _GROUP_DISBAND__PATTERN = re.compile(f'{_GROUP_DISBAND__GROUP_LEADER_NAME_TEXTgroupLeaderName} disbanded their group.', re.IGNORECASE)
+    _GROUP_DISBAND__GROUP_LEADER_NAME_TEXT = r"(?P<leaderName>[A-Za-z -']+)"
+    _GROUP_DISBAND__PATTERN = re.compile(f'{_GROUP_DISBAND__GROUP_LEADER_NAME_TEXT} disbanded their group.', re.IGNORECASE)
     def parse_has_group_leader_disbanded_party(self, text: str, group:Group) -> bool:
         """
         Checks whether the group leader has disbanded the party.
@@ -250,8 +306,8 @@ class Parser:
         
         return None
 
-    _PARSE_MOBS__MOB_INDICATOR = r"(?P<subMob>\x1b\[1;31m(?P<name>" + MOB_NAME_REGEX_TEXT + r")+)"
-    _PARSE_MOBS__SEARCH_PATTERN = re.compile(_PARSE_MOBS__MOB_INDICATOR)
+    _PARSE_MOBS__MOB_INDICATOR_TEXT = r"(?P<subMob>\x1b\[1;31m(?P<name>" + MOB_NAME_REGEX_TEXT + r")+)"
+    _PARSE_MOBS__SEARCH_PATTERN = re.compile(_PARSE_MOBS__MOB_INDICATOR_TEXT)
     class ParseMobs:
         def hasAnsiColorCodedMobs(self, text: str, outMobList: list[str]) -> bool:
             '''Parse text for mobs that still have Ansi color coding applied. The color codes permit parsing via `re` to get the mob names.
@@ -264,7 +320,7 @@ The list passed in `outMobList` is populated with the found mobs if any are foun
             if not tempList:
                 outMobList.clear()
                 return False
-            
+
             outMobList.clear()
             outMobList.extend(tempList)
             return True
