@@ -200,7 +200,7 @@ v.setup_ui()
                 if self.IsLookingForItem(droppedItem.Name):
                     self.model.SoughtAfterItems_ThatDropped.append(droppedItem.Name)
 
-            afkRelated = self.model.parser.parseAfkStatus(line)
+            afkRelated = self.model.parser.ParseAfk.parseAfkStatus(line)
             match afkRelated:
                 case True:
                     self.model.isAfk = True

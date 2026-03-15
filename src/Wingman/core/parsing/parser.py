@@ -15,6 +15,7 @@ from Wingman.core.item import ItemMaterial_Cloth, ItemMaterial_Leather, ItemMate
 from Wingman.core.affect import Affect
 from Wingman.core.ansi_code_stripper import remove_ANSI_color_codes
 from Wingman.core.mob_movement_event import MobMovementType, MobEnteringReasons, MobLeavingReasons
+from Wingman.core.afk_status import AfkStatus
 
 class Parser:
     MOB_NAME_REGEX_TEXT = r"[a-zA-Z ',\-]+"
@@ -270,40 +271,35 @@ class Parser:
 
             if not text.endswith(' disbanded their group.'):
                 return False
+
             disbandingLeaderName = text.split()[0]
             return disbandingLeaderName == group.Leader.Name
 
-    class AfkStatus(StrEnum):
-        BeginAfk = "You are now listed as AFK."
-        EndAfk = "You are no longer AFK."
+    class ParseAfk:
+        @staticmethod
+        def parseAfkStatus(text: str) -> bool | None:
+            """
+            Parse line of text to determine if it indicates AFK status.
 
-    _AFK__PATTERN = re.compile(AfkStatus.BeginAfk.value, re.IGNORECASE)
-    _AFK_NOT__PATTERN = re.compile(AfkStatus.EndAfk.value, re.IGNORECASE)
-    def parseAfkStatus(self, text: str) -> bool | None:
-        """
-        Parse line of text to determine if it indicates AFK status.
+            - True = `You are now listed as AFK.`
+            - False = `You are no longer AFK.`
+            - None = Anything else.
 
-        - True = `You are now listed as AFK.`
-        - False = `You are no longer AFK.`
-        - None = Anything else.
+            :param text: line of text to parse
+            :type text: str
+            :return: True for AFK, False for not-AFK, None if doesn't deal with AFK status
+            :rtype: bool | None
+            """
+            if not text.endswith("AFK."):
+                return None
 
-        :param text: line of text to parse
-        :type text: str
-        :return: True for AFK, False for not-AFK, None if doesn't deal with AFK status
-        :rtype: bool | None
-        """
-        if "AFK" not in text:
+            if text == AfkStatus.BeginAfk.value:
+                return True
+
+            if text == AfkStatus.EndAfk.value:
+                return False
+
             return None
-
-        foundAfk = Parser._AFK__PATTERN.findall(text)
-        if len(foundAfk) > 0:
-            return True
-
-        notAfk = Parser._AFK_NOT__PATTERN.findall(text)
-        if len(notAfk) > 0:
-            return False
-
-        return None
 
     class MeditationState(StrEnum):
         Begin = "You slip into a meditative trance..."

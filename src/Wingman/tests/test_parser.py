@@ -333,17 +333,17 @@ class TestPartyDisbands:
 
 class TestAfkParser:
     def test_SentAfkLine_ReturnsTrue(self):
-        actual = Parser().parseAfkStatus("You are now listed as AFK.")
+        actual = Parser.ParseAfk.parseAfkStatus("You are now listed as AFK.")
         
         assert actual
     
     def test_SentAfkReturnLine_ReturnsFalse(self):
-        actual = Parser().parseAfkStatus("You are no longer AFK.")
+        actual = Parser.ParseAfk.parseAfkStatus("You are no longer AFK.")
         
         assert actual == False
 
     def test_SentNonAfkRelatedLine_ReturnsNone(self):
-        actual = Parser().parseAfkStatus("Anything not related to being AFK.")
+        actual = Parser.ParseAfk.parseAfkStatus("Anything not related to being AFK.")
         
         assert actual is None
 

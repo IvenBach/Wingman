@@ -20,6 +20,7 @@ from Wingman.core.health_Tagger import HealthTagger
 from Wingman.core.inventory import Equipment, Inventory
 from Wingman.core.item import Item
 from Wingman.core.mobs_chasing_you import MobsChasingYou
+from Wingman.core.afk_status import AfkStatus
 
 @pytest.fixture(scope="function")
 def testController():
@@ -402,7 +403,7 @@ Blur.V                         4m 5s                """
             c.model.isAfk = False
             c.view.isPaused = True
 
-            c.receiver.receive(Parser.AfkStatus.BeginAfk.value)
+            c.receiver.receive(AfkStatus.BeginAfk.value)
             c.process_queue()
 
             with patch.object(c.view, c.view.displayAfkLabel.__name__) as mockedDisplay:
@@ -416,7 +417,7 @@ Blur.V                         4m 5s                """
             c.model.isAfk = True
             c.view.isPaused = True
 
-            c.receiver.receive(Parser.AfkStatus.EndAfk.value)
+            c.receiver.receive(AfkStatus.EndAfk.value)
             c.process_queue()
 
             with patch.object(c.view, c.view.hideAfkLabel.__name__) as mockedHide:
@@ -799,7 +800,7 @@ class TestDisplayingCentralColumnLabelInView:
     def test_DisplayAfkLabel(self, testController: Controller):
         c = testController
         v = c.view
-        c.receiver.receive(Parser.AfkStatus.BeginAfk.value)
+        c.receiver.receive(AfkStatus.BeginAfk.value)
         c.process_queue()
 
         with patch.object(v, v.displayAfkLabel.__name__) as mockedMethod:
@@ -810,7 +811,7 @@ class TestDisplayingCentralColumnLabelInView:
     def test_HideAfkLabel(self, testController: Controller):
         c = testController
         v = c.view
-        c.receiver.receive(Parser.AfkStatus.EndAfk.value)
+        c.receiver.receive(AfkStatus.EndAfk.value)
         c.process_queue()
 
         with patch.object(v, v.hideAfkLabel.__name__) as mockedMethod:

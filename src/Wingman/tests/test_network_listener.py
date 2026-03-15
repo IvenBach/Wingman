@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 from scapy.all import IP, TCP
 import time
 from unittest.mock import patch, call
+from Wingman.core.afk_status import AfkStatus
 from Wingman.core.network_listener import NetworkListener
 from Wingman.core.input_receiver import InputReceiver
 from Wingman.core.controller import Controller
@@ -114,8 +115,8 @@ def test_AnyInformationIncludedWithBuffOrShieldRefresh_BeforeSpellEndingValueAnd
     target_ip = listener.target_ip
     target_port = listener.target_port
 
-    text = f"""{Parser.AfkStatus.BeginAfk.value}
-{Parser.AfkStatus.EndAfk.value}
+    text = f"""{AfkStatus.BeginAfk.value}
+{AfkStatus.EndAfk.value}
 You cast a Chaos.Fortitude.I spell!
 You invoke a prayer to Ra'Kur, filling you with an unnatural energy!
 {Parser.ParseBuffOrShieldText.ChaosDotFortitude_Ended.value}
@@ -129,8 +130,8 @@ Text that trails in case it too needs to be forwarded.\n""" #Lines before the bu
         listener.packet_callback(pkt)
 
 
-    assert mockedReceiveMethod.call_args_list == [call(Parser.AfkStatus.BeginAfk.value),
-                                                    call(Parser.AfkStatus.EndAfk.value),
+    assert mockedReceiveMethod.call_args_list == [call(AfkStatus.BeginAfk.value),
+                                                    call(AfkStatus.EndAfk.value),
                                                     call("You cast a Chaos.Fortitude.I spell!"),
                                                     call("You invoke a prayer to Ra'Kur, filling you with an unnatural energy!"),
                                                     call("Text that trails in case it too needs to be forwarded.")]

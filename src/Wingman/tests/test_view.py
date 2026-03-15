@@ -6,6 +6,7 @@ from pathlib import Path
 if __name__ == "__main__":
     srcDirectory = Path(__file__).parent.parent.parent.resolve()
     sys.path.append(str(srcDirectory))
+from Wingman.core.afk_status import AfkStatus
 from Wingman.gui.view import View, SuppliesPaneChangeDirection
 from Wingman.core.controller import Controller
 from Wingman.core.parsing.parser import Parser
@@ -61,7 +62,7 @@ class TestView():
         def test_AfkLabelDisplays_WhenAfkStatusReceived(self, testController: Controller):
             c = testController
             v = c.view
-            c.receiver.receive(Parser.AfkStatus.BeginAfk.value)
+            c.receiver.receive(AfkStatus.BeginAfk.value)
 
             with patch.object(v, f'{View.displayAfkLabel.__name__}') as mockedDisplay:
                 v.update_gui()
@@ -71,7 +72,7 @@ class TestView():
         def test_AfkLabelHides_WhenNoLongerAfkStatusReceived(self, testController: Controller):
             c = testController
             v = c.view
-            c.receiver.receive(Parser.AfkStatus.EndAfk.value)
+            c.receiver.receive(AfkStatus.EndAfk.value)
 
             with patch.object(v, f'{View.hideAfkLabel.__name__}') as mockedHide:
                 v.update_gui()
