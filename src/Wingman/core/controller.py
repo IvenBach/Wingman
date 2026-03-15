@@ -182,7 +182,7 @@ v.setup_ui()
                 # Add found members to our "dashboard" list
                 self.gameSession.group.AddMembers(found_members)
 
-            leavingMembers = self.model.parser.parse_leaveGroup(line)
+            leavingMembers = self.model.parser.ParseLeaveGroup.parse_leaveGroup(line)
             if leavingMembers:
                 self.gameSession.group.RemoveMembers(leavingMembers)
 

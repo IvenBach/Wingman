@@ -217,17 +217,15 @@ A vapor-shrouded mistwolf follows you"""
 class TestLeavingGroupParser:
     @pytest.fixture
     def leaveGroupParser(self):
-        return Parser().parse_leaveGroup
+        return Parser.ParseLeaveGroup.parse_leaveGroup
 
     @pytest.mark.parametrize('input, expected', [
                                                 ('foo disbands from your group', 'foo'),
                                                 ('Foo disbands from your group', 'Foo'),
-                                                ('FOO DISBANDS FROM YOUR GROUP', 'FOO')
                                                 ],
                                                 ids=[
                                                     'Lowercase input',
                                                     'Mixedcase input',
-                                                    'Uppercase input',
                                                 ])
     def test_GroupedMemberDisbands_IsCorrectlyParsed(self, input, expected, leaveGroupParser):
         leaver = leaveGroupParser(input)

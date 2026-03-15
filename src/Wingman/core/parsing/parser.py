@@ -185,22 +185,61 @@ class Parser:
 
             return members
 
-    _LEAVE_GROUP__PET_ARTICLE_IDENTIFIER_TEXT = r"(?P<petArticleIdentifier>(A |An )?)"
-    _LEAVE_GROUP__LEAVING_MEMBER_TEXT = r"(?P<leavingMember>([A-Za-z -]+))"
-    _LEAVE_GROUP__PATTERN = re.compile(f"{_LEAVE_GROUP__PET_ARTICLE_IDENTIFIER_TEXT}{_LEAVE_GROUP__LEAVING_MEMBER_TEXT} disbands from (your|the) group", re.IGNORECASE)
-    def parse_leaveGroup(self, text: str) -> List[str]:
-        """Input of text to check.
+    class ParseLeaveGroup:
+        _TOKENIZE_PATTERN = re.compile(r"[A-Za-z]+(?:[-'][A-Za-z]+)*", re.IGNORECASE)
+        @staticmethod
+        def tokenize_leave_group_line(text: str) -> list[str]:
+            return Parser.ParseLeaveGroup._TOKENIZE_PATTERN.findall(text)
 
-        :param text: The text to check for a leaving group member.
+        @staticmethod
+        def parse_leaveGroup(text: str) -> List[str]:
+            """Input of text to check.
 
-        :returns: The name of the member(s) who is/are leaving the group."""
+            :param text: The text to check for a leaving group member.
 
-        members = []
-        leavingMembers = Parser._LEAVE_GROUP__PATTERN.findall(text)
-        for member in leavingMembers:
-            members.append(member[2].strip())
+            :returns: The name of the member(s) who is/are leaving the group."""
+            members = []
 
-        return members
+            for line in text.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+
+                tokens = Parser.ParseLeaveGroup.tokenize_leave_group_line(line)
+
+                if len(tokens) < 5:
+                    continue
+
+                if tokens[-4:] not in (
+                    ['disbands', 'from', 'your', 'group'],
+                    ['disbands', 'from', 'the', 'group'],
+                ):
+                    continue
+
+                i = len(tokens) - 5
+                potential_name_parts: list[str] = []
+                while i >= 0 and len(potential_name_parts) < Parser.ParseGroup._MAX_NAME_WORDS:
+                    t = tokens[i]
+
+                    if t in Parser.ParseGroup._CHAR_STATE_ENDING_SET and tokens[i-1] == 'pos':
+                        break
+
+                    if t == 'An' or t == 'A':
+                        break
+
+                    if not t.replace('-', "").replace("'", '').isalpha():
+                        break
+
+                    potential_name_parts.append(t)
+                    i -= 1
+
+                if not potential_name_parts:
+                    continue
+
+                name = ' '.join(reversed(potential_name_parts))
+                members.append(name)
+
+            return members
 
     _GROUP_DISBAND__GROUP_LEADER_NAME_TEXT = r"(?P<leaderName>[A-Za-z -']+)"
     _GROUP_DISBAND__PATTERN = re.compile(f'{_GROUP_DISBAND__GROUP_LEADER_NAME_TEXT} disbanded their group.', re.IGNORECASE)
