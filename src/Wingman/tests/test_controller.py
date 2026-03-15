@@ -729,7 +729,7 @@ class TestGrouping:
 
         groupCountWhileMemberOfGroup = c.gameSession.group.Count
 
-        c.receiver.receive("You disband from the group.")
+        c.receiver.receive("You disband from Foo's group.")
         c.process_queue()
 
         assert groupCountWhileMemberOfGroup == 2

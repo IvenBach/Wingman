@@ -70,11 +70,10 @@ class TestXpParser:
         # Total: 132,824
         assert xp == 132824, f"Expected 132824 (sum of both), got {xp}"
 
-@pytest.fixture
-def groupParser():
-    return Parser.ParseGroup.parse_group_status
-
 class TestGroupParser:
+    @pytest.fixture
+    def groupParser(self):
+        return Parser.ParseGroup.parse_group_status
 
     def test_parse_valid_group_block(self, groupParser: Callable[[str], List[Character]]):
         """
@@ -306,7 +305,7 @@ class TestLeavingGroupParser:
 
 class TestPartyDisbands:
     def test_NonPartyRelatedText_ReturnsFalse(self):
-        actual = Parser().parse_has_group_leader_disbanded_party("You move east", Group())
+        actual = Parser.ParseGroupDisband.parse_has_group_leader_disbanded_party("You move east", Group())
 
         assert actual == False
 
@@ -314,12 +313,12 @@ class TestPartyDisbands:
         cLead = Character("Foo", 'Skeleton')
         cFollower = Character('Bar', 'Zombie')
         g = Group([cLead, cFollower])
-        actual = Parser().parse_has_group_leader_disbanded_party("Foo disbanded their group.", g)
+        actual = Parser.ParseGroupDisband.parse_has_group_leader_disbanded_party("Foo disbanded their group.", g)
 
         assert actual
     
     def test_NonLeaderParty_ReturnsFalse(self): #Recently disbanded and no `group` command executed, hence empty group
-        actual = Parser().parse_has_group_leader_disbanded_party("Bar disbanded their group.", Group())
+        actual = Parser.ParseGroupDisband.parse_has_group_leader_disbanded_party("Bar disbanded their group.", Group())
     
         assert actual == False
     
@@ -328,7 +327,7 @@ class TestPartyDisbands:
         yourFollower = Character("Pet", "mob")
         yourGroup = Group([yourLead, yourFollower])
 
-        actual = Parser().parse_has_group_leader_disbanded_party("Foo disbanded their group.", yourGroup)
+        actual = Parser.ParseGroupDisband.parse_has_group_leader_disbanded_party("Foo disbanded their group.", yourGroup)
 
         assert actual == False
 
@@ -595,7 +594,6 @@ A foobar chases you into the room."""
 
             assert firstStart < firstEnd
             assert firstEnd < secondStart
-
 
 class TestBuffOrShieldEndingParse:
     @pytest.mark.parametrize("enumMember", [Parser.ParseBuffOrShieldText.Shield_Ended,

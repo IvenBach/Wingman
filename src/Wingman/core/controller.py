@@ -127,13 +127,13 @@ v.setup_ui()
             if "group:" in line and re.search(r"\S+'s group:", line):
                 return True
 
-            if "You disband from " in line:
+            if line.startswith("You disband from ") and line.endswith("'s group."):
                 return True
 
             leader = group.Leader
             if leader is None:
                 return False
-            if self.model.parser.parse_has_group_leader_disbanded_party(line, group):
+            if self.model.parser.ParseGroupDisband.parse_has_group_leader_disbanded_party(line, group):
                 return True
 
             return False

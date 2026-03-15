@@ -250,29 +250,28 @@ class Parser:
 
             return members
 
-    _GROUP_DISBAND__GROUP_LEADER_NAME_TEXT = r"(?P<leaderName>[A-Za-z -']+)"
-    _GROUP_DISBAND__PATTERN = re.compile(f'{_GROUP_DISBAND__GROUP_LEADER_NAME_TEXT} disbanded their group.', re.IGNORECASE)
-    def parse_has_group_leader_disbanded_party(self, text: str, group:Group) -> bool:
-        """
-        Checks whether the group leader has disbanded the party.
+    class ParseGroupDisband:
+        @staticmethod
+        def parse_has_group_leader_disbanded_party(text: str, group:Group) -> bool:
+            """
+            Checks whether the group leader has disbanded the party.
 
-        This does not work for disguised/shapeshifted leaders, too many assumptions would be needed.
-        
-        :param text: Line to parse
-        :type text: str
-        :param group: Current party group
-        :type group: Group
-        :return: True if the group leader disbanded the party, False otherwise
-        :rtype: bool
-        """
-        if group.Leader is None:
-            return False
+            This does not work for disguised/shapeshifted leaders, too many assumptions would be needed.
+            
+            :param text: Line to parse
+            :type text: str
+            :param group: Current party group
+            :type group: Group
+            :return: True if the group leader disbanded the party, False otherwise
+            :rtype: bool
+            """
+            if group.Leader is None:
+                return False
 
-        if ' disbanded their group.' not in text:
-            return False
-
-        disbandingGroup = Parser._GROUP_DISBAND__PATTERN.findall(text)
-        return disbandingGroup[0] == group.Leader.Name
+            if not text.endswith(' disbanded their group.'):
+                return False
+            disbandingLeaderName = text.split()[0]
+            return disbandingLeaderName == group.Leader.Name
 
     class AfkStatus(StrEnum):
         BeginAfk = "You are now listed as AFK."
