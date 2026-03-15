@@ -188,7 +188,7 @@ v.setup_ui()
 
             # --- Logic 2: XP Detection ---
             if not self.view.isPaused:
-                xp_gain = self.model.parser.parse_xp_message(line)
+                xp_gain = self.model.parser.ParseXp.parse_xp_message(line)
                 if xp_gain > 0:
                     self.gameSession.total_xp += xp_gain
                     timestamp = time.strftime("%H:%M:%S", time.localtime())

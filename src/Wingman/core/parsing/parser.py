@@ -39,18 +39,27 @@ class Parser:
         "primeval eldritch voidwolf"
         ])
 
-    XP_PATTERN = re.compile(r'You gain\s+(\d+)(?:\s+\(\+(\d+)\))?.*experience', re.IGNORECASE)
-    def parse_xp_message(self, text_block: str) -> int:
-        """Parses text for XP gains."""
-        # Use finditer to find ALL occurrences in the block
+    class ParseXp:
+        XP_PATTERN = re.compile(r"\d+")
+        @staticmethod
+        def tokenize_xp_line(text: str) -> list[int]:
+            if not text.strip().startswith("You gain") and not text.strip().endswith("experience points."):
+                return []
 
-        total_xp = 0
-        for match in self.XP_PATTERN.finditer(text_block):
-            base = int(match.group(1))
-            bonus = int(match.group(2)) if match.group(2) else 0
-            total_xp += (base + bonus)
+            return [int(x) for x in Parser.ParseXp.XP_PATTERN.findall(text) if x.isdigit()]
 
-        return total_xp
+        @staticmethod
+        def parse_xp_message(text_block: str) -> int:
+            """Parses text for XP gains."""
+            # Use finditer to find ALL occurrences in the block
+            for line in text_block.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+
+                tokens = Parser.ParseXp.tokenize_xp_line(text_block)
+
+            return sum(tokens)
 
     class ParseGroup:
         _MAX_NAME_WORDS = 6

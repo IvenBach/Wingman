@@ -22,26 +22,53 @@ def load_valid_item_names():
     base_item_names_path = str(Path(srcDirectory).joinpath('data/baseItemNames.txt'))
     Item.load_base_item_names_from_file(base_item_names_path)
 
-@pytest.fixture
-def parser():
-    return Parser()
-
 class TestXpParser:
-    def test_parse_compound_xp(self, parser):
+    @pytest.fixture
+    def xp_parser(self) -> Callable[[str], int]:
+        return Parser.ParseXp.parse_xp_message
+
+    def test_parse_compound_xp(self, xp_parser: Callable[[str], int]):
         log_line = "You gain 17325 (+43312) experience points."
-        assert parser.parse_xp_message(log_line) == 60637
+        assert xp_parser(log_line) == 60637
 
-    def test_parse_simple_xp(self, parser):
+    def test_parse_simple_xp(self, xp_parser: Callable[[str], int]):
         log_line = "You gain 150 experience points."
-        assert parser.parse_xp_message(log_line) == 150
+        assert xp_parser(log_line) == 150
 
-    def test_ignore_irrelevant_lines(self, parser):
+    def test_ignore_irrelevant_lines(self, xp_parser: Callable[[str], int]):
         log_line = "You hit the dragon for 150 damage."
-        assert parser.parse_xp_message(log_line) == 0
+        assert xp_parser(log_line) == 0
 
-    def test_parse_strange_formatting(self, parser):
-        log_line = "   You gain    10 (+5)    experience points.   "
-        assert parser.parse_xp_message(log_line) == 15
+    @pytest.mark.parametrize("prefix", [' ', '\n', '\t'],
+                                    ids=['Space', 'Newline', 'Tab'])
+    def test_whitespace_before_xp_gain_message(self, xp_parser: Callable[[str], int], prefix: str):
+        log_line = f"{prefix}You gain 10 (+5) experience points."
+        assert xp_parser(log_line) == 15
+
+    @pytest.mark.parametrize("suffix", [' ', '\n', '\t'],
+                                    ids=['Space', 'Newline', 'Tab'])
+    def test_whitespace_after_xp_gain_message(self, xp_parser: Callable[[str], int], suffix: str):
+        log_line = f"You gain 10 (+5) experience points.{suffix}"
+        assert xp_parser(log_line) == 15
+
+    def test_excess_whitespace_within_message(self, xp_parser: Callable[[str], int]):
+        log_line = "You   gain  10     \n      (+5)   experience points."
+        assert xp_parser(log_line) == 15
+
+    def test_multi_kill_block(self, xp_parser: Callable[[str], int]):
+        # This is the "Icicle.Rain" scenario that was failing before
+        text = """
+        A golden sphinx dies!
+        You gain 17325 (+43312) experience points.
+        A high priest of Ghict dies!
+        You gain 20625 (+51562) experience points.
+        """
+        xp = xp_parser(text)
+
+        # Sphinx: 60,637 = 17,325 + 43,312
+        # Priest: 72,187 = 20,625 + 51,562
+        # Total: 132,824
+        assert xp == 132824, f"Expected 132824 (sum of both), got {xp}"
 
 @pytest.fixture
 def groupParser():
