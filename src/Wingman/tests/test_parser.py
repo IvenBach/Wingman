@@ -936,6 +936,32 @@ Encumbrance: yy / YYY"""
             assert len(inventory.Backpack) == 6
 
 class TestQuantityItemParse:
+    class TestTokenizer:
+        @pytest.mark.parametrize("text", ["  (4) A goblet of zombie blood",
+                                            "(   4) A goblet of zombie blood",
+                                            "(4) A goblet of zombie blood    "],
+                                            ids=["Leading space before parenthesis",
+                                                "Multiple spaces between parenthesis and quantity",
+                                                "Trailing spaces after item name"])
+        def test_AdditionalySpacing_ReturnsCorrectTokens(self, text):
+            tokens = Parser.ParseQuantityItem.tokenize_quantity_item_line(text)
+
+            assert tokens is not None
+            assert len(tokens) == 2
+            assert tokens[0] == 4
+            assert tokens[1] == "A goblet of zombie blood"
+
+
+        @pytest.mark.parametrize("quantityValue", [' 4', '10'],
+                                    ids=["Single digit quantity - includes leading space",
+                                        "Double digit quantity"])
+        def test_QuantityValues_ReturnsCorrectTokens(self, quantityValue):
+            tokens = Parser.ParseQuantityItem.tokenize_quantity_item_line(f" ({quantityValue}) A goblet of zombie blood")
+
+            assert tokens is not None
+            assert len(tokens) == 2
+
+
     @pytest.mark.parametrize("input, expectedQuantity, expectedName",
                              [(" ( 4) A goblet of zombie blood", 4, "A goblet of zombie blood"),
                               ("( 4) A goblet of zombie blood", 4, "A goblet of zombie blood"),
@@ -945,16 +971,16 @@ class TestQuantityItemParse:
                                  "Excluding leading space before quantity",
                                  "Single digit quantity with no leading space"])
     def test_ParseItemWithQuantity_MatchesQuantity(self, input, expectedQuantity, expectedName):
-        item = Parser.parseQuantityItem(input)
-        
+        item = Parser.ParseQuantityItem.parseQuantityItem(input)
+
         assert item is not None
         assert item.Quantity == expectedQuantity
         assert item.Name == expectedName
-    
+
     def test_ParseItemWithoutQuantityParenthesis_AssumedToBeNoneQuantityItem(self):
         input = "A goblet of zombie blood"
 
-        item = Parser.parseQuantityItem(input)
+        item = Parser.ParseQuantityItem.parseQuantityItem(input)
 
         assert item.Quantity == None
 
@@ -965,7 +991,7 @@ class TestQuantityItemParse:
                             ids=["Copied from logs with leading spaces",
                                  "No leading spaces"])
     def test_ParseItemWithoutQuantity_ReturnsItem(self, input, expectedName):
-        item = Parser.parseQuantityItem(input)
+        item = Parser.ParseQuantityItem.parseQuantityItem(input)
 
         assert item.Quantity == None
         assert item.Name == expectedName
@@ -1128,11 +1154,11 @@ Vitalize.V                4h 28m 12s                      """
         assert affects[7].Name == "Vitalize.V"
         assert affects[7].DurationEndsAt == pytest.approx(now + 4*60*60 + 28*60 + 12, rel=1)
 
-@pytest.fixture
-def parseItem():
+class TestParseItem:
+    @pytest.fixture
+    def parseItem(self):
         return Parser.parseItem
 
-class TestParseItem:
     def test_ItemTextWithoutEnchantment_ReturnsItemWithNoneEnchantment(self, parseItem: Callable[[str], Item | None]):
         text = "a dragon-wing boots."
 
@@ -1301,14 +1327,14 @@ class TestDroppedItemParse:
     def test_DropsSilver_IsParsedCorrectly(self, text: str, expected: str):
         _, itemName = Parser.parseMobDroppedItem(text)
 
-        assert itemName == expected
+        assert itemName.Name == expected
 
     def test_DropsItem_IsParsedCorrectly(self):
         text = "A greater obsidian basilisk drops a hardened black basilisk boots."
 
         _, itemName = Parser.parseMobDroppedItem(text)
 
-        assert itemName == "a hardened black basilisk boots"
+        assert itemName.Name == "a hardened black basilisk boots"
 
     @pytest.mark.parametrize("shapeshiftedWerewolfName", ["A small wolf",
                                                             "A fierce wolf",

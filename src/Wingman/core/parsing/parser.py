@@ -741,9 +741,8 @@ That parse is intended to overwrite with the correct worn gear.'''
         if self._inventoryWeightFooterPattern().findall(text):
             footerLines += 1
 
-        backpack: List[Item] = []
         createFrom = lines[backpackStartIndex: len(lines) - footerLines]
-        backpack = [self.parseQuantityItem(line) for line in createFrom]
+        backpack = [self.ParseQuantityItem.parseQuantityItem(line) for line in createFrom]
 
         return Inventory(eg, backpack)
 
@@ -758,7 +757,6 @@ That parse is intended to overwrite with the correct worn gear.'''
         return self._INVENTORY_WEIGHT_FOOTER_PATTERN
 
     EQUIPPED_GEAR_PATTERN = re.compile(r"On (Head|Jewel|Cloak|Body|Hands|Legs|Feet|Held Right|Held Left):  .+")
-
     def parseEquippedGear(self, text: str) -> Equipment | None:
         if not Parser.EQUIPPED_GEAR_PATTERN.findall(text):
             return None
@@ -801,25 +799,54 @@ That parse is intended to overwrite with the correct worn gear.'''
 
         return eg
 
-    @staticmethod
-    def parseQuantityItem(lineOfText: str) -> Item:
-        '''Parses text for an item with quantity.
+    class ParseQuantityItem:
+        _QUANTITY_ITEM_PATTERN = re.compile(rf"""
+            ^\s*                # optional leading whitespace
+            (?:                 # optional quantity group
+                \(
+                \s*(\d+)\s*     # capture quantity
+                \)
+                \s*             # whitespace after quantity
+            )?
+            (.+?)               # capture item name (greedily)
+            \s*$                # optional trailing whitespace
+""", re.VERBOSE)
 
-Assumes any item lacking quantity parenthesis to be a non-quantity item and assigns it a `None` quantity.'''
-        parenthesisStartIndex = lineOfText.find("(")
-        parenthesisEndIndex = lineOfText.find(")")
+        @staticmethod
+        def tokenize_quantity_item_line(line: str) -> tuple[int | None, str]:
+            """Returns a tuple containing the quantity and item name.
 
-        if parenthesisStartIndex > -1 and parenthesisEndIndex > parenthesisStartIndex:
-            try:
-                quantity = int(lineOfText[parenthesisStartIndex + 1:parenthesisEndIndex].strip())
-            except ValueError:
-                quantity = None
-        else:
-            quantity = None
+- First Tuple Element: `int` quantity if parenthesis with a number is found, `None` otherwise.
+- Second Tuple Element: `str` item name, with leading and trailing whitespace removed."""
+            match = Parser.ParseQuantityItem._QUANTITY_ITEM_PATTERN.findall(line)[0]
 
-        name = lineOfText[parenthesisEndIndex + 2:] if parenthesisEndIndex > -1 else lineOfText.strip()
+            if len(match) !=  1 and len(match) != 2:
+                raise ValueError(f"Unexpected token count when parsing quantity item line: {line}\nTokens: {match}")
 
-        return Item(name, quantity=quantity)
+            if len(match) == 1:
+                return (None, match[0].strip())
+
+            if len(match) == 2:
+                potentialQuantity = match[0].strip()
+                quantity = int(potentialQuantity) if potentialQuantity.isdigit() else None
+                return (quantity, match[1].strip())
+
+            return (None, line)
+
+        @staticmethod
+        def parseQuantityItem(lineOfText: str) -> Item:
+            '''Parses text for an item with quantity.
+
+    Assumes any item lacking quantity parenthesis to be a non-quantity item and assigns it a `None` quantity.'''
+            tokens = Parser.ParseQuantityItem.tokenize_quantity_item_line(lineOfText)
+            if not tokens:
+                raise ValueError(f"Could not parse item from line of text: {lineOfText}. Expected token count of `4` not met.")
+
+            if len(tokens) != 2:
+                raise ValueError(f"Could not parse item from line of text: {lineOfText}. Expected token count of `4` not met.\nTokens: {tokens}")
+
+            quantity, name = tokens
+            return Item(name, quantity=quantity)
 
     class ParseAffect:
         _AFFECT_NAME_TEXT = r"(?P<affectName>\S+)"

@@ -508,8 +508,8 @@ v.setup_ui()
             # If we're toggling off the display of pets/mobs in the group window, we need to remove any that are currently being displayed.
             self.gameSession.group.RemoveMembers([member for member in self.gameSession.group.Members if member.Class_ == 'mob'])
 
-    def check_invasion_supplies(self, supplyText: str, inventory: Inventory) -> list[Item]:
-        """Checks the players  non-geared inventory for items that are on their invasion supplies list. The list is expected to be in a newline separated format.
+    def check_supplies(self, supplyText: str, inventory: Inventory) -> list[Item]:
+        """Checks the players  non-geared inventory for items that are on their supplies list. The list is expected to be in a newline separated format.
 Example input:
 ```
  ( 2) A goblet of zombie blood
@@ -520,25 +520,27 @@ Example input:
 ```
 Returns a `list[Item]` of missing items
 """
-        if len(inventory.Backpack) == 0:
+        if not inventory.Backpack:
             return []
 
-        missingItems: list[Item] = []
-        for supplyLine in supplyText.splitlines():
-            if supplyLine == '':
-                continue
-            supplyItem = Parser.parseQuantityItem(supplyLine)
-            wasMatchFound = False
-            for backpackItem in inventory.Backpack:
-                if supplyItem.Name == backpackItem.Name:
-                    wasMatchFound = True
-                    if backpackItem.QuantityComparison(supplyItem) == QuantityComparer.LESS_THAN:
-                        delta = supplyItem.subtract(backpackItem) # Swapped variable order ensures positive delta
-                        missingItems.append(Item(supplyItem.Name, quantity=delta))
-                        break
+        supplyDict = {
+            item.Name: item.Quantity or 0
+            for line in supplyText.splitlines() if line
+            for item in [Parser.ParseQuantityItem.parseQuantityItem(line)]
+        }
 
-            if not wasMatchFound:
-                missingItems.append(supplyItem)
+        backpackDict = {
+            item.Name: item.Quantity or 0
+            for item in inventory.Backpack
+        }
+
+        missingItems: list[Item] = []
+
+        for name, required in supplyDict.items():
+            have = backpackDict.get(name, 0)
+
+            if required > have:
+                missingItems.append(Item(name, quantity=required - have))
 
         return missingItems
 
@@ -559,7 +561,7 @@ Returns a `list[Item]` of missing items
             self.view.updateMissingSuppliesLabel("***Empty backpack cache. Execute `Inventory` then check again.")
             return
 
-        missingSupplies = self.check_invasion_supplies(supplyText, inventory)
+        missingSupplies = self.check_supplies(supplyText, inventory)
         self.view.updateMissingSuppliesLabel(tabIndicator, missingSupplies)
 
     def hideAffectSpellDropWarningLabel(self):

@@ -237,7 +237,7 @@ class Item:
     def __eq__(self, other):
         if isinstance(other, str):
             from Wingman.core.parsing.parser import Parser
-            return self == Parser.parseQuantityItem(other)
+            return self == Parser.ParseQuantityItem.parseQuantityItem(other)
 
         if not isinstance(other, Item):
             return False

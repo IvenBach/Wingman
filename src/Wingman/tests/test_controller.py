@@ -1016,22 +1016,22 @@ class TestCheckInvasionSupplies:
     def test_HavingEqualItemInSupplyList_NoEntries(self, testController: Controller):
         c = testController
         inventory = Inventory(Equipment(),
-                      [Parser.parseQuantityItem("(2) A darkspawned black fish fillet")])
+                      [Item("A darkspawned black fish fillet", quantity=2)])
         supplyText = "( 2) A darkspawned black fish fillet"
 
 
-        items = c.check_invasion_supplies(supplyText, inventory)
+        items = c.check_supplies(supplyText, inventory)
 
         assert len(items) == 0
 
     def test_HavingLessThanItemInSupplyList_ReturnsMissingQuantity(self, testController: Controller):
         c = testController
         inventory = Inventory(Equipment(),
-                      [Parser.parseQuantityItem("(1) A darkspawned black fish fillet")])
+                      [Item("A darkspawned black fish fillet", quantity=1)])
         supplyText = "( 2) A darkspawned black fish fillet"
 
 
-        items = c.check_invasion_supplies(supplyText, inventory)
+        items = c.check_supplies(supplyText, inventory)
 
         assert len(items) == 1
         assert items[0].Name == "A darkspawned black fish fillet"
@@ -1040,22 +1040,22 @@ class TestCheckInvasionSupplies:
     def test_HavingMoreThanItemInSupplyList_NoEntries(self, testController: Controller):
         c = testController
         inventory = Inventory(Equipment(),
-                      [Parser.parseQuantityItem("(5) A darkspawned black fish fillet")])
+                      [Item("A darkspawned black fish fillet", quantity=5)])
         supplyText = "( 2) A darkspawned black fish fillet"
 
 
-        items = c.check_invasion_supplies(supplyText, inventory)
+        items = c.check_supplies(supplyText, inventory)
 
         assert len(items) == 0
 
     def test_NotHavingItemInSupplyList_ReturnsItemAndQuantityFromSupplyList(self, testController: Controller):
         c = testController
         inventory = Inventory(Equipment(),
-                      [Parser.parseQuantityItem("(3) A darkspawned black fish fillet")])
+                      [Item("A darkspawned black fish fillet", quantity=3)])
         supplyText = "( 2) A goblet of zombie blood"
 
 
-        items = c.check_invasion_supplies(supplyText, inventory)
+        items = c.check_supplies(supplyText, inventory)
 
         assert len(items) == 1
         assert items[0].Name == "A goblet of zombie blood"
@@ -1063,11 +1063,11 @@ class TestCheckInvasionSupplies:
 
     def test_AlreadyHaveSomeItems_LackingSomeOnSupplyList_ReturnsOnlyMissingItemsAndTheirQuantities(self, testController: Controller):
         c = testController
-        backpack = [Parser.parseQuantityItem("( 2) A goblet of zombie blood"),
-                    Parser.parseQuantityItem("( 4) A darkspawned blackened fish fillet"),
-                    Parser.parseQuantityItem("( 2) A bunch of restorative roots"),
-                    Parser.parseQuantityItem("( 2) A ticket to Arnak's Plague"),
-                    Parser.parseQuantityItem("( 6) A scroll of minor resurrection")]
+        backpack = [Item("A goblet of zombie blood", quantity=2),
+                    Item("A darkspawned blackened fish fillet", quantity=4),
+                    Item("A bunch of restorative roots", quantity=2),
+                    Item("A ticket to Arnak's Plague", quantity=2),
+                    Item("A scroll of minor resurrection", quantity=6)]
         inventory = Inventory(Equipment(), backpack)
         supplyText = """( 9) A goblet of zombie blood
 ( 3) A darkspawned blackened fish fillet
@@ -1075,7 +1075,7 @@ class TestCheckInvasionSupplies:
 ( 3) A ticket to Arnak's Plague
 ( 2) A scroll of minor resurrection"""
 
-        items = c.check_invasion_supplies(supplyText, inventory)
+        items = c.check_supplies(supplyText, inventory)
 
         assert len(items) == 3
         assert items[0].Name == "A goblet of zombie blood"
