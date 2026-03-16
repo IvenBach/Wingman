@@ -991,7 +991,7 @@ That parse is intended to overwrite with the correct worn gear.'''
 
         return item
 
-    DROP_ITEM_PATTERN = re.compile(
+    MOB_DROP_ITEM_PATTERN = re.compile(
 rf"""
 ^
 (?:A|An)\s+
@@ -1011,7 +1011,7 @@ $
         '''Parses text for a dropped item.
 - First Tuple Element: `bool` - `True` = text contains a dropped item, `False` = text does not contain a dropped item
 - Second Tuple Element: `Item` - the Item object parsed from the text, or `None` if no dropped item is found.'''
-        match = Parser.DROP_ITEM_PATTERN.search(text)
+        match = Parser.MOB_DROP_ITEM_PATTERN.search(text)
 
         if not match:
             return False, None
