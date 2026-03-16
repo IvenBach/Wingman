@@ -54,7 +54,7 @@ class NetworkListener:
                         self.receiver.receive(eg)
                         return
 
-                    if Parser.ParseMobs().hasAnsiColorCodedMobs(chunk, predeterminedChunkMobList):
+                    if Parser.ParseMobs.hasAnsiColorCodedMobs(chunk, predeterminedChunkMobList):
                         mobsInRoom = MobsInRoom(predeterminedChunkMobList)
 
                     mobMovements, movementIndices = Parser.ParseMovement.parseMobMovements(chunk)

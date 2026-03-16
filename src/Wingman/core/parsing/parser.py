@@ -349,17 +349,21 @@ class Parser:
         
         return None
 
-    _PARSE_MOBS__MOB_INDICATOR_TEXT = r"(?P<subMob>\x1b\[1;31m(?P<name>" + MOB_NAME_REGEX_TEXT + r")+)"
-    _PARSE_MOBS__SEARCH_PATTERN = re.compile(_PARSE_MOBS__MOB_INDICATOR_TEXT)
     class ParseMobs:
-        def hasAnsiColorCodedMobs(self, text: str, outMobList: list[str]) -> bool:
+        _RED_TEXT_PATTERN = re.compile(
+            r"\x1b\[1;31m(.*?)\x1b\[[0-9;]*m",
+            re.DOTALL
+        )
+
+        @staticmethod
+        def hasAnsiColorCodedMobs(text: str, outMobList: list[str]) -> bool:
             '''Parse text for mobs that still have Ansi color coding applied. The color codes permit parsing via `re` to get the mob names.
 
 Method returns `True` if mobs are found with Ansi color coding, `False` otherwise.
 
 The list passed in `outMobList` is populated with the found mobs if any are found, and cleared if none are found.
 '''
-            tempList = Parser().ParseMobs().parsePreAnsiScrubbingForMobs(text)
+            tempList = Parser.ParseMobs.textFromRedMobs(text)
             if not tempList:
                 outMobList.clear()
                 return False
@@ -368,20 +372,21 @@ The list passed in `outMobList` is populated with the found mobs if any are foun
             outMobList.extend(tempList)
             return True
 
-        def parsePreAnsiScrubbingForMobs(self, text: str) -> List[str]:
+        @staticmethod
+        def textFromRedMobs(text: str) -> List[str]:
             r"""Parse pre-Ansi scrubbed input text for mobs in the room. 
 ```
 \x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31ma mithril dealer\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\n\n\x1b[8m
 ```
 Ansi color codes are left in to aid in identifying mobs.
-        
-Works under the assumption that the Ansi foreground color of `31` is always used for mob coloring.
+
+Works under the assumption that the Ansi foreground color of `31` (Red) is always used for mob coloring.
 
 Looks for `Also there is ` to determine whether to parse or not.
 ```
 Ansi				Olmran
 BG	FC	Color			Color
-30	40	Black	
+30	40	Black
 31	41	Red			Red
 32	42	Green			Green
 33	43	Yellow			Brown
@@ -402,15 +407,13 @@ BG	FC	Color			Color
             if "Also there is " not in text:
                 return []
 
-            foundMobs = Parser._PARSE_MOBS__SEARCH_PATTERN.findall(text)
+            foundMobs = Parser.ParseMobs._RED_TEXT_PATTERN.findall(text)
+            cleanedMobs = [m.strip().rstrip('.,') for m in foundMobs if m.strip()]
 
-            if not foundMobs:
+            if not cleanedMobs:
                 return []
 
-            listedMobs = list[str]()
-            for mob in foundMobs:
-                listedMobs.append(mob[1])
-            return listedMobs
+            return cleanedMobs
 
     class ParseMovement:
         VERBS = { 'arrives', 'enters', 'leaves', 'dies', 'chases' }
@@ -719,7 +722,7 @@ That parse is intended to overwrite with the correct worn gear.'''
                     eg.Legs = Item(line, slot=ItemSlot.LEGS)
                 case 7:
                     eg.Feet = Item(line, slot=ItemSlot.FEET)
-        
+
         heldText = [line[6:] for line in lines if line.startswith("  (h) ")]
         for heldCounter, line in enumerate(heldText):
             match heldCounter:
@@ -737,7 +740,7 @@ That parse is intended to overwrite with the correct worn gear.'''
             footerLines += 1
         if self._inventoryWeightFooterPattern().findall(text):
             footerLines += 1
-        
+
         backpack: List[Item] = []
         createFrom = lines[backpackStartIndex: len(lines) - footerLines]
         backpack = [self.parseQuantityItem(line) for line in createFrom]

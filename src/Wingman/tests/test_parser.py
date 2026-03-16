@@ -398,24 +398,24 @@ class TestMobParse:
     def test_SingleMob_ReturnsMob(self):
         expected = ["a mithril dealer"]
         text = "\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31ma mithril dealer\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\n\n\x1b[8m"
-        
-        actual = Parser().ParseMobs().parsePreAnsiScrubbingForMobs(text)
+
+        actual = Parser.ParseMobs.textFromRedMobs(text)
 
         assert expected == actual
-    
+
     def test_OrderOfMobs_RemainsUnchanged(self):
         expected = ["Foo", "Bar", "Bazz"]
         text = "\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31mFoo\x1b[1;30m\x1b[0;37m,\x1b[0;0m\x1b[1;30m \x1b[1;30m\x1b[1;30m\x1b[1;31mBar\x1b[1;30m\x1b[0;37m,\x1b[0;0m\x1b[1;30m \x1b[1;30mand\x1b[0;0m\x1b[1;30m \x1b[1;30m\x1b[1;30m\x1b[1;31mBazz\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\n\n\x1b[8m"
 
-        actual = Parser().ParseMobs().parsePreAnsiScrubbingForMobs(text)
+        actual = Parser.ParseMobs.textFromRedMobs(text)
 
         assert expected == actual
-    
+
     def test_NonMobRelatedText_ReturnsEmptyList(self):
         text = "This is a line of text with no mobs present."
         expected = []
 
-        actual = Parser().ParseMobs().parsePreAnsiScrubbingForMobs(text)
+        actual = Parser.ParseMobs.textFromRedMobs(text)
 
         assert expected == actual
 
@@ -423,7 +423,7 @@ class TestMobParse:
         text = "\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31m\x1b[1;32mGreenMob\x1b[0;0m\x1b[1;31m\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\n\n\x1b[8m"
         expected = []
 
-        actual = Parser().ParseMobs().parsePreAnsiScrubbingForMobs(text)
+        actual = Parser.ParseMobs.textFromRedMobs(text)
 
         assert expected == actual
 
@@ -431,7 +431,7 @@ class TestMobParse:
         text = "\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31m\x1b[1;32mGreenMob\x1b[0;0m\x1b[1;31m\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\n\n\x1b[8m"
         outList = ['any values will be cleared']
 
-        actual = Parser().ParseMobs().hasAnsiColorCodedMobs(text, outList)
+        actual = Parser.ParseMobs.hasAnsiColorCodedMobs(text, outList)
 
         assert actual == False
         assert outList == []
@@ -440,7 +440,7 @@ class TestMobParse:
         text = "\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31ma mithril dealer\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\n\n\x1b[8m"
         list = []
 
-        actual = Parser().ParseMobs().hasAnsiColorCodedMobs(text, list)
+        actual = Parser.ParseMobs.hasAnsiColorCodedMobs(text, list)
 
         assert actual
         assert list == ["a mithril dealer"]
@@ -448,7 +448,7 @@ class TestMobParse:
     def test_MobWithDashInName_IsCorrectlyParsed(self):
         text = "\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31ma brilliant bronze-scaled dragon\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\nAn angel of death follows Beautiful in.\n\n\x1b[8m"
         mobList: list[str] = []
-        result = Parser().ParseMobs().hasAnsiColorCodedMobs(text, mobList)
+        result = Parser.ParseMobs.hasAnsiColorCodedMobs(text, mobList)
 
         assert result
         assert mobList == ["a brilliant bronze-scaled dragon"]
@@ -456,7 +456,7 @@ class TestMobParse:
     def test_MobWithCommaInName_IsCorrectlyParsed(self):
         text = "\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31ma disturbed, headless mummy corpse\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\nAn angel of death follows Beautiful in.\n\n\x1b[8m"
         mobList: list[str] = []
-        result = Parser().ParseMobs().hasAnsiColorCodedMobs(text, mobList)
+        result = Parser.ParseMobs.hasAnsiColorCodedMobs(text, mobList)
 
         assert result
         assert mobList == ["a disturbed, headless mummy corpse"]
