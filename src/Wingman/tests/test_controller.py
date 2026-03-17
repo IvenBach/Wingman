@@ -1226,7 +1226,7 @@ class TestApplySettings:
             }
 
             c.applySettings(cp)
-            actual = c.view._miscellaneousSettings.geometry()
+            actual = c.view._miscellaneousSettingsWindow.geometry()
 
             assert "+1108+856" in actual
 

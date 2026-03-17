@@ -365,7 +365,7 @@ v.setup_ui()
 
         cp[self._APP_SETTINGS] = {
             self._ROOT_WINDOW_POSITION__OPTION: '+' + self.view.root.geometry().split('+', 1)[1],
-            self._MISCELLANEOUS_SETTINGS_WINDOW_POSITION__OPTION: '+' + self.view._miscellaneousSettings.geometry().split('+', 1)[1],
+            self._MISCELLANEOUS_SETTINGS_WINDOW_POSITION__OPTION: '+' + self.view._miscellaneousSettingsWindow.geometry().split('+', 1)[1],
             self._SUPPLY_CHECKER_WINDOW_POSITION__OPTION: '+' + self.view._supplyCheckerWindow.geometry().split('+', 1)[1],
             self._GEAR_SETS_WINDOW_POSITION__OPTION: '+' + self.view._gearSetsWindow.geometry().split('+', 1)[1],
         }
@@ -486,13 +486,13 @@ v.setup_ui()
                 rootWindowPosition = configParser.get(self._APP_SETTINGS, self._ROOT_WINDOW_POSITION__OPTION, fallback='+50+50')
                 self.view.root.geometry(rootWindowSize + rootWindowPosition)
 
-                petOrMobDisplaySettingsWindowSize = self.view._miscellaneousSettings.geometry().split('+')[0]
-                petOrMobDisplaySettingsWindowPosition = configParser.get(self._APP_SETTINGS, self._MISCELLANEOUS_SETTINGS_WINDOW_POSITION__OPTION, fallback='+50+50')
-                self.view._miscellaneousSettings.geometry(petOrMobDisplaySettingsWindowSize + petOrMobDisplaySettingsWindowPosition)
+                miscellaneousSettingsWindowSize = self.view._miscellaneousSettingsWindow.geometry().split('+')[0]
+                miscellaneousSettingsWindowPosition = configParser.get(self._APP_SETTINGS, self._MISCELLANEOUS_SETTINGS_WINDOW_POSITION__OPTION, fallback='+50+50')
+                self.view._miscellaneousSettingsWindow.geometry(miscellaneousSettingsWindowSize + miscellaneousSettingsWindowPosition)
 
-                invasionSuppliesWindowSize = self.view._supplyCheckerWindow.geometry().split('+')[0]
-                invasionSuppliesWindowPosition = configParser.get(self._APP_SETTINGS, self._SUPPLY_CHECKER_WINDOW_POSITION__OPTION, fallback='+50+50')
-                self.view._supplyCheckerWindow.geometry(invasionSuppliesWindowSize + invasionSuppliesWindowPosition)
+                suppliesCheckerWindowSize = self.view._supplyCheckerWindow.geometry().split('+')[0]
+                suppliesCheckerWindowPosition = configParser.get(self._APP_SETTINGS, self._SUPPLY_CHECKER_WINDOW_POSITION__OPTION, fallback='+50+50')
+                self.view._supplyCheckerWindow.geometry(suppliesCheckerWindowSize + suppliesCheckerWindowPosition)
 
                 gearSetsWindowSize = self.view._gearSetsWindow.geometry().split('+')[0]
                 gearSetsWindowPosition = configParser.get(self._APP_SETTINGS, self._GEAR_SETS_WINDOW_POSITION__OPTION, fallback='+50+50')

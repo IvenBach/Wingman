@@ -39,7 +39,7 @@ class View(tk.Frame):
         self.groupTreeview: ttk.Treeview
         self.menu_settings: tk.Menu
         self.var_ignoredMobPetsSemicolonDelimited = tk.StringVar(value="")
-        self._miscellaneousSettings = tk.Toplevel(root, name="miscellaneousSettingsWindow")
+        self._miscellaneousSettingsWindow = tk.Toplevel(root, name="miscellaneousSettingsWindow")
         self._supplyCheckerWindow = tk.Toplevel(root, name="supplyCheckerWindow")
         self._gearSetsWindow = tk.Toplevel(root, name="gearSetsWindow")
         self.var_missingGearSetItems = tk.StringVar(value="")
@@ -57,7 +57,7 @@ class View(tk.Frame):
         self.style.theme_use('clam')
 
         self._TopLevelWidgets: list[tk.Tk | tk.Toplevel] = [self.root,
-                                                            self._miscellaneousSettings,
+                                                            self._miscellaneousSettingsWindow,
                                                             self._supplyCheckerWindow,
                                                             self._gearSetsWindow]
 
@@ -186,59 +186,65 @@ c = Controller.ForTesting()
         self.menu_settings.add_command(label="Miscellaneous settings", command=self._controller.open_miscellaneousSettings_window)
         self.mb_settings["menu"] = self.menu_settings
 
-        self._setUpTopLevelWindow(self._miscellaneousSettings, "Miscellaneous Settings", "<Escape>", self._withdraw_miscellaneous_settings_window)
-        self._miscellaneousSettings.grid_columnconfigure(1, weight=1)
-        self._miscellaneousSettings.bind("<Escape>", lambda e: self._withdraw_miscellaneous_settings_window())
-        self._miscellaneousSettings.minsize(550, 185)
-        self._miscellaneousSettings.resizable(True, False)
+        self._setUpUi_MiscellaneousSettingsWindow()
 
-        ttk.Label(self._miscellaneousSettings,
+        self.menu_settings.add_command(label="Gear sets", command=self.open_gearSetsWindow)
+        self._setUpUi_GearSetsWindow()
+
+        self.menu_settings.add_command(label="Check Supplies", command=self.open_suppliesWindow)
+        self._setUpUi_SupplyCheckerWindow()
+
+    def _setUpUi_MiscellaneousSettingsWindow(self):
+        self._setUpTopLevelWindow(self._miscellaneousSettingsWindow, "Miscellaneous Settings", "<Escape>", self._withdraw_miscellaneous_settings_window)
+        self._miscellaneousSettingsWindow.grid_columnconfigure(1, weight=1)
+        self._miscellaneousSettingsWindow.bind("<Escape>", lambda e: self._withdraw_miscellaneous_settings_window())
+        self._miscellaneousSettingsWindow.minsize(550, 185)
+        self._miscellaneousSettingsWindow.resizable(True, False)
+
+        ttk.Label(self._miscellaneousSettingsWindow,
                   text="Ignore mobs/pets in room\n(semicolon ; delimited):", anchor=tk.E)\
             .grid(row=0, column=0, sticky=tk.E, padx=10, pady=(10, 0))
-        self.ignoredMobsPetsCommaDelimitedEntry = ttk.Entry(self._miscellaneousSettings,
+        self.ignoredMobsPetsCommaDelimitedEntry = ttk.Entry(self._miscellaneousSettingsWindow,
                                                             textvariable=self.var_ignoredMobPetsSemicolonDelimited)
         self.ignoredMobsPetsCommaDelimitedEntry.grid(row=0, column=1, sticky=tk.EW, padx=(0, 10))
         # helpful lambda explanation: https://stackoverflow.com/a/55093731
         self.ignoredMobsPetsCommaDelimitedEntry.bind("<FocusOut>", # Without the lambda the function is never invoked.
                                 lambda e: self._controller.updateIgnoredMobsPets(self.var_ignoredMobPetsSemicolonDelimited.get()))
-        ttk.Label(self._miscellaneousSettings,
+        ttk.Label(self._miscellaneousSettingsWindow,
                   text="Include mobs in\ngroup window: ")\
             .grid(row=1, column=0, sticky=tk.E, padx=10)
-        self.includeMobsInGroupCheckButton = ttk.Checkbutton(self._miscellaneousSettings,
+        self.includeMobsInGroupCheckButton = ttk.Checkbutton(self._miscellaneousSettingsWindow,
                                                         variable=self.var_includePetsInGroup,
                                                         command=lambda: self.update_display_of_pets_in_group_window(self.var_includePetsInGroup.get()))
         self.includeMobsInGroupCheckButton.grid(row=1, column=1, sticky=tk.W)
-        ttk.Label(self._miscellaneousSettings,
+        ttk.Label(self._miscellaneousSettingsWindow,
                   text="Alerts to be displayed:\n(in milliseconds)")\
             .grid(row=2, column=0, sticky=tk.E, padx=10)
-        self.alertLabelDurationDisplayEntry = ttk.Entry(self._miscellaneousSettings,
+        self.alertLabelDurationDisplayEntry = ttk.Entry(self._miscellaneousSettingsWindow,
                                                   textvariable=self.var_hideDisplayedLabelCallbackTimerInMilliseconds,
                                                   width=10)
         self.alertLabelDurationDisplayEntry.grid(row=2, column=1, sticky=tk.W)
-        ttk.Label(self._miscellaneousSettings,
+        ttk.Label(self._miscellaneousSettingsWindow,
                   text="Alert before affects drop:\n(in minutes)")\
             .grid(row=3, column=0, sticky=tk.E, padx=10)
-        self.affectDropWarningDurationEntry = ttk.Entry(self._miscellaneousSettings,
+        self.affectDropWarningDurationEntry = ttk.Entry(self._miscellaneousSettingsWindow,
                                                   textvariable=self.var_timeInMinutesToWarnAboutSpellsDropping,
                                                   width=10)
         self.affectDropWarningDurationEntry.grid(row=3, column=1, sticky=tk.W)
 
-        ttk.Label(self._miscellaneousSettings,
+        ttk.Label(self._miscellaneousSettingsWindow,
                   text="Items sought after\n(semicolon ; delimited):",
                   anchor=tk.CENTER)\
             .grid(row=4, column=0, sticky=tk.EW, padx=10)
         #https://stackoverflow.com/a/4140988
         validateSoughtAfterItemsCommand = (self.register(self.validateSoughtAfterItemsEntry), '%P')
-        self.soughtAfterItemsEntry = ttk.Entry(self._miscellaneousSettings,
+        self.soughtAfterItemsEntry = ttk.Entry(self._miscellaneousSettingsWindow,
                                                textvariable=self.var_soughtAfterItems,
                                                validate='key',
                                                validatecommand=validateSoughtAfterItemsCommand)
         self.soughtAfterItemsEntry.grid(row=4, column=1, sticky=tk.EW, padx=(0, 10))
 
-
-        self.menu_settings.add_command(label="Gear sets", command=self.open_gearSetsWindow)
-
-
+    def _setUpUi_GearSetsWindow(self):
         gearSetsFrame = ttk.Frame(self._gearSetsWindow, name="gearSetsFrame")
         gearSetsFrame.grid(row=0, column=0, sticky=tk.NSEW)
         gearSetsFrame.grid_rowconfigure(0, weight=1)
@@ -349,7 +355,7 @@ c = Controller.ForTesting()
         self.missingGearSetItemsLabel = ttk.Label(gearSetsFooterFrame, textvariable=self.var_missingGearSetItems, name="missingGearSetItemsLabel")
         self.missingGearSetItemsLabel.grid(row=1, column=0, columnspan=3, sticky=tk.W, padx=10)
 
-        self.menu_settings.add_command(label="Check Supplies", command=self.open_suppliesWindow)
+    def _setUpUi_SupplyCheckerWindow(self):
         suppliesFrame = ttk.Frame(self._supplyCheckerWindow, name="suppliesFrame")
         suppliesFrame.grid(row=0, column=0, sticky=tk.NSEW)
         suppliesFrame.grid_rowconfigure(1, weight=1)
@@ -671,10 +677,10 @@ c = Controller.ForTesting()
             self.var_count_of_mobs_in_room.set(f"Mobs in Room: {len(self._controller.model.currentMobsInRoom)}")
 
     def open_pet_or_mobs_display_settings_window(self):
-        self._miscellaneousSettings.deiconify()
+        self._miscellaneousSettingsWindow.deiconify()
 
     def _withdraw_miscellaneous_settings_window(self):
-        self._miscellaneousSettings.withdraw()
+        self._miscellaneousSettingsWindow.withdraw()
 
     def update_display_of_pets_in_group_window(self, displayMobsInGroupWindow: bool):
         self._controller.update_display_of_pets_in_group_window(displayMobsInGroupWindow)
