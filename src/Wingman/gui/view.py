@@ -559,7 +559,8 @@ c = Controller.ForTesting()
                 pass
 
         if self._controller.model.BuffOrShieldEnding is not None:
-            self.displayBuffOrShieldEndedLabel(self._controller.model.BuffOrShieldEnding)
+            self.displayBuffOrShieldEndedLabel(self._controller.model.BuffOrShieldEnding,
+                                               self.var_hideDisplayedLabelCallbackTimerInMilliseconds.get())
 
             # Reset the value after handling to avoid repeated removal calls.
             self._controller.model.BuffOrShieldEnding = None
@@ -677,25 +678,33 @@ c = Controller.ForTesting()
     def update_display_of_pets_in_group_window(self, displayMobsInGroupWindow: bool):
         self._controller.update_display_of_pets_in_group_window(displayMobsInGroupWindow)
 
-    def displayBuffOrShieldEndedLabel(self, endingBuffOrShield :Parser.ParseBuffOrShieldText):
+    def displayBuffOrShieldEndedLabel(self,
+                                      endingBuffOrShield :Parser.ParseBuffOrShieldText,
+                                      hideDelayTimerInMilliseconds: int):
         self.var_buffOrShieldEndingText.set(endingBuffOrShield.name
                                             .replace("Dot", ".")
                                             .replace("_", " "))
         self.buffOrShieldEndedLabel.grid()
-        self.after(self.var_hideDisplayedLabelCallbackTimerInMilliseconds.get(), self.hideBuffOrShieldEndedLabel)
+        self.after(hideDelayTimerInMilliseconds, self.hideBuffOrShieldEndedLabel)
     def hideBuffOrShieldEndedLabel(self):
         self.buffOrShieldEndedLabel.grid_remove()
 
     @overload
-    def displayMitigatedAffectLabel(self, spellMitigationAffectMember: Parser.SpellMitigationAffect): ...
+    def displayMitigatedAffectLabel(self,
+                                    spellMitigationAffectMember: Parser.SpellMitigationAffect,
+                                    hideDelayTimerInMilliseconds: int): ...
     @overload
-    def displayMitigatedAffectLabel(self, affectResistedByConstitution: Parser.ConstitutionResisted): ...
+    def displayMitigatedAffectLabel(self,
+                                    affectResistedByConstitution: Parser.ConstitutionResisted,
+                                    hideDelayTimerInMilliseconds: int): ...
 
-    def displayMitigatedAffectLabel(self, mitigationEnumMember: StrEnum):
+    def displayMitigatedAffectLabel(self,
+                                    mitigationEnumMember: StrEnum,
+                                    hideDelayTimerInMilliseconds: int):
         self.var_mitigatedAffectText.set(mitigationEnumMember.name
                                               .replace("Dot", "."))
         self.spellMitigatesAffectsLabel.grid()
-        self.after(self.var_hideDisplayedLabelCallbackTimerInMilliseconds.get(), self.hideSpellMitigatesAffect)
+        self.after(hideDelayTimerInMilliseconds, self.hideSpellMitigatesAffect)
     def hideSpellMitigatesAffect(self):
         self.spellMitigatesAffectsLabel.grid_remove()
 
@@ -720,7 +729,8 @@ c = Controller.ForTesting()
             value = args[1]
             if len(value) == 0:
                 displayText = "All items are present for invading!"
-                self.after(self.var_hideDisplayedLabelCallbackTimerInMilliseconds.get(), lambda: self.var_missingSupplyValues.set("")) # Clear the label after a delay
+                self.after(self.var_hideDisplayedLabelCallbackTimerInMilliseconds.get(),
+                           lambda: self.var_missingSupplyValues.set("")) # Clear the label after a delay
             else:
                 displayText = f"Missing '{tabIndicatorText}' Supplies:\n  " + "\n  ".join([f"{item}" for item in value])
 

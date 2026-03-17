@@ -196,7 +196,7 @@ class TestView():
             with patch.object(v, f'{v.displayBuffOrShieldEndedLabel.__name__}') as mockedDisplay:
                 v.update_gui()
 
-            mockedDisplay.assert_called_once_with(endingEnumMember)
+            assert mockedDisplay.call_args[0][0] == endingEnumMember
 
         @pytest.mark.parametrize("text", [Parser.ParseBuffOrShieldText.Shield_Ended.value + Parser.ParseBuffOrShieldText.ShieldStarts.value,
                                             Parser.ParseBuffOrShieldText.Blur_Ended.value + Parser.ParseBuffOrShieldText.BlurStarts.value,

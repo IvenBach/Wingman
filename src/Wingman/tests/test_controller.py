@@ -557,7 +557,7 @@ Blur.V                         4m 5s                """
             with patch.object(v, v.displayMitigatedAffectLabel.__name__) as mockedDisplay:
                 c.process_queue()
 
-            mockedDisplay.assert_called_once_with(expectedMitigation)
+            assert mockedDisplay.call_args[0][0] == expectedMitigation
 
     class TestPausingDoesAffect:
         def test_GainingExperience_DoesNotUpdateWhilePaused(self, testController: Controller):
