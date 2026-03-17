@@ -1,4 +1,3 @@
-import re
 from typing import Any, overload
 from collections import deque
 from Wingman.core.affect import Affect

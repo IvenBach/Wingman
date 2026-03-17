@@ -1,4 +1,4 @@
-from unittest.mock import patch, mock_open
+from unittest.mock import patch
 import sys
 from pathlib import Path
 from tkinter import messagebox
