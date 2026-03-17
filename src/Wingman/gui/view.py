@@ -179,7 +179,7 @@ c = Controller.ForTesting()
         )
         self.menu_settings.add_separator()
 
-        self.menu_settings.add_command(label="Toggle Dark Mode", command=self.toggle_theme)
+        self.menu_settings.add_command(label="Toggle Dark Mode", command=lambda: self.toggle_theme(self._controller._IS_UNIT_TESTING))
         self.menu_settings.add_separator()
         self.menu_settings.add_command(label="Reset Stats", command=self._controller.reset_stats)
         self.menu_settings.add_separator()
@@ -461,19 +461,19 @@ c = Controller.ForTesting()
         self.spellDropWarningLabel.grid(row=3, column=2, sticky=tk.E)
         self.spellDropWarningLabel.grid_remove()
 
-    def apply_theme(self):
+    def apply_theme(self, isUnitTesting: bool):
         if self.dark_mode:
             bg_color = "#2b2b2b"
             fg_color = "#ffffff"
             field_bg = "#383838"
             select_bg = "#4a6984"
-            self.set_windows_titlebar_color(True)
+            self.set_windows_titlebar_color(True, isUnitTesting)
         else:
             bg_color = "#f0f0f0"
             fg_color = "#000000"
             field_bg = "#ffffff"
             select_bg = "#0078d7"
-            self.set_windows_titlebar_color(False)
+            self.set_windows_titlebar_color(False, isUnitTesting)
 
         for window in self._TopLevelWidgets:
             window.configure(bg=bg_color)
@@ -504,7 +504,7 @@ c = Controller.ForTesting()
 
         self.isPaused = isPaused
 
-    def set_windows_titlebar_color(self, use_dark: bool):
+    def set_windows_titlebar_color(self, use_dark: bool, isUnitTesting: bool):
         try:
             DWMWA_USE_IMMERSIVE_DARK_MODE = 20
             set_window_attribute = ctypes.windll.dwmapi.DwmSetWindowAttribute
@@ -514,7 +514,8 @@ c = Controller.ForTesting()
                 hwnd = get_parent(window.winfo_id())
                 set_window_attribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ctypes.byref(ctypes.c_int(value)), 4)
 
-            self.update()
+            if not isUnitTesting:
+                self.update()
         except Exception:
             pass
 
@@ -595,9 +596,9 @@ c = Controller.ForTesting()
         for widget in self._TopLevelWidgets:
             widget.attributes("-topmost", value)
 
-    def toggle_theme(self):
+    def toggle_theme(self, isUnitTesting: bool):
         self.dark_mode = not self.dark_mode
-        self.apply_theme()
+        self.apply_theme(isUnitTesting)
 
     def reset_stats(self):
         self._controller.gameSession.reset()

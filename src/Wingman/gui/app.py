@@ -8,7 +8,7 @@ from Wingman.core.parsing.parser import Parser
 from Wingman.core.item import Item
 
 class WingmanApp(tk.Tk):
-    def __init__(self, inUnitTesting: bool = False):
+    def __init__(self, isUnitTesting: bool = False):
         super().__init__()
 
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -21,16 +21,17 @@ class WingmanApp(tk.Tk):
 
         self.model = Model(Parser())
 
-        if inUnitTesting:
+        if isUnitTesting:
             self.view = View(tk.Toplevel())
         else:
             self.view = View(self)
 
         self.controller = Controller(self.model, self.view)
+        self.controller._IS_UNIT_TESTING = isUnitTesting  # Set the unit testing flag in the controller
         self.view.set_controller(self.controller)
 
         self.controller.view.setup_ui()
-        self.controller.view.apply_theme()
+        self.controller.view.apply_theme(isUnitTesting)
         self.controller.view.update_gui()
 
         try:

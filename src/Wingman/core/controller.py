@@ -23,6 +23,8 @@ class Controller:
         self.model.meditationDisplay.attach(self)
         self.view = view
 
+        self._IS_UNIT_TESTING: bool = False
+
         # Create the SHARED receiver
         from Wingman.core.input_receiver import InputReceiver # Avoid circular import issues by importing here
         self.receiver = InputReceiver(self)
@@ -99,6 +101,7 @@ v.setup_ui()
         # from being created during tests, which leads to `TclError`s.
         v = view or View(tk.Toplevel()) # https://tkdocs.com/shipman/toplevel.html
         c = Controller(m, v, listener_target_ip, listener_target_port)
+        c._IS_UNIT_TESTING = True
 
         v.set_controller(c)
         v.setup_ui()
@@ -441,7 +444,7 @@ v.setup_ui()
 
                 darkModeSavedSetting = configParser.getboolean(self._VIEW_SETTINGS, self._DARK_MODE__OPTION, fallback=False)
                 if darkModeSavedSetting != False:
-                    self.view.toggle_theme()
+                    self.view.toggle_theme(self._IS_UNIT_TESTING)
 
                 displayPetsInGroup = configParser.getboolean(self._VIEW_SETTINGS, self._DISPLAY_PETS_IN_GROUP__OPTION, fallback=False)
                 self.view.var_includePetsInGroup.set(displayPetsInGroup)
