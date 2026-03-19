@@ -1,6 +1,11 @@
 import threading
 from scapy.all import sniff, IP, TCP
+from time import time
+
+from Wingman.core.boat_timer_update import BoatTimerNotification
 from Wingman.core.input_receiver import InputReceiver
+from Wingman.core.npc_in_room import NpcInRoom
+from Wingman.core.parsing.boat_docking_bytes import BoatNotificationBytes
 from Wingman.core.parsing.parser import MobEnteringReasons, Parser
 from Wingman.core.mobs_in_room import MobsInRoom
 from Wingman.core.ansi_code_stripper import remove_ANSI_color_codes
@@ -25,6 +30,7 @@ class NetworkListener:
     def packet_callback(self, packet):
         predeterminedChunkMobList = []
         mobsInRoom: MobsInRoom | None = None
+        npcInRoom: NpcInRoom | None = None
         isBeingChased: list[str] | None = None
         if IP in packet and TCP in packet:
             if packet[IP].src == self.target_ip and packet[TCP].sport == self.target_port:
@@ -34,12 +40,17 @@ class NetworkListener:
                 try:
                     payload_bytes = bytes(packet[TCP].payload)
 
-                    if Parser.ParseBytes().isLogin(payload_bytes):
+                    if Parser.ParseBytes.isLogin(payload_bytes):
                         self.controller.view.apply_pause(False)
 
-                    if Parser.ParseBytes().isLogout(payload_bytes):
+                    if Parser.ParseBytes.isLogout(payload_bytes):
                         self.controller.view.apply_pause(True)
                         self.controller.disbandGroup()
+
+                    if Parser.ParseBytes.isBoatDocking(payload_bytes):
+                        self.receiver.receive(BoatTimerNotification(self.controller.model.BoatCaptainMob, BoatNotificationBytes.DOCKED, time()))
+                    elif Parser.ParseBytes.isBoatDeparting(payload_bytes):
+                        self.receiver.receive(BoatTimerNotification(self.controller.model.BoatCaptainMob, BoatNotificationBytes.DEPARTED, time()))
 
                     # Decode and append to buffer immediately
                     chunk = payload_bytes.decode('utf-8', errors='replace')
@@ -54,8 +65,13 @@ class NetworkListener:
                         self.receiver.receive(eg)
                         return
 
-                    if Parser.ParseMobs.hasAnsiColorCodedMobs(chunk, predeterminedChunkMobList):
+                    redMobs = Parser.ParseMobs.textFromRedMobs(chunk)
+                    if redMobs:
                         mobsInRoom = MobsInRoom(predeterminedChunkMobList)
+
+                    greenMobs = Parser.ParseMobs.textFromGreenMobs(chunk)
+                    if greenMobs:
+                        npcInRoom = NpcInRoom(greenMobs)
 
                     mobMovements, movementIndices = Parser.ParseMovement.parseMobMovements(chunk)
                     if mobMovements:
@@ -103,6 +119,10 @@ class NetworkListener:
                     if mobsInRoom is not None:
                         self.receiver.receive(mobsInRoom)
                         mobsInRoom = None
+
+                    if npcInRoom:
+                        self.receiver.receive(npcInRoom)
+                        npcInRoom = None
 
                     if isBeingChased:
                         self.receiver.receive(MobsChasingYou(isBeingChased))

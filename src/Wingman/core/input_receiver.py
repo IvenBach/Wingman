@@ -1,10 +1,12 @@
 from typing import Any, overload
 from collections import deque
 from Wingman.core.affect import Affect
+from Wingman.core.boat_timer_update import BoatTimerNotification
 from Wingman.core.mobs_chasing_you import MobsChasingYou
 from Wingman.core.mobs_in_room import MobsInRoom
 from Wingman.core.inventory import Inventory
 from Wingman.core.equipment import Equipment
+from Wingman.core.npc_in_room import NpcInRoom
 
 class InputReceiver:
     '''Accepts input lines and queues them for processing.'''
@@ -31,6 +33,10 @@ class InputReceiver:
     def receive(self, affects: list[Affect]) -> None: ...
     @overload
     def receive(self, mobsChasingYou: MobsChasingYou) -> None: ...
+    @overload
+    def receive(self, boatTimerUpdate: BoatTimerNotification) -> None: ...
+    @overload
+    def receive(self, npcInRoom: NpcInRoom) -> None: ...
 
     def receive(self, input):
         '''

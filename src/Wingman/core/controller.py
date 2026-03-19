@@ -5,6 +5,7 @@ import time
 import configparser
 from pathlib import Path
 from Wingman.core.affect import Affect
+from Wingman.core.boat_captain_mob import BoatCaptainNpc
 from Wingman.core.group import Group
 from Wingman.core.mobs_chasing_you import MobsChasingYou
 from Wingman.core.session import GameSession
@@ -14,6 +15,9 @@ from Wingman.core.parsing.parser import MobEnteringReasons, Parser, MobMovementT
 from Wingman.core.mobs_in_room import MobsInRoom
 from Wingman.core.item import Item, ItemSlot, QuantityComparer
 from Wingman.core.inventory import Inventory, Equipment
+from Wingman.core.boat_timer_update import BoatTimerNotification
+from Wingman.core.parsing.boat_docking_bytes import BoatNotificationBytes
+from Wingman.core.boat_transit_information import BoatTransitInformation
 
 class Controller:
     def __init__(self, model: Model, view, listener_target_ip='18.119.153.121', listener_target_port=4000):
@@ -172,6 +176,10 @@ v.setup_ui()
 
             if isinstance(line, MobsChasingYou):
                 self.displayMobIsChasingYouLabel('\n'.join(line.mobsChasingYou), self.view.var_hideDisplayedLabelCallbackTimerInMilliseconds.get())
+                continue
+
+            if isinstance(line, BoatTimerNotification):
+                self.updateBoatRelatedInformation(line)
                 continue
 
             assert isinstance(line, str)
@@ -819,3 +827,26 @@ Returns a `list[Item]` of missing items
         self.view.displayMobIsChasingYouLabel(mobName, hideDelayTimerInMilliseconds)
     def hideMobIsChasingYouLabel(self):
         self.view.hideMobIsChasingYouLabel()
+
+    def updateBoatRelatedInformation(self, boatTimerNotification: BoatTimerNotification):
+        boatCaptain = boatTimerNotification.BoatCaptain
+        timestamp = boatTimerNotification.Timestamp
+
+        if boatCaptain in BoatCaptainNpc.KaidCaptains():
+            if boatTimerNotification.BoatNotification == BoatNotificationBytes.DOCKED:
+                self.model.KaidBoatLastDockedInRealm = timestamp
+
+            if boatTimerNotification.BoatNotification == BoatNotificationBytes.DEPARTED:
+                 self.model.KaidBoatLastDockedInRealm = timestamp - BoatTransitInformation.BOAT_DOCK_TIME_IN_SECONDS.value
+
+        if boatCaptain in BoatCaptainNpc.ReturningFromKaidCaptains():
+            if boatTimerNotification.BoatNotification == BoatNotificationBytes.DOCKED:
+                self.model.KaidBoatLastDockedInRealm = timestamp
+
+            if boatTimerNotification.BoatNotification == BoatNotificationBytes.DEPARTED:
+                self.model.KaidBoatLastDockedInRealm == timestamp - BoatTransitInformation.BOAT_DOCK_TIME_IN_SECONDS.value
+
+        if boatCaptain in BoatCaptainNpc.GoingToOtherRealmCaptains():
+            self.model.RealmBoatLastDockedInRealm = timestamp
+
+        self.view.updateBoatTimerDisplay()

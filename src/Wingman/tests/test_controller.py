@@ -21,6 +21,10 @@ from Wingman.core.inventory import Equipment, Inventory
 from Wingman.core.item import Item
 from Wingman.core.mobs_chasing_you import MobsChasingYou
 from Wingman.core.afk_status import AfkStatus
+from Wingman.core.boat_timer_update import BoatTimerNotification
+from Wingman.core.boat_captain_mob import BoatCaptainNpc
+from Wingman.core.parsing.boat_docking_bytes import BoatNotificationBytes
+from Wingman.core.boat_transit_information import BoatTransitInformation
 
 @pytest.fixture(scope="function")
 def testController():
@@ -191,7 +195,6 @@ class TestProcessQueue:
                 c.process_queue()
             except ValueError:
                 pytest.fail("Attempting to delete a non-existent mob from the current room failed.")
-
 
     class TestPlayerMovement:
         def test_ClearsMobsInRoomAndHidesMobCountInView(self, testController: Controller):
@@ -568,6 +571,16 @@ Blur.V                         4m 5s                """
             c.process_queue()
 
             assert c.gameSession.total_xp == 0
+
+    def test_BoatArrivedInRealm_UpdateBoatRelatedInformationInvoked(self, testController: Controller):
+        c = testController
+        c.receiver.receive(BoatTimerNotification(BoatCaptainNpc.Soldaratus_KaidBoatForEvil_FromEvilToKaid,
+                                                 BoatNotificationBytes.DOCKED,
+                                                 1500) )
+        with patch.object(c, c.updateBoatRelatedInformation.__name__) as mockedUpdate:
+            c.process_queue()
+
+        mockedUpdate.assert_called_once()
 
 class TestGrouping:
     def test_GainNewFollower_NewFollowerAddedToGroupForDisplay(self, testController: Controller):
@@ -1899,3 +1912,93 @@ class TestGearSets:
                 c.checkGearSet(viewEq, wornEq)
 
             mockedDisplay.assert_called_once_with('')
+
+class TestUpdateBoatInformation:
+    @pytest.mark.parametrize('boatCaptain, boatNotificationBytes, expectedKaidDockedTime',
+                             [(BoatCaptainNpc.Soldaratus_KaidBoatForEvil_FromEvilToKaid, BoatNotificationBytes.DOCKED, 15),
+                              (BoatCaptainNpc.Hodge_KaidBoatForEvil_FromKaidToEvil, BoatNotificationBytes.DOCKED, 30),
+                              (BoatCaptainNpc.Haddas_KaidBoatForChaos_FromKaidToChaos, BoatNotificationBytes.DOCKED, 45),
+                              (BoatCaptainNpc.Gronkus_KaidBoatForChaos_FromChaosToKaid, BoatNotificationBytes.DOCKED, 60),
+                              (BoatCaptainNpc.Anise_KaidBoatForGood_FromKaidToGood, BoatNotificationBytes.DOCKED, 75),
+                              (BoatCaptainNpc.Thurgood_KaidBoatForGood_FromGoodToKaid, BoatNotificationBytes.DOCKED, 90)],
+                             ids=["Docked in Evil", "Evil boat Docked in Kaid",
+                                  "Docked in Chaos", "Chaos boat Docked in Kaid",
+                                  "Docked in Good", "Good boat Docked in Kaid"])
+    def test_KaidBoatArrived_UpdatesModel(self, testController: Controller,
+                                          boatCaptain: BoatCaptainNpc,
+                                          boatNotificationBytes: BoatNotificationBytes,
+                                          expectedKaidDockedTime: int):
+        c = testController
+        notification = BoatTimerNotification(
+            boatCaptain,
+            boatNotificationBytes,
+            expectedKaidDockedTime
+        )
+
+        c.updateBoatRelatedInformation(notification)
+
+        assert c.model.KaidBoatLastDockedInRealm == expectedKaidDockedTime
+
+    @pytest.mark.parametrize('boatCaptain, boatNotificationBytes, departingTime, expectedKaidLastDockedTime',
+                             [(BoatCaptainNpc.Soldaratus_KaidBoatForEvil_FromEvilToKaid, BoatNotificationBytes.DEPARTED, 1000, 940),
+                              (BoatCaptainNpc.Hodge_KaidBoatForEvil_FromKaidToEvil, BoatNotificationBytes.DEPARTED, 2000, 1940),
+                              (BoatCaptainNpc.Gronkus_KaidBoatForChaos_FromChaosToKaid, BoatNotificationBytes.DEPARTED, 3000, 2940),
+                              (BoatCaptainNpc.Haddas_KaidBoatForChaos_FromKaidToChaos, BoatNotificationBytes.DEPARTED, 4000, 3940),
+                              (BoatCaptainNpc.Thurgood_KaidBoatForGood_FromGoodToKaid, BoatNotificationBytes.DEPARTED, 5000, 4940),
+                              (BoatCaptainNpc.Anise_KaidBoatForGood_FromKaidToGood, BoatNotificationBytes.DEPARTED, 6000, 5940)],
+                            ids=["Just Departed from Evil",
+                                 "Evil boat Departed from Kaid",
+                                 "Just Departed from Chaos",
+                                 "Chaos boat Departed from Kaid",
+                                 "Just Departed from Good",
+                                 "Good boat Departed from Kaid"])
+    def test_KaidBoatDeparted_UpdatesModel(self, testController: Controller,
+                                           boatCaptain: BoatCaptainNpc,
+                                           boatNotificationBytes: BoatNotificationBytes,
+                                           departingTime: int,
+                                           expectedKaidLastDockedTime: int):
+        c = testController
+        notification = BoatTimerNotification(
+            boatCaptain,
+            boatNotificationBytes,
+            departingTime
+        )
+
+        c.updateBoatRelatedInformation(notification)
+
+        assert c.model.KaidBoatLastDockedInRealm == expectedKaidLastDockedTime
+
+    @pytest.mark.parametrize('boatCaptain, boatNotificationBytes, expectedRealmDockedTime',
+                             [(BoatCaptainNpc.Mordat_RealmBoatForEvil_GoingToOtherRealm, BoatNotificationBytes.DOCKED, 2000),
+                              (BoatCaptainNpc.Horduk_RealmBoatForChaos_GoingToOtherRealm, BoatNotificationBytes.DOCKED, 3000),
+                              (BoatCaptainNpc.Petir_RealmBoatForGood_GoingToOtherRealm, BoatNotificationBytes.DOCKED, 4000)],
+                            ids=["Evil Realm Boat Docked in Realm",
+                                 "Chaos Realm Boat Docked in Realm",
+                                 "Good Realm Boat Docked in Realm"])
+    def test_RealmBoatArrivesInRealm_UpdatesModel(self, testController: Controller,
+                                                  boatCaptain: BoatCaptainNpc,
+                                                  boatNotificationBytes: BoatNotificationBytes,
+                                                  expectedRealmDockedTime: int):
+        c = testController
+        notification = BoatTimerNotification(
+            boatCaptain,
+            boatNotificationBytes,
+            expectedRealmDockedTime
+        )
+
+        c.updateBoatRelatedInformation(notification)
+
+        assert c.model.RealmBoatLastDockedInRealm == expectedRealmDockedTime
+
+    def test_RealmBoatArrivesInAnotherRealm_ModelsRealmBoatTimerNotUpdated(self, testController: Controller):
+        c = testController
+        c.model.RealmBoatLastDockedInRealm = 50
+        notification = BoatTimerNotification(
+            None, #TODO: possibly use boats name
+            BoatNotificationBytes.DEPARTED,
+            50 + 60
+        )
+
+        c.updateBoatRelatedInformation(notification)
+
+        assert c.model.RealmBoatLastDockedInRealm == 50

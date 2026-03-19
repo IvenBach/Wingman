@@ -9,7 +9,7 @@ if __name__ == "__main__":
     srcDirectory = Path(__file__).parent.parent.parent.resolve()
     sys.path.append(str(srcDirectory))
 
-from Wingman.core.connection_payload_bytes import ConnectionPayloadBytes
+from Wingman.core.parsing.connection_payload_bytes import ConnectionPayloadBytes
 from Wingman.core.parsing.parser import MobMovementType, Parser, MobEnteringReasons, MobLeavingReasons
 from Wingman.core.status_indicator import StatusIndicator
 from Wingman.core.group import Group
@@ -395,71 +395,75 @@ class TestHidingParse:
         assert actual is None
 
 class TestMobParse:
-    def test_SingleMob_ReturnsMob(self):
-        expected = ["a mithril dealer"]
-        text = "\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31ma mithril dealer\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\n\n\x1b[8m"
+    class TestParseRedMobs:
+        def test_SingleMob_ReturnsMob(self):
+            expected = ["a mithril dealer"]
+            text = "\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31ma mithril dealer\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\n\n\x1b[8m"
 
-        actual = Parser.ParseMobs.textFromRedMobs(text)
+            actual = Parser.ParseMobs.textFromRedMobs(text)
 
-        assert expected == actual
+            assert expected == actual
 
-    def test_OrderOfMobs_RemainsUnchanged(self):
-        expected = ["Foo", "Bar", "Bazz"]
-        text = "\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31mFoo\x1b[1;30m\x1b[0;37m,\x1b[0;0m\x1b[1;30m \x1b[1;30m\x1b[1;30m\x1b[1;31mBar\x1b[1;30m\x1b[0;37m,\x1b[0;0m\x1b[1;30m \x1b[1;30mand\x1b[0;0m\x1b[1;30m \x1b[1;30m\x1b[1;30m\x1b[1;31mBazz\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\n\n\x1b[8m"
+        def test_OrderOfMobs_RemainsUnchanged(self):
+            expected = ["Foo", "Bar", "Bazz"]
+            text = "\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31mFoo\x1b[1;30m\x1b[0;37m,\x1b[0;0m\x1b[1;30m \x1b[1;30m\x1b[1;30m\x1b[1;31mBar\x1b[1;30m\x1b[0;37m,\x1b[0;0m\x1b[1;30m \x1b[1;30mand\x1b[0;0m\x1b[1;30m \x1b[1;30m\x1b[1;30m\x1b[1;31mBazz\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\n\n\x1b[8m"
 
-        actual = Parser.ParseMobs.textFromRedMobs(text)
+            actual = Parser.ParseMobs.textFromRedMobs(text)
 
-        assert expected == actual
+            assert expected == actual
 
-    def test_NonMobRelatedText_ReturnsEmptyList(self):
-        text = "This is a line of text with no mobs present."
-        expected = []
+        def test_NonMobRelatedText_ReturnsEmptyList(self):
+            text = "This is a line of text with no mobs present."
+            expected = []
 
-        actual = Parser.ParseMobs.textFromRedMobs(text)
+            actual = Parser.ParseMobs.textFromRedMobs(text)
 
-        assert expected == actual
+            assert expected == actual
 
-    def test_MobText_ButItIsAGreenMob_ReturnsEmptyList(self):
-        text = "\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31m\x1b[1;32mGreenMob\x1b[0;0m\x1b[1;31m\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\n\n\x1b[8m"
-        expected = []
+        def test_MobText_ButItIsAGreenMob_ReturnsEmptyList(self):
+            text = "\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31m\x1b[1;32mGreenMob\x1b[0;0m\x1b[1;31m\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\n\n\x1b[8m"
+            expected = []
 
-        actual = Parser.ParseMobs.textFromRedMobs(text)
+            actual = Parser.ParseMobs.textFromRedMobs(text)
 
-        assert expected == actual
+            assert expected == actual
 
-    def test_PredeterminedChunk_GreenMobShouldNotCreateAPredeterminedChunk(self):
-        text = "\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31m\x1b[1;32mGreenMob\x1b[0;0m\x1b[1;31m\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\n\n\x1b[8m"
-        outList = ['any values will be cleared']
+        def test_PredeterminedChunk_GreenMob_DoesNotCreateAPredeterminedChunk(self):
+            text = "\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31m\x1b[1;32mGreenMob\x1b[0;0m\x1b[1;31m\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\n\n\x1b[8m"
 
-        actual = Parser.ParseMobs.hasAnsiColorCodedMobs(text, outList)
+            redMobs = Parser.ParseMobs.textFromRedMobs(text)
 
-        assert actual == False
-        assert outList == []
+            assert redMobs == []
 
-    def test_PredeterminedChunk_StandardMobsShouldCreateAPredeterminedChunk(self):
-        text = "\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31ma mithril dealer\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\n\n\x1b[8m"
-        list = []
+        def test_PredeterminedChunk_RedMob_CreatesAPredeterminedChunk(self):
+            text = "\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31ma mithril dealer\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\n\n\x1b[8m"
 
-        actual = Parser.ParseMobs.hasAnsiColorCodedMobs(text, list)
+            redMobs = Parser.ParseMobs.textFromRedMobs(text)
 
-        assert actual
-        assert list == ["a mithril dealer"]
+            assert redMobs == ["a mithril dealer"]
 
-    def test_MobWithDashInName_IsCorrectlyParsed(self):
-        text = "\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31ma brilliant bronze-scaled dragon\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\nAn angel of death follows Beautiful in.\n\n\x1b[8m"
-        mobList: list[str] = []
-        result = Parser.ParseMobs.hasAnsiColorCodedMobs(text, mobList)
+        def test_MobWithDashInName_IsCorrectlyParsed(self):
+            text = "\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31ma brilliant bronze-scaled dragon\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\nAn angel of death follows Beautiful in.\n\n\x1b[8m"
 
-        assert result
-        assert mobList == ["a brilliant bronze-scaled dragon"]
+            redMobs = Parser.ParseMobs.textFromRedMobs(text)
 
-    def test_MobWithCommaInName_IsCorrectlyParsed(self):
-        text = "\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31ma disturbed, headless mummy corpse\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\nAn angel of death follows Beautiful in.\n\n\x1b[8m"
-        mobList: list[str] = []
-        result = Parser.ParseMobs.hasAnsiColorCodedMobs(text, mobList)
+            assert redMobs == ["a brilliant bronze-scaled dragon"]
 
-        assert result
-        assert mobList == ["a disturbed, headless mummy corpse"]
+        def test_MobWithCommaInName_IsCorrectlyParsed(self):
+            text = "\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31ma disturbed, headless mummy corpse\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\nAn angel of death follows Beautiful in.\n\n\x1b[8m"
+
+            redMobs = Parser.ParseMobs.textFromRedMobs(text)
+
+            assert redMobs == ["a disturbed, headless mummy corpse"]
+
+    class TestParseGreenMobs:
+        def test_SingleMob_ReturnsMob(self):
+            expected = ["Fernama Vahaia - ThePyramidOfTheSun"]
+            text = "\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31m\x1b[1;32mFernama Vahaia - ThePyramidOfTheSun\x1b[0;0m\x1b[1;31m\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\n\n\x1b[8m"
+
+            actual = Parser.ParseMobs.textFromGreenMobs(text)
+
+            assert expected == actual
 
     class TestMobRelatedMovement:
         def test_MovementIsPrefixedByExtraneousSequence_StillCorrectlyParsesMobRelatedMovement(self):
@@ -1399,14 +1403,14 @@ class TestConstitutionResistedParse:
 class TestConnectionPayload:
     class TestLogin:
         def test_LoginPayload_ReturnsTrue(self):
-            assert Parser.ParseBytes().isLogin(ConnectionPayloadBytes.Login.value)
+            assert Parser.ParseBytes.isLogin(ConnectionPayloadBytes.Login.value)
 
         def test_NonLoginPayload_ReturnsFalse(self):
-            assert not Parser.ParseBytes().isLogin(b'Not login payload')
+            assert not Parser.ParseBytes.isLogin(b'Not login payload')
 
     class TestLogout:
         def test_LogoutPayload_ReturnsTrue(self):
-            assert Parser.ParseBytes().isLogout(ConnectionPayloadBytes.Logout.value)
+            assert Parser.ParseBytes.isLogout(ConnectionPayloadBytes.Logout.value)
 
         def test_NonLogoutPayload_ReturnsFalse(self):
-            assert not Parser.ParseBytes().isLogout(b'Not logout payload')
+            assert not Parser.ParseBytes.isLogout(b'Not logout payload')

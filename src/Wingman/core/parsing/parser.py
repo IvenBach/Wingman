@@ -2,7 +2,8 @@ from collections import deque
 import re
 from typing import Iterable, List
 from enum import StrEnum
-from Wingman.core.connection_payload_bytes import ConnectionPayloadBytes
+from Wingman.core.parsing.connection_payload_bytes import ConnectionPayloadBytes
+from Wingman.core.parsing.boat_docking_bytes import BoatNotificationBytes
 from Wingman.core.mob_movement_event import MobMovementEvent
 from Wingman.core.parsing.tokenstream import TokenStream
 from Wingman.core.status_indicator import StatusIndicator
@@ -355,25 +356,21 @@ class Parser:
             re.DOTALL
         )
 
+        _GREEN_TEXT_PATTERN = re.compile(
+            r"\x1b\[1;32m(.*?)\x1b\[[0-9;]*m",
+            re.DOTALL
+        )
+
         @staticmethod
-        def hasAnsiColorCodedMobs(text: str, outMobList: list[str]) -> bool:
-            '''Parse text for mobs that still have Ansi color coding applied. The color codes permit parsing via `re` to get the mob names.
-
-Method returns `True` if mobs are found with Ansi color coding, `False` otherwise.
-
-The list passed in `outMobList` is populated with the found mobs if any are found, and cleared if none are found.
-'''
-            tempList = Parser.ParseMobs.textFromRedMobs(text)
-            if not tempList:
-                outMobList.clear()
-                return False
-
-            outMobList.clear()
-            outMobList.extend(tempList)
-            return True
+        def textFromGreenMobs(text: str) -> List[str]:
+            return Parser.ParseMobs._textFromColoredMobs(Parser.ParseMobs._GREEN_TEXT_PATTERN, text)
 
         @staticmethod
         def textFromRedMobs(text: str) -> List[str]:
+            return Parser.ParseMobs._textFromColoredMobs(Parser.ParseMobs._RED_TEXT_PATTERN, text)
+
+        @staticmethod
+        def _textFromColoredMobs(colorPattern: re.Pattern[str], text: str) -> list[str]:
             r"""Parse pre-Ansi scrubbed input text for mobs in the room. 
 ```
 \x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31ma mithril dealer\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\n\n\x1b[8m
@@ -407,7 +404,7 @@ BG	FC	Color			Color
             if "Also there is " not in text:
                 return []
 
-            foundMobs = Parser.ParseMobs._RED_TEXT_PATTERN.findall(text)
+            foundMobs = colorPattern.findall(text)
             cleanedMobs = [m.strip().rstrip('.,') for m in foundMobs if m.strip()]
 
             if not cleanedMobs:
@@ -1051,10 +1048,20 @@ $
         return (False, None)
 
     class ParseBytes:
-        def isLogout(self, text: bytes) -> bool:
+        @staticmethod
+        def isLogout(text: bytes) -> bool:
             '''Parse bytes for logout message.'''
             return ConnectionPayloadBytes.Logout.value in text
 
-        def isLogin(self, text: bytes) -> bool:
+        @staticmethod
+        def isLogin(text: bytes) -> bool:
             '''Parse bytes for login message.'''
             return ConnectionPayloadBytes.Login.value in text
+
+        @staticmethod
+        def isBoatDocking(text: bytes) -> bool:
+            return text.startswith(BoatNotificationBytes.DOCKED.value)
+
+        @staticmethod
+        def isBoatDeparting(text: bytes) -> bool:
+            return text.startswith(BoatNotificationBytes.DEPARTED.value)

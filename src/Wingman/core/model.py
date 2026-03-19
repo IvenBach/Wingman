@@ -2,6 +2,7 @@ from Wingman.core.affect import Affect
 from Wingman.core.parsing.parser import Parser
 from Wingman.core.meditation_display import MeditationDisplay
 from Wingman.core.inventory import Inventory, Equipment
+from Wingman.core.boat_captain_mob import BoatCaptainNpc
 
 class Model:
     def __init__(self, parser: Parser):
@@ -19,3 +20,6 @@ class Model:
         self.SoughtAfterItems_ThatDropped:  list[str] = []
         self.SoughtAfterItems_Names: set[str] = set()
         self.SoughtAfterItems_BaseItemNames: set[str] = set()
+        self.BoatCaptainMob: BoatCaptainNpc | None = None
+        self.KaidBoatLastDockedInRealm: float | None = None
+        self.RealmBoatLastDockedInRealm: float | None = None

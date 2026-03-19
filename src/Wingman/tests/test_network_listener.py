@@ -7,10 +7,13 @@ from Wingman.core.afk_status import AfkStatus
 from Wingman.core.network_listener import NetworkListener
 from Wingman.core.input_receiver import InputReceiver
 from Wingman.core.controller import Controller
+from Wingman.core.npc_in_room import NpcInRoom
+from Wingman.core.parsing.boat_docking_bytes import BoatNotificationBytes
 from Wingman.core.parsing.parser import Parser
 from Wingman.core.affect import Affect
-from Wingman.core.connection_payload_bytes import ConnectionPayloadBytes
+from Wingman.core.parsing.connection_payload_bytes import ConnectionPayloadBytes
 from Wingman.core.mobs_chasing_you import MobsChasingYou
+from Wingman.core.boat_timer_update import BoatTimerNotification
 
 # Helper class to mock Scapy packet behavior cleanly
 class MockPacket:
@@ -360,3 +363,41 @@ class TestConnectionPayload:
         listener.packet_callback(pkt)
 
         assert not v.isPaused
+
+class TestBoatIndicator:
+    def test_BoatDocks_NotificationSentToReceiver(self, listener_stack: tuple[NetworkListener, InputReceiver]):
+        listener, receiver = listener_stack
+        target_ip = listener.target_ip
+        target_port = listener.target_port
+        pkt = MockPacket(target_ip, target_port, BoatNotificationBytes.DOCKED.value)
+
+        with patch.object(receiver, receiver.receive.__name__) as mockedReceiveMethod:
+            listener.packet_callback(pkt)
+
+        assert isinstance(mockedReceiveMethod.call_args[0][0], BoatTimerNotification)
+
+    def test_BoatDeparts_NotificationSentToReceiver(self, listener_stack: tuple[NetworkListener, InputReceiver]):
+        listener, receiver = listener_stack
+        target_ip = listener.target_ip
+        target_port = listener.target_port
+        pkt = MockPacket(target_ip, target_port, BoatNotificationBytes.DEPARTED.value)
+
+        with patch.object(receiver, receiver.receive.__name__) as mockedReceiveMethod:
+            listener.packet_callback(pkt)
+
+        assert isinstance(mockedReceiveMethod.call_args[0][0], BoatTimerNotification)
+
+class TestNpcInRoom:
+    def test_GreenMob_NpcInRoomDataStructureArgumentSentToReceiver(self, listener_stack: tuple[NetworkListener, InputReceiver]):
+        listener, receiver = listener_stack
+        target_ip = listener.target_ip
+        target_port = listener.target_port
+
+        text = "\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31m\x1b[1;32mFernama Vahaia - ThePyramidOfTheSun\x1b[0;0m\x1b[1;31m\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\n\n\x1b[8m"
+        payload = (text).encode('utf-8')
+        pkt = MockPacket(target_ip, target_port, payload)
+
+        with patch.object(receiver, receiver.receive.__name__) as mockedReceiveMethod:
+            listener.packet_callback(pkt)
+
+        assert isinstance(mockedReceiveMethod.call_args[0][0], NpcInRoom)
