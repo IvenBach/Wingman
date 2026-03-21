@@ -2,10 +2,11 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import re
 import time
+import datetime as dt
 import configparser
 from pathlib import Path
 from Wingman.core.affect import Affect
-from Wingman.core.boat_captain_mob import BoatCaptainNpc
+from Wingman.core.boat_captain_npc import BoatCaptainNpcs
 from Wingman.core.group import Group
 from Wingman.core.mobs_chasing_you import MobsChasingYou
 from Wingman.core.session import GameSession
@@ -13,13 +14,23 @@ from Wingman.core.network_listener import NetworkListener
 from Wingman.core.model import Model
 from Wingman.core.parsing.parser import MobEnteringReasons, Parser, MobMovementType
 from Wingman.core.mobs_in_room import MobsInRoom
-from Wingman.core.item import Item, ItemSlot, QuantityComparer
+from Wingman.core.item import Item, ItemSlot
 from Wingman.core.inventory import Inventory, Equipment
-from Wingman.core.boat_timer_update import BoatTimerNotification
+from Wingman.core.boat_timer_notification import BoatTimerNotification
 from Wingman.core.parsing.boat_docking_bytes import BoatNotificationBytes
 from Wingman.core.boat_transit_information import BoatTransitInformation
+from Wingman.core.npc_in_room import BoatCaptainInRoom
+from Wingman.core.boat_next_docks_at import BoatNextAt
 
 class Controller:
+    _ROOT_WINDOW_POSITION__OPTION = 'RootWindowPosition'
+    _MISCELLANEOUS_SETTINGS_WINDOW_POSITION__OPTION = 'IgnoredMobsWindowPosition'
+    _GEAR_SETS_WINDOW_POSITION__OPTION = 'GearSetsWindowPosition'
+    _SUPPLY_CHECKER_WINDOW_POSITION__OPTION = 'CheckSuppliesWindowPosition'
+    _BOAT_TRACKING_WINDOW_POSITION__OPTION = 'BoatTrackingWindowPosition'
+
+    _DATETIME_DISPLAY_FORMAT = "%I:%M:%S %p"
+
     def __init__(self, model: Model, view, listener_target_ip='18.119.153.121', listener_target_port=4000):
         from Wingman.gui.view import View # Avoid circular import issues by importing here
         assert isinstance(view, View)
@@ -45,10 +56,6 @@ class Controller:
         self._DISPLAY_PETS_IN_GROUP__OPTION = 'DisplayPetsInGroup'
         self._ALWAYS_ON_TOP__OPTION = 'AlwaysOnTop'
         self._DARK_MODE__OPTION = 'DarkMode'
-        self._ROOT_WINDOW_POSITION__OPTION = 'RootWindowPosition'
-        self._MISCELLANEOUS_SETTINGS_WINDOW_POSITION__OPTION = 'IgnoredMobsWindowPosition'
-        self._GEAR_SETS_WINDOW_POSITION__OPTION = 'GearSetsWindowPosition'
-        self._SUPPLY_CHECKER_WINDOW_POSITION__OPTION = 'CheckSuppliesWindowPosition'
         self._PVP_SUPPLIES_TEXT__OPTION = 'PvpSuppliesText'
         self._PVE_SUPPLIES_TEXT__OPTION = 'PveSuppliesText'
         #region GearSet related options
@@ -157,6 +164,10 @@ v.setup_ui()
                 self.updateMobCountDisplay()
                 continue
 
+            if isinstance(line, BoatCaptainInRoom):
+                self.model.BoatCaptainNpc = line.BoatCaptain
+                continue
+
             if isinstance(line, Inventory):
                 self.model.inventory = line
                 continue
@@ -179,7 +190,14 @@ v.setup_ui()
                 continue
 
             if isinstance(line, BoatTimerNotification):
-                self.updateBoatRelatedInformation(line)
+                self.updateBoatTimerDisplay(line,
+                                            dt.datetime.now(),
+                                            self._DATETIME_DISPLAY_FORMAT)
+                if line.BoatCaptain in BoatCaptainNpcs.KaidBoat_RealmDock_Captains()\
+                or line.BoatCaptain in BoatCaptainNpcs.KaidBoat_KaidDock_Captains():
+                    self.model.CachedKaidBoatNotification = line
+                if line.BoatCaptain in BoatCaptainNpcs.GoingToOtherRealmCaptains():
+                    self.model.CachedRealmBoatNotification = line
                 continue
 
             assert isinstance(line, str)
@@ -253,6 +271,7 @@ v.setup_ui()
                 self.updateMobCountDisplay()
                 self.clearSoughtAfterItemsThatDropped()
                 self.hideMobIsChasingYouLabel()
+                self.removeCaptainFromRoomIfPresent()
 
             mobMovementEvent, _ = self.model.parser.ParseMovement().parseMobMovements(line)
             if mobMovementEvent:
@@ -329,6 +348,11 @@ v.setup_ui()
         self.view.updateMobCountDisplay()
 
     def saveSettings(self):
+        def _positionTextFromGeometry(geometry: str) -> str:
+            """Geometry is in the format {width}x{height}+{x}+{y}
+            We only care about the +{x}+{y} part for saving/restoring window position"""
+            return '+' + geometry.split('+', 1)[1]
+
         activeGearSetTabText = self.activeTabTextInNotebook(self.view.gearSetsNotebook)
         activeGearSetTabIndex = [index for index, tabIdentifier in enumerate(self.view.gearSetsNotebook.tabs())
             if self.view.gearSetsNotebook.tab(tabIdentifier, "text") == activeGearSetTabText][0]
@@ -372,10 +396,11 @@ v.setup_ui()
         }
 
         cp[self._APP_SETTINGS] = {
-            self._ROOT_WINDOW_POSITION__OPTION: '+' + self.view.root.geometry().split('+', 1)[1],
-            self._MISCELLANEOUS_SETTINGS_WINDOW_POSITION__OPTION: '+' + self.view._miscellaneousSettingsWindow.geometry().split('+', 1)[1],
-            self._SUPPLY_CHECKER_WINDOW_POSITION__OPTION: '+' + self.view._supplyCheckerWindow.geometry().split('+', 1)[1],
-            self._GEAR_SETS_WINDOW_POSITION__OPTION: '+' + self.view._gearSetsWindow.geometry().split('+', 1)[1],
+            self._ROOT_WINDOW_POSITION__OPTION: _positionTextFromGeometry(self.view.root.geometry()),
+            self._MISCELLANEOUS_SETTINGS_WINDOW_POSITION__OPTION: _positionTextFromGeometry(self.view._miscellaneousSettingsWindow.geometry()),
+            self._SUPPLY_CHECKER_WINDOW_POSITION__OPTION: _positionTextFromGeometry(self.view._supplyCheckerWindow.geometry()),
+            self._GEAR_SETS_WINDOW_POSITION__OPTION: _positionTextFromGeometry(self.view._gearSetsWindow.geometry()),
+            self._BOAT_TRACKING_WINDOW_POSITION__OPTION: _positionTextFromGeometry(self.view._boatTrackingWindow.geometry()),
         }
 
         srcDirectory = self.settingsFilePath()
@@ -444,6 +469,11 @@ v.setup_ui()
                 pveHeldLeft = configParser.get(self._VIEW_SETTINGS, self._PVE_GEAR_SET_HELD_LEFT__OPTION, fallback='')
                 self.view.gearSetsPveHeldLeftEntry.insert(0, pveHeldLeft)
 
+        def _windowSizeTextFromGeometry(geometry: str) -> str:
+            """Geometry is in the format {width}x{height}+{x}+{y}
+            We only care about the {width}x{height} part for saving/restoring window size"""
+            return geometry.split('+')[0]
+
         try:
             if configParser.has_section(self._VIEW_SETTINGS):
                 ignoredMobsPetsCsv = configParser.get(self._VIEW_SETTINGS, self._IGNORED_MOB_PETS_SEMICOLON_DELIMITED__OPTION, fallback='')
@@ -490,21 +520,25 @@ v.setup_ui()
                 applyGearSets(self)
 
             if configParser.has_section(self._APP_SETTINGS):
-                rootWindowSize = self.view.root.geometry().split('+')[0]
+                rootWindowSize = _windowSizeTextFromGeometry(self.view.root.geometry())
                 rootWindowPosition = configParser.get(self._APP_SETTINGS, self._ROOT_WINDOW_POSITION__OPTION, fallback='+50+50')
                 self.view.root.geometry(rootWindowSize + rootWindowPosition)
 
-                miscellaneousSettingsWindowSize = self.view._miscellaneousSettingsWindow.geometry().split('+')[0]
+                miscellaneousSettingsWindowSize = _windowSizeTextFromGeometry(self.view._miscellaneousSettingsWindow.geometry())
                 miscellaneousSettingsWindowPosition = configParser.get(self._APP_SETTINGS, self._MISCELLANEOUS_SETTINGS_WINDOW_POSITION__OPTION, fallback='+50+50')
                 self.view._miscellaneousSettingsWindow.geometry(miscellaneousSettingsWindowSize + miscellaneousSettingsWindowPosition)
 
-                suppliesCheckerWindowSize = self.view._supplyCheckerWindow.geometry().split('+')[0]
+                suppliesCheckerWindowSize = _windowSizeTextFromGeometry(self.view._supplyCheckerWindow.geometry())
                 suppliesCheckerWindowPosition = configParser.get(self._APP_SETTINGS, self._SUPPLY_CHECKER_WINDOW_POSITION__OPTION, fallback='+50+50')
                 self.view._supplyCheckerWindow.geometry(suppliesCheckerWindowSize + suppliesCheckerWindowPosition)
 
-                gearSetsWindowSize = self.view._gearSetsWindow.geometry().split('+')[0]
+                gearSetsWindowSize = _windowSizeTextFromGeometry(self.view._gearSetsWindow.geometry())
                 gearSetsWindowPosition = configParser.get(self._APP_SETTINGS, self._GEAR_SETS_WINDOW_POSITION__OPTION, fallback='+50+50')
                 self.view._gearSetsWindow.geometry(gearSetsWindowSize + gearSetsWindowPosition)
+
+                boatTrackingWindowSize = _windowSizeTextFromGeometry(self.view._boatTrackingWindow.geometry())
+                boatTrackingWindowPosition = configParser.get(self._APP_SETTINGS, self._BOAT_TRACKING_WINDOW_POSITION__OPTION, fallback='+50+50')
+                self.view._boatTrackingWindow.geometry(boatTrackingWindowSize + boatTrackingWindowPosition)
 
         except KeyError:
             # This means the config file was missing or malformed. We can choose to ignore this and just use defaults.
@@ -828,25 +862,48 @@ Returns a `list[Item]` of missing items
     def hideMobIsChasingYouLabel(self):
         self.view.hideMobIsChasingYouLabel()
 
-    def updateBoatRelatedInformation(self, boatTimerNotification: BoatTimerNotification):
+    def updateBoatTimerDisplay(self,
+                               boatTimerNotification: BoatTimerNotification | None,
+                               currentDateTime: dt.datetime,
+                               datetimeDisplayFormat: str):
+        if boatTimerNotification is None:
+            return
+
         boatCaptain = boatTimerNotification.BoatCaptain
-        timestamp = boatTimerNotification.Timestamp
+        datetime = boatTimerNotification.DateTime
 
-        if boatCaptain in BoatCaptainNpc.KaidCaptains():
+        if boatCaptain in BoatCaptainNpcs.KaidBoat_RealmDock_Captains():
             if boatTimerNotification.BoatNotification == BoatNotificationBytes.DOCKED:
-                self.model.KaidBoatLastDockedInRealm = timestamp
+                self.model.KaidBoatLastDockedInRealm = datetime
 
             if boatTimerNotification.BoatNotification == BoatNotificationBytes.DEPARTED:
-                 self.model.KaidBoatLastDockedInRealm = timestamp - BoatTransitInformation.BOAT_DOCK_TIME_IN_SECONDS.value
+                self.model.KaidBoatLastDockedInRealm = datetime - dt.timedelta(seconds=BoatTransitInformation.KAID_BOAT_DOCK_TIME_IN_SECONDS.value)
 
-        if boatCaptain in BoatCaptainNpc.ReturningFromKaidCaptains():
+        if boatCaptain in BoatCaptainNpcs.KaidBoat_KaidDock_Captains():
+            timeAdjust: dt.timedelta = dt.timedelta(seconds=0)
             if boatTimerNotification.BoatNotification == BoatNotificationBytes.DOCKED:
-                self.model.KaidBoatLastDockedInRealm = timestamp
+                timeAdjust = dt.timedelta(seconds=BoatTransitInformation.KAID_BOAT_TRANSIT_TIME_IN_SECONDS.value) + dt.timedelta(seconds=BoatTransitInformation.KAID_BOAT_DOCK_TIME_IN_SECONDS.value)
 
             if boatTimerNotification.BoatNotification == BoatNotificationBytes.DEPARTED:
-                self.model.KaidBoatLastDockedInRealm == timestamp - BoatTransitInformation.BOAT_DOCK_TIME_IN_SECONDS.value
+                timeAdjust = dt.timedelta(seconds=BoatTransitInformation.KAID_BOAT_TRANSIT_TIME_IN_SECONDS.value) + dt.timedelta(seconds=2 * BoatTransitInformation.KAID_BOAT_DOCK_TIME_IN_SECONDS.value)
 
-        if boatCaptain in BoatCaptainNpc.GoingToOtherRealmCaptains():
-            self.model.RealmBoatLastDockedInRealm = timestamp
+            nextDockInRealm = BoatNextAt.realmDock(datetime - timeAdjust,
+                                                    BoatTransitInformation.KAID_BOAT_ROUNDTRIP_TIME_IN_SECONDS.value,
+                                                    currentDateTime)
+            assert nextDockInRealm is not None
+            self.model.KaidBoatLastDockedInRealm = nextDockInRealm - dt.timedelta(seconds=BoatTransitInformation.KAID_BOAT_ROUNDTRIP_TIME_IN_SECONDS.value)
 
-        self.view.updateBoatTimerDisplay()
+        if boatCaptain in BoatCaptainNpcs.GoingToOtherRealmCaptains():
+            if boatTimerNotification.BoatNotification == BoatNotificationBytes.DOCKED:
+                self.model.RealmBoatLastDockedInRealm = datetime
+
+            if boatTimerNotification.BoatNotification == BoatNotificationBytes.DEPARTED:
+                self.model.RealmBoatLastDockedInRealm = datetime - dt.timedelta(seconds=BoatTransitInformation.REALM_BOAT_DOCK_TIME_IN_SECONDS.value)
+
+        self.view.updateBoatTimerDisplay(self.model.KaidBoatLastDockedInRealm,
+                                         self.model.RealmBoatLastDockedInRealm,
+                                         currentDateTime,
+                                         datetimeDisplayFormat)
+
+    def removeCaptainFromRoomIfPresent(self):
+        self.model.BoatCaptainNpc = None

@@ -3,6 +3,9 @@ import tkinter as tk
 from unittest.mock import Mock, patch, call
 import sys
 from pathlib import Path
+import datetime as dt
+
+from Wingman.core.boat_timer_notification import BoatTimerNotification
 if __name__ == "__main__":
     srcDirectory = Path(__file__).parent.parent.parent.resolve()
     sys.path.append(str(srcDirectory))
@@ -10,6 +13,8 @@ from Wingman.core.afk_status import AfkStatus
 from Wingman.gui.view import View, SuppliesPaneChangeDirection
 from Wingman.core.controller import Controller
 from Wingman.core.parsing.parser import Parser
+from Wingman.core.boat_captain_npc import BoatCaptainNpcs
+from Wingman.core.parsing.parser import BoatNotificationBytes
 
 @pytest.fixture
 def testController():
@@ -419,3 +424,98 @@ class TestView():
         v.apply_pause(appliedPauseState)
 
         assert v.isPaused == expectedStateAfterApplyingPause
+
+    class TestBoatTimerDisplay:
+        def test_DockingInKaid_TimerDisplaysUpdated_WhenBoatDockingNotificationReceived(self, testController: Controller):
+            notificationTime = dt.datetime(2026, 1, 1, 9, 10, 11)
+            guiTime = dt.datetime(2026, 1, 1 , 9, 12, 13)
+            c = testController
+            c.model.CachedKaidBoatNotification = BoatTimerNotification(
+                BoatCaptainNpcs.Anise_KaidBoatForGood_FromKaidToGood,
+                BoatNotificationBytes.DOCKED,
+                notificationTime)
+            v = c.view
+
+            v.update_gui(guiTime)
+
+            kaidNextDockText = v._var_kaidBoatNextDockingInKaid.get()
+            reamNextDockText = v._var_kaidBoatNextDockingInRealm.get()
+
+            assert reamNextDockText == "09:14:11 AM"
+            assert kaidNextDockText == "09:18:11 AM"
+
+        def test_DepartingFromKaid_TimerDisplaysUpdated_WhenBoatDepartedNotificationReceived(self, testController: Controller):
+            notificationTime = dt.datetime(2026, 1, 1, 9, 10, 11)
+            guiTime = dt.datetime(2026, 1, 1 , 9, 12, 13)
+            c = testController
+            c.model.CachedKaidBoatNotification = BoatTimerNotification(
+                BoatCaptainNpcs.Anise_KaidBoatForGood_FromKaidToGood,
+                BoatNotificationBytes.DEPARTED,
+                notificationTime)
+            v = c.view
+
+            v.update_gui(guiTime)
+
+            kaidNextDockText = v._var_kaidBoatNextDockingInKaid.get()
+            realmNextDockText = v._var_kaidBoatNextDockingInRealm.get()
+
+            assert realmNextDockText == "09:20:11 AM"
+            assert kaidNextDockText == "09:16:11 AM"
+
+        def test_DockingInRealm_TimerDisplaysUpdated_WhenBoatDockingNotificationReceived(self, testController: Controller):
+            notificationTime = dt.datetime(2026, 1, 1, 9, 10, 11)
+            guiTime = dt.datetime(2026, 1, 1 , 9, 12, 13)
+            c = testController
+            c.model.CachedKaidBoatNotification = BoatTimerNotification(
+                BoatCaptainNpcs.Petir_RealmBoatForGood_GoingToOtherRealm,
+                BoatNotificationBytes.DOCKED,
+                notificationTime)
+            v = c.view
+
+            v.update_gui(guiTime)
+
+            firstPortNextDockText = v._var_RealmBoatNextDockingAtFirstInvasionStop.get()
+            secondPortNextDockText = v._var_RealmBoatNextDockingAtSecondInvasionStop.get()
+            realmNextDockText = v._var_RealmBoatNextDockingInRealm.get()
+
+            assert firstPortNextDockText == "09:16:11 AM"
+            assert secondPortNextDockText == "09:22:11 AM"
+            assert realmNextDockText == "09:28:11 AM"
+
+        def test_DepartingFromRealm_TimerDisplaysUpdated_WhenBoatDepartedNotificationReceived(self, testController: Controller):
+            notificationTime = dt.datetime(2026, 1, 1, 9, 10, 11)
+            guiTime = dt.datetime(2026, 1, 1 , 9, 37, 13)
+            c = testController
+            c.model.CachedKaidBoatNotification = BoatTimerNotification(
+                BoatCaptainNpcs.Petir_RealmBoatForGood_GoingToOtherRealm,
+                BoatNotificationBytes.DEPARTED,
+                notificationTime)
+            v = c.view
+
+            v.update_gui(guiTime)
+
+            firstPortNextDockText = v._var_RealmBoatNextDockingAtFirstInvasionStop.get()
+            secondPortNextDockText = v._var_RealmBoatNextDockingAtSecondInvasionStop.get()
+            realmNextDockText = v._var_RealmBoatNextDockingInRealm.get()
+
+            assert realmNextDockText == "09:45:11 AM"
+            assert firstPortNextDockText == "09:51:11 AM"
+            assert secondPortNextDockText == "09:39:11 AM"
+
+        def test_HourSinceDockingInKaidWasCached_TimerDisplaysUpdated_ShowsCurrentNextBoatDockingTimes(self, testController: Controller):
+            dockTime = dt.datetime(2026, 1, 1, 9, 10, 11)
+            guiTime = dt.datetime(2026, 1, 1 , 10, 15, 12)
+            c = testController
+            c.model.CachedKaidBoatNotification = BoatTimerNotification(
+                BoatCaptainNpcs.Anise_KaidBoatForGood_FromKaidToGood,
+                BoatNotificationBytes.DOCKED,
+                dockTime)
+            v = c.view
+
+            v.update_gui(guiTime)
+
+            kaidNextDockText = v._var_kaidBoatNextDockingInKaid.get()
+            realmNextDockText = v._var_kaidBoatNextDockingInRealm.get()
+
+            assert kaidNextDockText == "10:22:11 AM"
+            assert realmNextDockText == "10:18:11 AM"

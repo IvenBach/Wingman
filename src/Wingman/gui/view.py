@@ -2,8 +2,10 @@ import os
 import tkinter as tk
 from tkinter import ttk
 import time
+import datetime as dt
 import ctypes
 from typing import overload, Callable
+
 from enum import Enum, StrEnum
 from Wingman.core.controller import Controller
 from Wingman.core.group import Group
@@ -11,12 +13,16 @@ from Wingman.core.character import Character
 from Wingman.core.health_Tagger import HealthTagger
 from Wingman.core.parsing.parser import Parser
 from Wingman.core.item import Item
+from Wingman.core.boat_transit_information import BoatTransitInformation
+from Wingman.core.boat_next_docks_at import BoatNextAt, InvasionPortIdentifier
 
 class SuppliesPaneChangeDirection(Enum):
     PREVIOUS = -1
     NEXT = 1
 
 class View(tk.Frame):
+    _NO_LAST_DOCKED_TIME_AVAILABLE_TEXT = "No cached date."
+
     def __init__(self, root: tk.Tk | tk.Toplevel):
         super().__init__(root)
 
@@ -42,6 +48,7 @@ class View(tk.Frame):
         self._miscellaneousSettingsWindow = tk.Toplevel(root, name="miscellaneousSettingsWindow")
         self._supplyCheckerWindow = tk.Toplevel(root, name="supplyCheckerWindow")
         self._gearSetsWindow = tk.Toplevel(root, name="gearSetsWindow")
+        self._boatTrackingWindow = tk.Toplevel(root, name="boatTrackingWindow")
         self.var_missingGearSetItems = tk.StringVar(value="")
         self.var_missingSupplyValues = tk.StringVar(value="")
         self.var_missingPveSupplyValues = tk.StringVar(value="")
@@ -51,6 +58,11 @@ class View(tk.Frame):
         self.var_mitigatedAffectText = tk.StringVar(value="")
         self.var_spellDropWarningText = tk.StringVar(value="")
         self.var_soughtAfterItems = tk.StringVar(value="")
+        self._var_kaidBoatNextDockingInRealm = tk.StringVar(value=self._NO_LAST_DOCKED_TIME_AVAILABLE_TEXT)
+        self._var_kaidBoatNextDockingInKaid = tk.StringVar(value=self._NO_LAST_DOCKED_TIME_AVAILABLE_TEXT)
+        self._var_RealmBoatNextDockingInRealm = tk.StringVar(value=self._NO_LAST_DOCKED_TIME_AVAILABLE_TEXT)
+        self._var_RealmBoatNextDockingAtFirstInvasionStop = tk.StringVar(value=self._NO_LAST_DOCKED_TIME_AVAILABLE_TEXT)
+        self._var_RealmBoatNextDockingAtSecondInvasionStop = tk.StringVar(value=self._NO_LAST_DOCKED_TIME_AVAILABLE_TEXT)
         #controller dependent *Var fields are applied in `set_controller`
 
         self.style = ttk.Style()
@@ -59,7 +71,8 @@ class View(tk.Frame):
         self._TopLevelWidgets: list[tk.Tk | tk.Toplevel] = [self.root,
                                                             self._miscellaneousSettingsWindow,
                                                             self._supplyCheckerWindow,
-                                                            self._gearSetsWindow]
+                                                            self._gearSetsWindow,
+                                                            self._boatTrackingWindow]
 
     @classmethod
     def ForTesting(cls):
@@ -94,11 +107,14 @@ c = Controller.ForTesting()
         main_frame.grid_rowconfigure(2, weight=1)
         main_frame.grid_columnconfigure(0, weight=1)
 
-        self._setUpUi_StatsRow(main_frame)
+        statsFrame = self._setUpUi_StatsRow(main_frame)
+        pauseButtonsFrame = self._setUpUi_pauseButtonsFrame(statsFrame)
+        self._setUpUi_SettingsDropdownButtons(pauseButtonsFrame)
         self._setUpUi_GroupDisplay(main_frame)
         self._setUpUi_StatusFooter(main_frame)
+        self._setUpUi_BoatTrackingWindow(self._boatTrackingWindow)
 
-    def _setUpUi_StatsRow(self, main_frame: ttk.Frame):
+    def _setUpUi_StatsRow(self, main_frame: ttk.Frame) -> ttk.Frame:
         # --- Top Stats Row ---
         stats_frame = ttk.Frame(main_frame, name="stats_frame", height=100)
         stats_frame.grid(row=0, column=0, pady=(0, 10), sticky=tk.EW)
@@ -155,18 +171,23 @@ c = Controller.ForTesting()
         self._mobIsChasingYouLabel.grid(row=1, column=0, sticky=tk.EW)
         self._mobIsChasingYouLabel.grid_remove()
 
-        pauseSettingsTimerFrame = ttk.Frame(stats_frame)
-        pauseSettingsTimerFrame.grid(row=0, column=2, sticky=tk.E, padx=5)
-        ttk.Label(pauseSettingsTimerFrame, textvariable=self.var_duration, font=("Consolas", 10)).grid(row=0, column=0,sticky=tk.E, pady=(0,5))
+        return stats_frame
 
         # Control Buttons Frame
-        btns_frame = ttk.Frame(pauseSettingsTimerFrame)
-        btns_frame.grid(row=1, column=0, sticky=tk.E)
-        self.btn_pause = ttk.Button(btns_frame, text="Pause", command=lambda: self.apply_pause(not self.isPaused), width=8)
+    def _setUpUi_pauseButtonsFrame(self, statsFrame: ttk.Frame) -> ttk.Frame:
+        pauseSettingsFrame = ttk.Frame(statsFrame)
+        pauseSettingsFrame.grid(row=0, column=2, sticky=tk.E, padx=5)
+        ttk.Label(pauseSettingsFrame, textvariable=self.var_duration, font=("Consolas", 10)).grid(row=0, column=0,sticky=tk.E, pady=(0,5))
+
+        self.btns_frame = ttk.Frame(pauseSettingsFrame)
+        self.btns_frame.grid(row=1, column=0, sticky=tk.E)
+        self.btn_pause = ttk.Button(self.btns_frame, text="Pause", command=lambda: self.apply_pause(not self.isPaused), width=8)
         self.btn_pause.grid(row=0, column=0, sticky=tk.W, padx=(0, 2))
 
-        # Settings Dropdown
-        self.mb_settings = ttk.Menubutton(btns_frame, text="⚙", width=3)
+        return self.btns_frame
+
+    def _setUpUi_SettingsDropdownButtons(self, pauseButtonsFrame: ttk.Frame):
+        self.mb_settings = ttk.Menubutton(pauseButtonsFrame, text="⚙", width=3)
         self.mb_settings.grid(row=0, column=1, sticky=tk.W)
 
         self.menu_settings = tk.Menu(self.mb_settings, tearoff=0)
@@ -189,15 +210,19 @@ c = Controller.ForTesting()
         self._setUpUi_MiscellaneousSettingsWindow()
 
         self.menu_settings.add_command(label="Gear sets", command=self.open_gearSetsWindow)
-        self._setUpUi_GearSetsWindow()
+        self._setUpUi_GearSetsWindow(self._gearSetsWindow)
 
         self.menu_settings.add_command(label="Check Supplies", command=self.open_suppliesWindow)
-        self._setUpUi_SupplyCheckerWindow()
+        self._setUpUi_SupplyCheckerWindow(self._supplyCheckerWindow)
+
+        self.menu_settings.add_command(label="Boat Tracking",
+                                       command=lambda: self.open_boatTrackingWindow(dt.datetime.now(),
+                                                                                    self._controller._DATETIME_DISPLAY_FORMAT))
+        self._setUpUi_BoatTrackingWindow(self._boatTrackingWindow)
 
     def _setUpUi_MiscellaneousSettingsWindow(self):
         self._setUpTopLevelWindow(self._miscellaneousSettingsWindow, "Miscellaneous Settings", "<Escape>", self._withdraw_miscellaneous_settings_window)
         self._miscellaneousSettingsWindow.grid_columnconfigure(1, weight=1)
-        self._miscellaneousSettingsWindow.bind("<Escape>", lambda e: self._withdraw_miscellaneous_settings_window())
         self._miscellaneousSettingsWindow.minsize(550, 185)
         self._miscellaneousSettingsWindow.resizable(True, False)
 
@@ -244,8 +269,8 @@ c = Controller.ForTesting()
                                                validatecommand=validateSoughtAfterItemsCommand)
         self.soughtAfterItemsEntry.grid(row=4, column=1, sticky=tk.EW, padx=(0, 10))
 
-    def _setUpUi_GearSetsWindow(self):
-        gearSetsFrame = ttk.Frame(self._gearSetsWindow, name="gearSetsFrame")
+    def _setUpUi_GearSetsWindow(self, gearSetsWindow: tk.Toplevel):
+        gearSetsFrame = ttk.Frame(gearSetsWindow, name="gearSetsFrame")
         gearSetsFrame.grid(row=0, column=0, sticky=tk.NSEW)
         gearSetsFrame.grid_rowconfigure(0, weight=1)
         gearSetsFrame.grid_columnconfigure(0, weight=1)
@@ -255,7 +280,7 @@ c = Controller.ForTesting()
         self.gearSetsNotebook.grid(row=1, column=0, sticky=tk.NSEW, padx=10, pady=10)
         self.gearSetsNotebook.bind("<Button-3>", self.showGearSetsContextMenu)
         #https://pythonexamples.org/python-tkinter-context-menu/
-        self.gearSetsContextMenu = tk.Menu(self._gearSetsWindow, tearoff=False)
+        self.gearSetsContextMenu = tk.Menu(gearSetsWindow, tearoff=False)
         self.gearSetsContextMenu.add_command(label="Copy PvP -> PvE", command=self._controller.copyPvpGearSetToPve)
         self.gearSetsContextMenu.add_command(label="Copy PvE -> PvP", command=self._controller.copyPveGearSetToPvp)
 
@@ -263,9 +288,9 @@ c = Controller.ForTesting()
         gearSetsPveFrame = ttk.Frame(self.gearSetsNotebook, name="gearSetsPveFrame")
         self.gearSetsNotebook.add(gearSetsPvpFrame, text="PvP")
         self.gearSetsNotebook.add(gearSetsPveFrame, text="PvE")
-        self._setUpTopLevelWindow(self._gearSetsWindow, "Gear Sets", "<Escape>", self._withdraw_gearSetsWindow)
-        self._gearSetsWindow.grid_columnconfigure(0, weight=1)
-        self.bindPageUpAndPageDownToChangePanesInNotebook(self._gearSetsWindow, self.gearSetsNotebook)
+        self._setUpTopLevelWindow(gearSetsWindow, "Gear Sets", "<Escape>", self._withdraw_gearSetsWindow)
+        gearSetsWindow.grid_columnconfigure(0, weight=1)
+        self.bindPageUpAndPageDownToChangePanesInNotebook(gearSetsWindow, self.gearSetsNotebook)
 
         ttk.Label(gearSetsPvpFrame, text="On Head:").grid(row=0, column=0, sticky=tk.E)
         self.gearSetsPvpHeadEntry = ttk.Entry(gearSetsPvpFrame, width=50)
@@ -355,8 +380,8 @@ c = Controller.ForTesting()
         self.missingGearSetItemsLabel = ttk.Label(gearSetsFooterFrame, textvariable=self.var_missingGearSetItems, name="missingGearSetItemsLabel")
         self.missingGearSetItemsLabel.grid(row=1, column=0, columnspan=3, sticky=tk.W, padx=10)
 
-    def _setUpUi_SupplyCheckerWindow(self):
-        suppliesFrame = ttk.Frame(self._supplyCheckerWindow, name="suppliesFrame")
+    def _setUpUi_SupplyCheckerWindow(self, supplyCheckerWindow: tk.Toplevel):
+        suppliesFrame = ttk.Frame(supplyCheckerWindow, name="suppliesFrame")
         suppliesFrame.grid(row=0, column=0, sticky=tk.NSEW)
         suppliesFrame.grid_rowconfigure(1, weight=1)
         suppliesFrame.grid_columnconfigure(0, weight=1)
@@ -395,6 +420,57 @@ c = Controller.ForTesting()
                 textvariable=self.var_missingSupplyValues,
                 wraplength=475)\
             .grid(row=0, column=1, sticky=tk.EW, padx=5, pady=5)
+
+    def _setUpUi_BoatTrackingWindow(self, boatTrackingWindow: tk.Toplevel):
+        self._setUpTopLevelWindow(boatTrackingWindow,
+                                  "Boat Tracking",
+                                  "<Escape>",
+                                  self._withdraw_boatTrackingWindow)
+        boatTrackingWindow.grid_columnconfigure(0, weight=1)
+        boatTrackingWindow.grid_rowconfigure(0, weight=1)
+
+        frame = ttk.Frame(boatTrackingWindow)
+        frame.grid(row=0, column=0, sticky=tk.NSEW, padx=10, pady=10)
+        frame.grid_columnconfigure(0, weight=1)
+        frame.grid_columnconfigure(1, weight=1)
+        frame.grid_rowconfigure(0, weight=1)
+
+        ttk.Label(frame,
+                  text="Depends on being present in the room for arrival text at ports with green NPC's.",
+                  anchor=tk.CENTER)\
+            .grid(row=0, column=0, sticky=tk.EW, pady=(5, 0), columnspan=2)
+        kaidHeader = ttk.Label(frame, name="kaidBoatTimerLabel", text="Kaid Boat Times:", anchor=tk.CENTER)
+        kaidHeader.grid(row=1, column=0, sticky=tk.EW, columnspan=2)
+        ttk.Label(frame, name="kaidBoatArrivesInRealmLabel", text="Arrives in realm: ")\
+            .grid(row=2, column=0, sticky=tk.E)
+        self.kaidBoatInRealmLabel = ttk.Label(frame,
+                                                 name="kaidBoatTimerValueLabel",
+                                                 textvariable=self._var_kaidBoatNextDockingInRealm)
+        self.kaidBoatInRealmLabel.grid(row=2, column=1, sticky=tk.W)
+        ttk.Label(frame, name="kaidBoatArrivesInKaidLabel", text="Arrives in Kaid: ")\
+            .grid(row=3, column=0, sticky=tk.E)
+        self.kaidBoatInKaidLabel = ttk.Label(frame,
+                                                name="kaidBoatInKaidLabel",
+                                                textvariable=self._var_kaidBoatNextDockingInKaid)
+        self.kaidBoatInKaidLabel.grid(row=3, column=1, sticky=tk.W)
+
+        realmHeader = ttk.Label(frame, name="realmBoatTimesLabel", text="Realm Boat Times:", anchor=tk.CENTER)
+        realmHeader.grid(row=10, column=0, sticky=tk.EW, columnspan=2)
+        ttk.Label(frame, name="realmBoatArrivesInRealmLabel", text="Arrives in realm: ")\
+            .grid(row=11, column=0, sticky=tk.E)
+        ttk.Label(frame, name="realmBoatArrivesInRealmAt", textvariable=self._var_RealmBoatNextDockingInRealm)\
+            .grid(row=11, column=1, sticky=tk.W)
+        ttk.Label(frame, name="realmBoatArrivesAtFirstInvasionStopLabel", text="First port after realm: ")\
+            .grid(row=12, column=0, sticky=tk.E)
+        ttk.Label(frame, name="realmBoatArrivesAtFirstInvasionStopAt",
+                  textvariable=self._var_RealmBoatNextDockingAtFirstInvasionStop)\
+            .grid(row=12, column=1, sticky=tk.W)
+        ttk.Label(frame, name="realmBoatArrivesAtSecondInvasionStopLabel", text="Second port after realm: ")\
+            .grid(row=13, column=0, sticky=tk.E)
+        ttk.Label(frame, name="realmBoatArrivesAtSecondInvasionStopAt",
+                  textvariable=self._var_RealmBoatNextDockingAtSecondInvasionStop)\
+            .grid(row=13, column=1, sticky=tk.W)
+
 
     def _setUpTopLevelWindow(self, window: tk.Toplevel, title: str, bindKey: str, withdrawWindowCallback: Callable[[], None]):
         window.attributes("-topmost", self.var_always_on_top.get())
@@ -525,8 +601,11 @@ c = Controller.ForTesting()
         except Exception:
             pass
 
-    def update_gui(self):
-        self.after(100, self.update_gui)
+    def update_gui(self,
+                   timestamp: dt.datetime = dt.datetime.now(),
+                   datetimeDisplayformat: str = Controller._DATETIME_DISPLAY_FORMAT,):
+        self.after(100, lambda: self.update_gui(dt.datetime.now(),
+                                                datetimeDisplayformat))
         self._controller.process_queue()
         group_data = self._controller.gameSession.group
         if group_data != self._cachedGroup:
@@ -587,6 +666,13 @@ c = Controller.ForTesting()
             self._controller.displayDropAlertLabel(", ".join(self._controller.model.SoughtAfterItems_ThatDropped),
                                                    self.var_hideDisplayedLabelCallbackTimerInMilliseconds.get())
             self._controller.model.SoughtAfterItems_ThatDropped.clear()
+
+        self._controller.updateBoatTimerDisplay(self._controller.model.CachedKaidBoatNotification,
+                                                timestamp,
+                                                datetimeDisplayformat)
+        self._controller.updateBoatTimerDisplay(self._controller.model.CachedRealmBoatNotification,
+                                                timestamp,
+                                                datetimeDisplayformat)
 
     def updateTimeRelatedValues(self, currentTime: float):
         current_rate = self._controller.gameSession.get_xp_per_hour()
@@ -817,3 +903,56 @@ c = Controller.ForTesting()
         self.after(hideDelayTimerInMilliseconds, self.hideMobIsChasingYouLabel)
     def hideMobIsChasingYouLabel(self):
         self._mobIsChasingYouLabel.grid_remove()
+
+    def updateBoatTimerDisplay(self,
+                               kaidBoatLastDockedInRealm: dt.datetime | None,
+                               realmBoatLastDockedInRealm: dt.datetime | None,
+                               currentDateTime: dt.datetime,
+                               datetimeDisplayFormat: str):
+        if not kaidBoatLastDockedInRealm and not realmBoatLastDockedInRealm:
+            return
+
+        if kaidBoatLastDockedInRealm:
+            kaidBoatNextDockingInRealm = BoatNextAt.realmDock(kaidBoatLastDockedInRealm,
+                                                           BoatTransitInformation.KAID_BOAT_ROUNDTRIP_TIME_IN_SECONDS.value,
+                                                           currentDateTime)
+            assert kaidBoatNextDockingInRealm is not None
+            self._var_kaidBoatNextDockingInRealm.set(kaidBoatNextDockingInRealm.strftime(datetimeDisplayFormat))
+
+            kaidBoatNextDockingInKaid = BoatNextAt.kaidPort(kaidBoatLastDockedInRealm,
+                                                            BoatTransitInformation.KAID_BOAT_TRANSIT_TIME_IN_SECONDS.value + BoatTransitInformation.KAID_BOAT_DOCK_TIME_IN_SECONDS.value,
+                                                            currentDateTime)
+            self._var_kaidBoatNextDockingInKaid.set(kaidBoatNextDockingInKaid.strftime(datetimeDisplayFormat))
+
+        if realmBoatLastDockedInRealm:
+            realmBoatNextDocking = BoatNextAt.realmDock(realmBoatLastDockedInRealm,
+                                                            BoatTransitInformation.REALM_BOAT_ROUNDTRIP_TIME_IN_SECONDS.value,
+                                                            currentDateTime)
+            assert realmBoatNextDocking is not None
+            self._var_RealmBoatNextDockingInRealm.set(realmBoatNextDocking.strftime(datetimeDisplayFormat))
+
+
+            realmBoatPortToPartTimeInSeconds = BoatTransitInformation.REALM_BOAT_TRANSIT_TIME_IN_SECONDS.value + BoatTransitInformation.REALM_BOAT_DOCK_TIME_IN_SECONDS.value
+            firstPortNextDocking = BoatNextAt.invasionPort(realmBoatLastDockedInRealm,
+                                                        realmBoatPortToPartTimeInSeconds,
+                                                        currentDateTime,
+                                                        InvasionPortIdentifier.FirstInvasionPort)
+            assert firstPortNextDocking is not None
+            self._var_RealmBoatNextDockingAtFirstInvasionStop.set(firstPortNextDocking.strftime(datetimeDisplayFormat))
+
+
+            secondPortNextDocking = BoatNextAt.invasionPort(realmBoatLastDockedInRealm,
+                                                        realmBoatPortToPartTimeInSeconds,
+                                                        currentDateTime,
+                                                        InvasionPortIdentifier.SecondInvasionPort)
+            assert secondPortNextDocking is not None
+            self._var_RealmBoatNextDockingAtSecondInvasionStop.set(secondPortNextDocking.strftime(datetimeDisplayFormat))
+
+    def open_boatTrackingWindow(self, currentDateTime: dt.datetime, datetimeDisplayFormat: str):
+        self.updateBoatTimerDisplay(self._controller.model.KaidBoatLastDockedInRealm,
+                                    self._controller.model.RealmBoatLastDockedInRealm,
+                                    currentDateTime,
+                                    datetimeDisplayFormat)
+        self._boatTrackingWindow.deiconify()
+    def _withdraw_boatTrackingWindow(self):
+        self._boatTrackingWindow.withdraw()

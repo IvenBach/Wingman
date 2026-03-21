@@ -6,8 +6,11 @@ from pathlib import Path
 import sys
 import configparser
 import tkinter.messagebox
+import tkinter as tk
+import datetime as dt
 
 from Wingman.core.group import Group
+from Wingman.core.npc_in_room import BoatCaptainInRoom
 
 if __name__ == "__main__":
     srcDirectory = Path(__file__).parent.parent.parent.resolve()
@@ -21,10 +24,11 @@ from Wingman.core.inventory import Equipment, Inventory
 from Wingman.core.item import Item
 from Wingman.core.mobs_chasing_you import MobsChasingYou
 from Wingman.core.afk_status import AfkStatus
-from Wingman.core.boat_timer_update import BoatTimerNotification
-from Wingman.core.boat_captain_mob import BoatCaptainNpc
+from Wingman.core.boat_timer_notification import BoatTimerNotification
+from Wingman.core.boat_captain_npc import BoatCaptainNpcs
 from Wingman.core.parsing.boat_docking_bytes import BoatNotificationBytes
 from Wingman.core.boat_transit_information import BoatTransitInformation
+from Wingman.gui.view import View
 
 @pytest.fixture(scope="function")
 def testController():
@@ -572,15 +576,45 @@ Blur.V                         4m 5s                """
 
             assert c.gameSession.total_xp == 0
 
-    def test_BoatArrivedInRealm_UpdateBoatRelatedInformationInvoked(self, testController: Controller):
-        c = testController
-        c.receiver.receive(BoatTimerNotification(BoatCaptainNpc.Soldaratus_KaidBoatForEvil_FromEvilToKaid,
-                                                 BoatNotificationBytes.DOCKED,
-                                                 1500) )
-        with patch.object(c, c.updateBoatRelatedInformation.__name__) as mockedUpdate:
+    class TestBoatTimerNotification:
+        def test_BoatArrivedInRealm_UpdateBoatRelatedInformationInvoked(self, testController: Controller):
+            c = testController
+            c.receiver.receive(BoatTimerNotification(BoatCaptainNpcs.Soldaratus_KaidBoatForEvil_FromEvilToKaid,
+                                                    BoatNotificationBytes.DOCKED,
+                                                    dt.datetime(2026, 1, 1, 1, 0, 0)) )
+            with patch.object(c, c.updateBoatTimerDisplay.__name__) as mockedUpdate:
+                c.process_queue()
+
+            mockedUpdate.assert_called_once()
+
+        def test_BoatCaptainNpcInRoom_ModelUpdated(self, testController: Controller):
+            c = testController
+            c.receiver.receive(BoatCaptainInRoom(BoatCaptainNpcs.Soldaratus_KaidBoatForEvil_FromEvilToKaid))
             c.process_queue()
 
-        mockedUpdate.assert_called_once()
+            assert c.model.BoatCaptainNpc == BoatCaptainNpcs.Soldaratus_KaidBoatForEvil_FromEvilToKaid
+
+        def test_RealmBoatNotificationReceived_ModelCachesInRealmCacheAttribute(self, testController: Controller):
+            c = testController
+            notification = BoatTimerNotification(BoatCaptainNpcs.Mordat_RealmBoatForEvil_GoingToOtherRealm,
+                                                BoatNotificationBytes.DOCKED,
+                                                dt.datetime(2026, 1, 1, 1, 0, 0))
+            c.receiver.receive(notification)
+
+            c.process_queue()
+
+            assert c.model.CachedRealmBoatNotification == notification
+
+        def test_KaidBoatNotificationReceived_ModelCachesInRealmCacheAttribute(self, testController: Controller):
+            c = testController
+            notification = BoatTimerNotification(BoatCaptainNpcs.Anise_KaidBoatForGood_FromKaidToGood,
+                                                BoatNotificationBytes.DOCKED,
+                                                dt.datetime(2026, 1, 1, 2, 0, 0))
+            c.receiver.receive(notification)
+
+            c.process_queue()
+
+            assert c.model.CachedKaidBoatNotification == notification
 
 class TestGrouping:
     def test_GainNewFollower_NewFollowerAddedToGroupForDisplay(self, testController: Controller):
@@ -1219,7 +1253,7 @@ class TestApplySettings:
         assert c.view.var_timeInMinutesToWarnAboutSpellsDropping.get() == 10
 
     class TestWindowPosition:
-        def test_RootPosition(self, testController: Controller):
+        def test_RootWindowPosition(self, testController: Controller):
             cp = configparser.ConfigParser()
             c = testController
             cp[c._APP_SETTINGS] = {
@@ -1229,9 +1263,9 @@ class TestApplySettings:
             c.applySettings(cp)
             actual = c.view.root.geometry()
 
-            assert "+1108+856" in actual
+            assert actual.endswith("+1108+856")
 
-        def test_MiscellaneousSettingsPosition(self, testController: Controller):
+        def test_MiscellaneousSettingsWindowPosition(self, testController: Controller):
             cp = configparser.ConfigParser()
             c = testController
             cp[c._APP_SETTINGS] = {
@@ -1241,9 +1275,9 @@ class TestApplySettings:
             c.applySettings(cp)
             actual = c.view._miscellaneousSettingsWindow.geometry()
 
-            assert "+1108+856" in actual
+            assert actual.endswith("+1108+856")
 
-        def test_SupplyCheckerPosition(self, testController: Controller):
+        def test_SupplyCheckerWindowPosition(self, testController: Controller):
             cp = configparser.ConfigParser()
             c = testController
             cp[c._APP_SETTINGS] = {
@@ -1253,9 +1287,9 @@ class TestApplySettings:
             c.applySettings(cp)
             actual = c.view._supplyCheckerWindow.geometry()
 
-            assert "+1108+856" in actual
+            assert actual.endswith("+1108+856")
 
-        def test_GearSetPosition(self, testController: Controller):
+        def test_GearSetsWindowPosition(self, testController: Controller):
             cp = configparser.ConfigParser()
             c = testController
             cp[c._APP_SETTINGS] = {
@@ -1265,7 +1299,19 @@ class TestApplySettings:
             c.applySettings(cp)
             actual = c.view._gearSetsWindow.geometry()
 
-            assert "+1108+856" in actual
+            assert actual.endswith("+1108+856")
+
+        def test_BoatTrackingWindowPosition(self, testController: Controller):
+            cp = configparser.ConfigParser()
+            c = testController
+            cp[c._APP_SETTINGS] = {
+                c._BOAT_TRACKING_WINDOW_POSITION__OPTION: "+1108+856"
+            }
+
+            c.applySettings(cp)
+            actual = c.view._boatTrackingWindow.geometry()
+
+            assert actual.endswith("+1108+856")
 
     class TestSoughtAfterItems:
         def test_ZeroLengthString_ModelHasEmptySoughtAfterItems_Sets(self, testController: Controller):
@@ -1914,71 +1960,90 @@ class TestGearSets:
             mockedDisplay.assert_called_once_with('')
 
 class TestUpdateBoatInformation:
-    @pytest.mark.parametrize('boatCaptain, boatNotificationBytes, expectedKaidDockedTime',
-                             [(BoatCaptainNpc.Soldaratus_KaidBoatForEvil_FromEvilToKaid, BoatNotificationBytes.DOCKED, 15),
-                              (BoatCaptainNpc.Hodge_KaidBoatForEvil_FromKaidToEvil, BoatNotificationBytes.DOCKED, 30),
-                              (BoatCaptainNpc.Haddas_KaidBoatForChaos_FromKaidToChaos, BoatNotificationBytes.DOCKED, 45),
-                              (BoatCaptainNpc.Gronkus_KaidBoatForChaos_FromChaosToKaid, BoatNotificationBytes.DOCKED, 60),
-                              (BoatCaptainNpc.Anise_KaidBoatForGood_FromKaidToGood, BoatNotificationBytes.DOCKED, 75),
-                              (BoatCaptainNpc.Thurgood_KaidBoatForGood_FromGoodToKaid, BoatNotificationBytes.DOCKED, 90)],
-                             ids=["Docked in Evil", "Evil boat Docked in Kaid",
-                                  "Docked in Chaos", "Chaos boat Docked in Kaid",
-                                  "Docked in Good", "Good boat Docked in Kaid"])
+    @pytest.mark.parametrize('boatCaptain, dockingDateTime, currentDateTime, expectedDateTime',
+        [(BoatCaptainNpcs.Soldaratus_KaidBoatForEvil_FromEvilToKaid,
+         dt.datetime(2026, 1, 1, 9, 10, 11), dt.datetime(2026, 1, 1, 9, 11, 11), dt.datetime(2026, 1, 1, 9, 10, 11)),
+         (BoatCaptainNpcs.Gronkus_KaidBoatForChaos_FromChaosToKaid,
+         dt.datetime(2026, 1, 1, 9, 11, 11), dt.datetime(2026, 1, 1, 9, 12, 11), dt.datetime(2026, 1, 1, 9, 11, 11)),
+         (BoatCaptainNpcs.Thurgood_KaidBoatForGood_FromGoodToKaid,
+         dt.datetime(2026, 1, 1, 9, 12, 11), dt.datetime(2026, 1, 1, 9, 13, 11), dt.datetime(2026, 1, 1, 9, 12, 11)),
+
+        (BoatCaptainNpcs.Hodge_KaidBoatForEvil_FromKaidToEvil,
+         dt.datetime(2026, 1, 1, 9, 16, 11), dt.datetime(2026, 1, 1, 9, 13, 11), dt.datetime(2026, 1, 1, 9, 12, 11)),
+        (BoatCaptainNpcs.Haddas_KaidBoatForChaos_FromKaidToChaos,
+         dt.datetime(2026, 1, 1, 9, 17, 11), dt.datetime(2026, 1, 1, 9, 14, 11), dt.datetime(2026, 1, 1, 9, 13, 11)),
+        (BoatCaptainNpcs.Anise_KaidBoatForGood_FromKaidToGood,
+         dt.datetime(2026, 1, 1, 9, 18, 11), dt.datetime(2026, 1, 1, 9, 15, 11), dt.datetime(2026, 1, 1, 9, 14, 11)),
+        ],
+                             ids=["Docked in Evil",
+                                  "Docked in Chaos",
+                                  "Docked in Good",
+                                  "Evil boat Docked in Kaid",
+                                  "Chaos boat Docked in Kaid",
+                                  "Good boat Docked in Kaid"])
     def test_KaidBoatArrived_UpdatesModel(self, testController: Controller,
-                                          boatCaptain: BoatCaptainNpc,
-                                          boatNotificationBytes: BoatNotificationBytes,
-                                          expectedKaidDockedTime: int):
+                                          boatCaptain: BoatCaptainNpcs,
+                                          dockingDateTime: dt.datetime,
+                                          currentDateTime: dt.datetime,
+                                          expectedDateTime: dt.datetime):
         c = testController
         notification = BoatTimerNotification(
             boatCaptain,
-            boatNotificationBytes,
-            expectedKaidDockedTime
+            BoatNotificationBytes.DOCKED,
+            dockingDateTime
         )
 
-        c.updateBoatRelatedInformation(notification)
+        c.updateBoatTimerDisplay(notification, currentDateTime, Controller._DATETIME_DISPLAY_FORMAT)
 
-        assert c.model.KaidBoatLastDockedInRealm == expectedKaidDockedTime
+        assert c.model.KaidBoatLastDockedInRealm == expectedDateTime
 
-    @pytest.mark.parametrize('boatCaptain, boatNotificationBytes, departingTime, expectedKaidLastDockedTime',
-                             [(BoatCaptainNpc.Soldaratus_KaidBoatForEvil_FromEvilToKaid, BoatNotificationBytes.DEPARTED, 1000, 940),
-                              (BoatCaptainNpc.Hodge_KaidBoatForEvil_FromKaidToEvil, BoatNotificationBytes.DEPARTED, 2000, 1940),
-                              (BoatCaptainNpc.Gronkus_KaidBoatForChaos_FromChaosToKaid, BoatNotificationBytes.DEPARTED, 3000, 2940),
-                              (BoatCaptainNpc.Haddas_KaidBoatForChaos_FromKaidToChaos, BoatNotificationBytes.DEPARTED, 4000, 3940),
-                              (BoatCaptainNpc.Thurgood_KaidBoatForGood_FromGoodToKaid, BoatNotificationBytes.DEPARTED, 5000, 4940),
-                              (BoatCaptainNpc.Anise_KaidBoatForGood_FromKaidToGood, BoatNotificationBytes.DEPARTED, 6000, 5940)],
+    @pytest.mark.parametrize('boatCaptain, notificationTime, currentDateTime, expectedDateTime',
+        [(BoatCaptainNpcs.Soldaratus_KaidBoatForEvil_FromEvilToKaid,
+          dt.datetime(2026, 1, 1, 9, 10, 11), dt.datetime(2026, 1, 1, 9, 11, 11), dt.datetime(2026, 1, 1, 9, 8, 11)),
+        (BoatCaptainNpcs.Gronkus_KaidBoatForChaos_FromChaosToKaid,
+         dt.datetime(2026, 1, 1, 9, 11, 11), dt.datetime(2026, 1, 1, 9, 12, 11), dt.datetime(2026, 1, 1, 9, 9, 11)),
+        (BoatCaptainNpcs.Thurgood_KaidBoatForGood_FromGoodToKaid,
+         dt.datetime(2026, 1, 1, 9, 12, 11), dt.datetime(2026, 1, 1, 9, 13, 11), dt.datetime(2026, 1, 1, 9, 10, 11)),
+
+        (BoatCaptainNpcs.Hodge_KaidBoatForEvil_FromKaidToEvil,
+         dt.datetime(2026, 1, 1, 9, 16, 11), dt.datetime(2026, 1, 1, 9, 17, 11), dt.datetime(2026, 1, 1, 9, 10, 11)),
+        (BoatCaptainNpcs.Haddas_KaidBoatForChaos_FromKaidToChaos,
+         dt.datetime(2026, 1, 1, 9, 17, 11), dt.datetime(2026, 1, 1, 9, 18, 11), dt.datetime(2026, 1, 1, 9, 11, 11)),
+        (BoatCaptainNpcs.Anise_KaidBoatForGood_FromKaidToGood,
+         dt.datetime(2026, 1, 1, 9, 18, 11), dt.datetime(2026, 1, 1, 9, 19, 11), dt.datetime(2026, 1, 1, 9, 12, 11))],
                             ids=["Just Departed from Evil",
-                                 "Evil boat Departed from Kaid",
                                  "Just Departed from Chaos",
-                                 "Chaos boat Departed from Kaid",
                                  "Just Departed from Good",
+                                 "Evil boat Departed from Kaid",
+                                 "Chaos boat Departed from Kaid",
                                  "Good boat Departed from Kaid"])
     def test_KaidBoatDeparted_UpdatesModel(self, testController: Controller,
-                                           boatCaptain: BoatCaptainNpc,
-                                           boatNotificationBytes: BoatNotificationBytes,
-                                           departingTime: int,
-                                           expectedKaidLastDockedTime: int):
+                                           boatCaptain: BoatCaptainNpcs,
+                                           notificationTime: dt.datetime,
+                                           currentDateTime: dt.datetime,
+                                           expectedDateTime: dt.datetime):
         c = testController
         notification = BoatTimerNotification(
             boatCaptain,
-            boatNotificationBytes,
-            departingTime
+            BoatNotificationBytes.DEPARTED,
+            notificationTime
         )
 
-        c.updateBoatRelatedInformation(notification)
+        c.updateBoatTimerDisplay(notification, currentDateTime, Controller._DATETIME_DISPLAY_FORMAT)
 
-        assert c.model.KaidBoatLastDockedInRealm == expectedKaidLastDockedTime
+        assert c.model.KaidBoatLastDockedInRealm == expectedDateTime
 
     @pytest.mark.parametrize('boatCaptain, boatNotificationBytes, expectedRealmDockedTime',
-                             [(BoatCaptainNpc.Mordat_RealmBoatForEvil_GoingToOtherRealm, BoatNotificationBytes.DOCKED, 2000),
-                              (BoatCaptainNpc.Horduk_RealmBoatForChaos_GoingToOtherRealm, BoatNotificationBytes.DOCKED, 3000),
-                              (BoatCaptainNpc.Petir_RealmBoatForGood_GoingToOtherRealm, BoatNotificationBytes.DOCKED, 4000)],
+        [(BoatCaptainNpcs.Mordat_RealmBoatForEvil_GoingToOtherRealm, BoatNotificationBytes.DOCKED, dt.datetime(2026, 1, 1, 9, 10, 0)),
+        (BoatCaptainNpcs.Horduk_RealmBoatForChaos_GoingToOtherRealm, BoatNotificationBytes.DOCKED, dt.datetime(2026, 1, 1, 9, 11, 0)),
+        (BoatCaptainNpcs.Petir_RealmBoatForGood_GoingToOtherRealm, BoatNotificationBytes.DOCKED, dt.datetime(2026, 1, 1, 9, 12, 0))],
                             ids=["Evil Realm Boat Docked in Realm",
                                  "Chaos Realm Boat Docked in Realm",
                                  "Good Realm Boat Docked in Realm"])
     def test_RealmBoatArrivesInRealm_UpdatesModel(self, testController: Controller,
-                                                  boatCaptain: BoatCaptainNpc,
+                                                  boatCaptain: BoatCaptainNpcs,
                                                   boatNotificationBytes: BoatNotificationBytes,
-                                                  expectedRealmDockedTime: int):
+                                                  expectedRealmDockedTime: dt.datetime):
         c = testController
         notification = BoatTimerNotification(
             boatCaptain,
@@ -1986,19 +2051,57 @@ class TestUpdateBoatInformation:
             expectedRealmDockedTime
         )
 
-        c.updateBoatRelatedInformation(notification)
+        c.updateBoatTimerDisplay(notification, dt.datetime.now(), Controller._DATETIME_DISPLAY_FORMAT)
 
         assert c.model.RealmBoatLastDockedInRealm == expectedRealmDockedTime
 
     def test_RealmBoatArrivesInAnotherRealm_ModelsRealmBoatTimerNotUpdated(self, testController: Controller):
         c = testController
-        c.model.RealmBoatLastDockedInRealm = 50
+        c.model.RealmBoatLastDockedInRealm = dt.datetime(2026, 1, 1, 9, 10, 0)
         notification = BoatTimerNotification(
-            None, #TODO: possibly use boats name
+            None,
             BoatNotificationBytes.DEPARTED,
-            50 + 60
+            dt.datetime(2026, 1, 1, 9, 36, 0)
         )
 
-        c.updateBoatRelatedInformation(notification)
+        c.updateBoatTimerDisplay(notification, dt.datetime.now(), Controller._DATETIME_DISPLAY_FORMAT)
 
-        assert c.model.RealmBoatLastDockedInRealm == 50
+        assert c.model.RealmBoatLastDockedInRealm == dt.datetime(2026, 1, 1, 9, 10, 0)
+
+    @pytest.mark.parametrize('boatCaptain, notificationDateTime',
+        [(BoatCaptainNpcs.Mordat_RealmBoatForEvil_GoingToOtherRealm, dt.datetime(2026, 1, 1, 9, 10, 0)),
+        (BoatCaptainNpcs.Horduk_RealmBoatForChaos_GoingToOtherRealm, dt.datetime(2026, 1, 1, 9, 11, 0)),
+        (BoatCaptainNpcs.Petir_RealmBoatForGood_GoingToOtherRealm, dt.datetime(2026, 1, 1, 9, 12, 0)),
+        (BoatCaptainNpcs.Soldaratus_KaidBoatForEvil_FromEvilToKaid, dt.datetime(2026, 1, 1, 9, 13, 0)),
+        (BoatCaptainNpcs.Gronkus_KaidBoatForChaos_FromChaosToKaid, dt.datetime(2026, 1, 1, 9, 14, 0)),
+        (BoatCaptainNpcs.Thurgood_KaidBoatForGood_FromGoodToKaid, dt.datetime(2026, 1, 1, 9, 15, 0))],
+                            ids=["Evil Realm Boat Docked in Realm",
+                                 "Chaos Realm Boat Docked in Realm",
+                                 "Good Realm Boat Docked in Realm",
+                                 "Evil Kaid Boat Docked in Realm",
+                                 "Chaos Kaid Boat Docked in Realm",
+                                 "Good Kaid Boat Docked in Realm"])
+    def test_RealmBoatArrivesInRealm_ViewUpdates(self, testController: Controller,
+                                                boatCaptain: BoatCaptainNpcs,
+                                                notificationDateTime: dt.datetime):
+        c = testController
+        v = c.view
+        notification = BoatTimerNotification(
+            boatCaptain,
+             BoatNotificationBytes.DOCKED,
+            notificationDateTime
+        )
+
+        with patch.object(v, v.updateBoatTimerDisplay.__name__) as mockedUpdateLabel:
+            c.updateBoatTimerDisplay(notification, dt.datetime.now(), Controller._DATETIME_DISPLAY_FORMAT)
+
+        mockedUpdateLabel.assert_called_once()
+
+    def test_NoneBoatNotification_DoesNotUpdateView(self, testController: Controller):
+        c = testController
+        v = c.view
+
+        with patch.object(v, v.updateBoatTimerDisplay.__name__) as mockedUpdateLabel:
+            c.updateBoatTimerDisplay(None, dt.datetime.now(), Controller._DATETIME_DISPLAY_FORMAT)
+
+        mockedUpdateLabel.assert_not_called()

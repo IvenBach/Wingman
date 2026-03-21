@@ -7,13 +7,13 @@ from Wingman.core.afk_status import AfkStatus
 from Wingman.core.network_listener import NetworkListener
 from Wingman.core.input_receiver import InputReceiver
 from Wingman.core.controller import Controller
-from Wingman.core.npc_in_room import NpcInRoom
+from Wingman.core.npc_in_room import BoatCaptainInRoom
 from Wingman.core.parsing.boat_docking_bytes import BoatNotificationBytes
 from Wingman.core.parsing.parser import Parser
 from Wingman.core.affect import Affect
 from Wingman.core.parsing.connection_payload_bytes import ConnectionPayloadBytes
 from Wingman.core.mobs_chasing_you import MobsChasingYou
-from Wingman.core.boat_timer_update import BoatTimerNotification
+from Wingman.core.boat_timer_notification import BoatTimerNotification
 
 # Helper class to mock Scapy packet behavior cleanly
 class MockPacket:
@@ -387,17 +387,17 @@ class TestBoatIndicator:
 
         assert isinstance(mockedReceiveMethod.call_args[0][0], BoatTimerNotification)
 
-class TestNpcInRoom:
-    def test_GreenMob_NpcInRoomDataStructureArgumentSentToReceiver(self, listener_stack: tuple[NetworkListener, InputReceiver]):
+class TestCaptainInRoom:
+    def test_BoatIsDocked_HasGreenBoatNameBeforeCaptainName_CaptainNameExtracted(self, listener_stack: tuple[NetworkListener, InputReceiver]):
         listener, receiver = listener_stack
         target_ip = listener.target_ip
         target_port = listener.target_port
 
-        text = "\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31m\x1b[1;32mFernama Vahaia - ThePyramidOfTheSun\x1b[0;0m\x1b[1;31m\x1b[1;30m\x1b[1;30m\x1b[1;30m.\n\n\n\x1b[8m"
+        text = "You silently sneak east.\n[\x1b[1;36mTamia Wharves\x1b[1;30m]\n\x1b[1;30mYou're at the end of the wharves. Small, less grand vessels are rocking gently in the water here. This is obviously where\n\rthe poorer merchants moor their ships. The wharf goes west.\x1b[1;30m\n\n\x1b[1;37mObvious exits: east, west, and \x1b[1;32mthe merchant ship, Lucifer's Pride\x1b[0;0m\x1b[1;37m\x1b[0;0m.\x1b[1;30m\x1b[1;30m\n\nAlso there is \x1b[1;31m\x1b[1;32mSoldaratus, the ticket merchant\x1b[0;0m\x1b[1;31m\x1b[1;30m\x1b[1;30m\x1b[1;30m.\nYou also see \x1b[1;33ma status board for the Lucifers Pride\x1b[0;0m\x1b[1;30m and \x1b[1;33ma dock for the merchant ship, Lucifer's Pride\x1b[0;0m\x1b[1;30m.\n\n\n\x1b[8m"
         payload = (text).encode('utf-8')
         pkt = MockPacket(target_ip, target_port, payload)
 
         with patch.object(receiver, receiver.receive.__name__) as mockedReceiveMethod:
             listener.packet_callback(pkt)
 
-        assert isinstance(mockedReceiveMethod.call_args[0][0], NpcInRoom)
+        assert isinstance(mockedReceiveMethod.call_args[0][0], BoatCaptainInRoom)

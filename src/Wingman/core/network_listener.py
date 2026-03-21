@@ -1,10 +1,12 @@
 import threading
 from scapy.all import sniff, IP, TCP
 from time import time
+from datetime import datetime
 
-from Wingman.core.boat_timer_update import BoatTimerNotification
+from Wingman.core.boat_captain_npc import BoatCaptainNpcs
+from Wingman.core.boat_timer_notification import BoatTimerNotification
 from Wingman.core.input_receiver import InputReceiver
-from Wingman.core.npc_in_room import NpcInRoom
+from Wingman.core.npc_in_room import BoatCaptainInRoom
 from Wingman.core.parsing.boat_docking_bytes import BoatNotificationBytes
 from Wingman.core.parsing.parser import MobEnteringReasons, Parser
 from Wingman.core.mobs_in_room import MobsInRoom
@@ -30,7 +32,7 @@ class NetworkListener:
     def packet_callback(self, packet):
         predeterminedChunkMobList = []
         mobsInRoom: MobsInRoom | None = None
-        npcInRoom: NpcInRoom | None = None
+        boatCaptainInRoom: BoatCaptainInRoom | None = None
         isBeingChased: list[str] | None = None
         if IP in packet and TCP in packet:
             if packet[IP].src == self.target_ip and packet[TCP].sport == self.target_port:
@@ -48,9 +50,13 @@ class NetworkListener:
                         self.controller.disbandGroup()
 
                     if Parser.ParseBytes.isBoatDocking(payload_bytes):
-                        self.receiver.receive(BoatTimerNotification(self.controller.model.BoatCaptainMob, BoatNotificationBytes.DOCKED, time()))
+                        self.receiver.receive(BoatTimerNotification(self.controller.model.BoatCaptainNpc,
+                                                                    BoatNotificationBytes.DOCKED,
+                                                                    datetime.today()))
                     elif Parser.ParseBytes.isBoatDeparting(payload_bytes):
-                        self.receiver.receive(BoatTimerNotification(self.controller.model.BoatCaptainMob, BoatNotificationBytes.DEPARTED, time()))
+                        self.receiver.receive(BoatTimerNotification(self.controller.model.BoatCaptainNpc,
+                                                                    BoatNotificationBytes.DEPARTED,
+                                                                    datetime.today()))
 
                     # Decode and append to buffer immediately
                     chunk = payload_bytes.decode('utf-8', errors='replace')
@@ -71,7 +77,11 @@ class NetworkListener:
 
                     greenMobs = Parser.ParseMobs.textFromGreenMobs(chunk)
                     if greenMobs:
-                        npcInRoom = NpcInRoom(greenMobs)
+                        for name in greenMobs:
+                            captain = BoatCaptainNpcs.FromNameToCaptain(name)
+                            if captain:
+                                boatCaptainInRoom = BoatCaptainInRoom(captain)
+                                break
 
                     mobMovements, movementIndices = Parser.ParseMovement.parseMobMovements(chunk)
                     if mobMovements:
@@ -120,9 +130,9 @@ class NetworkListener:
                         self.receiver.receive(mobsInRoom)
                         mobsInRoom = None
 
-                    if npcInRoom:
-                        self.receiver.receive(npcInRoom)
-                        npcInRoom = None
+                    if boatCaptainInRoom:
+                        self.receiver.receive(boatCaptainInRoom)
+                        boatCaptainInRoom = None
 
                     if isBeingChased:
                         self.receiver.receive(MobsChasingYou(isBeingChased))
